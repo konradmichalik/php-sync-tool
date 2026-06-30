@@ -15,6 +15,7 @@ namespace MoveElevator\DbSyncTool;
 
 use MoveElevator\DbSyncTool\Command\SyncCommand;
 use Symfony\Component\Console\Application as BaseApplication;
+use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
 
 /**
  * Application.
@@ -30,8 +31,9 @@ final class Application extends BaseApplication
     {
         parent::__construct('php-sync-tool', self::VERSION);
 
-        $command = new SyncCommand();
-        $this->addCommand($command);
-        $this->setDefaultCommand((string) $command->getName(), true);
+        $this->setCommandLoader(new FactoryCommandLoader([
+            'sync' => static fn (): SyncCommand => new SyncCommand(),
+        ]));
+        $this->setDefaultCommand('sync', true);
     }
 }
