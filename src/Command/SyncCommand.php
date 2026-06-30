@@ -27,6 +27,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 use function is_array;
+use function is_string;
 use function sprintf;
 
 /**
@@ -169,6 +170,8 @@ final class SyncCommand extends Command
             }
         }
 
+        $base = $this->applyHostLinks($base);
+
         $config = array_merge($base, $this->cliOverrides($input, $output));
 
         $config = $this->applyEndpoint($config, 'origin', $input);
@@ -265,6 +268,29 @@ final class SyncCommand extends Command
         }
 
         return $raw;
+    }
+
+    /**
+     * Resolve `link: "@host"` references on origin/target to the linked host's
+     * config (merged under any other keys the endpoint already sets).
+     *
+     * @param array<string, mixed> $config
+     *
+     * @return array<string, mixed>
+     */
+    private function applyHostLinks(array $config): array
+    {
+        foreach (['origin', 'target'] as $key) {
+            $endpoint = $this->asArray($config[$key] ?? null);
+            $link = $endpoint['link'] ?? null;
+
+            if (is_string($link) && str_starts_with($link, '@')) {
+                unset($endpoint['link']);
+                $config[$key] = array_merge($this->resolver->resolveHostLink($link), $endpoint);
+            }
+        }
+
+        return $config;
     }
 
     /**

@@ -217,6 +217,25 @@ final class SyncCommandTest extends TestCase
         self::assertSame(0, $exit, $tester->getDisplay());
     }
 
+    #[Test]
+    public function hostLinkResolvesEndpointFromHostFile(): void
+    {
+        $hosts = $this->dir.'/hosts.yaml';
+        file_put_contents($hosts, "prod:\n  host: prod.example.com\n  user: deploy\n  db: {name: p, user: p, password: p}\n");
+        $config = $this->dir.'/linked.yaml';
+        file_put_contents($config, "origin:\n  link: \"@prod\"\ntarget:\n  path: /var/www\n  db: {name: l, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $exit = $tester->execute([
+            '--config-file' => $config,
+            '--host-file' => $hosts,
+            '--dry-run' => true,
+        ]);
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+        self::assertStringContainsString('remote (prod.example.com)', $tester->getDisplay());
+    }
+
     private function tester(): CommandTester
     {
         $application = new Application();

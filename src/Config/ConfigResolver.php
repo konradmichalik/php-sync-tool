@@ -99,6 +99,23 @@ final class ConfigResolver
         return $this->globalHosts;
     }
 
+    /**
+     * Resolve a `@hostname` link (e.g. "@prod") to that host's client config.
+     *
+     * @return array<string, mixed>
+     */
+    public function resolveHostLink(string $link): array
+    {
+        $this->load();
+        $name = ltrim($link, '@');
+
+        if (!isset($this->globalHosts[$name])) {
+            throw new ConfigException($this->hostNotFoundMessage($name));
+        }
+
+        return $this->globalHosts[$name]->toClientConfig();
+    }
+
     private function mergeHostFile(string $hostFile): void
     {
         if (!is_file($hostFile)) {

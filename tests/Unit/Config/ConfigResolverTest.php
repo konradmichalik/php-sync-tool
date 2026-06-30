@@ -167,6 +167,22 @@ final class ConfigResolverTest extends TestCase
         $this->resolver()->resolve(origin: 'x', target: 'y', hostFile: $this->work.'/nope.yaml');
     }
 
+    #[Test]
+    public function resolvesHostLinkToGlobalHost(): void
+    {
+        $this->writeGlobal('hosts.yaml', "prod:\n  host: prod.example.com\n  user: deploy\n");
+
+        self::assertSame('prod.example.com', $this->resolver()->resolveHostLink('@prod')['host']);
+    }
+
+    #[Test]
+    public function unknownHostLinkThrowsConfigError(): void
+    {
+        $this->expectException(ConfigException::class);
+
+        $this->resolver()->resolveHostLink('@nope');
+    }
+
     private function resolver(): ConfigResolver
     {
         return new ConfigResolver(homeDir: $this->home, workingDir: $this->work);
