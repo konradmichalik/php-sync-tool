@@ -15,14 +15,12 @@ namespace MoveElevator\DbSyncTool\Config;
 
 use function is_array;
 
-
 /**
  * ClientConfig.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final readonly class ClientConfig
 {
     /**

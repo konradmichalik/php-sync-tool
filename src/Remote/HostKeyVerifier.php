@@ -17,14 +17,12 @@ use MoveElevator\DbSyncTool\Exception\DbSyncException;
 
 use function sprintf;
 
-
 /**
  * HostKeyVerifier.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class HostKeyVerifier
 {
     public function assert(HostKeyStatus $status, bool $strict, string $host): void

@@ -19,14 +19,12 @@ use MoveElevator\DbSyncTool\Recipe\FrameworkDetector;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * FrameworkDetectorTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class FrameworkDetectorTest extends TestCase
 {
     private FrameworkDetector $detector;

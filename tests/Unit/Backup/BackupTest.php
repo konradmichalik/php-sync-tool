@@ -19,14 +19,12 @@ use MoveElevator\DbSyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * BackupTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class BackupTest extends TestCase
 {
     #[Test]

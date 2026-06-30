@@ -18,14 +18,12 @@ use MoveElevator\DbSyncTool\Remote\ProxyTransfer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * ProxyTransferTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class ProxyTransferTest extends TestCase
 {
     #[Test]

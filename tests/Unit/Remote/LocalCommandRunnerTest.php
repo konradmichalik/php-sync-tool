@@ -18,14 +18,12 @@ use MoveElevator\DbSyncTool\Remote\LocalCommandRunner;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * LocalCommandRunnerTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class LocalCommandRunnerTest extends TestCase
 {
     #[Test]

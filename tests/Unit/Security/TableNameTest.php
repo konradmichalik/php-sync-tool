@@ -18,14 +18,12 @@ use MoveElevator\DbSyncTool\Security\TableName;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * TableNameTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class TableNameTest extends TestCase
 {
     #[Test]

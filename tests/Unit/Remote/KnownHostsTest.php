@@ -17,14 +17,12 @@ use MoveElevator\DbSyncTool\Remote\{HostKeyStatus, KnownHosts};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * KnownHostsTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class KnownHostsTest extends TestCase
 {
     private string $file;

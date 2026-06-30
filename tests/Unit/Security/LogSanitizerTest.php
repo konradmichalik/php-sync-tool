@@ -17,14 +17,12 @@ use MoveElevator\DbSyncTool\Security\LogSanitizer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * LogSanitizerTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class LogSanitizerTest extends TestCase
 {
     #[Test]

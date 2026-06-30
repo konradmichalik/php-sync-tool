@@ -19,14 +19,12 @@ use OutOfBoundsException;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * ParsingTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class ParsingTest extends TestCase
 {
     /**

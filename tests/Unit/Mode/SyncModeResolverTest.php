@@ -20,14 +20,12 @@ use MoveElevator\DbSyncTool\Mode\SyncModeResolver;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * SyncModeResolverTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class SyncModeResolverTest extends TestCase
 {
     private SyncModeResolver $resolver;

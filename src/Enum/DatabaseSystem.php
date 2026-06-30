@@ -13,14 +13,12 @@ declare(strict_types=1);
 
 namespace MoveElevator\DbSyncTool\Enum;
 
-
 /**
  * DatabaseSystem.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 enum DatabaseSystem: string
 {
     case MySQL = 'MySQL';

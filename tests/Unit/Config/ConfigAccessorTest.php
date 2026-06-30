@@ -17,14 +17,12 @@ use MoveElevator\DbSyncTool\Config\ConfigAccessor;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * ConfigAccessorTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class ConfigAccessorTest extends TestCase
 {
     #[Test]

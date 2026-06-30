@@ -17,14 +17,12 @@ use MoveElevator\DbSyncTool\Security\Shell;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * ShellTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class ShellTest extends TestCase
 {
     #[Test]

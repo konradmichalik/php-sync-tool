@@ -20,14 +20,12 @@ use MoveElevator\DbSyncTool\Remote\CommandRunner;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * ScriptRunnerTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class ScriptRunnerTest extends TestCase
 {
     #[Test]

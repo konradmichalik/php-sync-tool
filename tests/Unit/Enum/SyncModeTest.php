@@ -17,14 +17,12 @@ use MoveElevator\DbSyncTool\Enum\SyncMode;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * SyncModeTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class SyncModeTest extends TestCase
 {
     #[Test]

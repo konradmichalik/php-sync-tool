@@ -13,12 +13,10 @@ declare(strict_types=1);
 
 namespace MoveElevator\DbSyncTool\Exception;
 
-
 /**
  * NoConfigFoundException.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class NoConfigFoundException extends ConfigException {}

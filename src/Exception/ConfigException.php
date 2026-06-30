@@ -15,12 +15,10 @@ namespace MoveElevator\DbSyncTool\Exception;
 
 use RuntimeException;
 
-
 /**
  * ConfigException.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 class ConfigException extends RuntimeException implements DbSyncToolException {}

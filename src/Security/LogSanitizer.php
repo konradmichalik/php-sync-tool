@@ -13,14 +13,12 @@ declare(strict_types=1);
 
 namespace MoveElevator\DbSyncTool\Security;
 
-
 /**
  * LogSanitizer.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class LogSanitizer
 {
     /**

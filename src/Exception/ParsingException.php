@@ -15,12 +15,10 @@ namespace MoveElevator\DbSyncTool\Exception;
 
 use RuntimeException;
 
-
 /**
  * ParsingException.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class ParsingException extends RuntimeException implements DbSyncToolException {}

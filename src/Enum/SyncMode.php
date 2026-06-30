@@ -15,14 +15,12 @@ namespace MoveElevator\DbSyncTool\Enum;
 
 use function in_array;
 
-
 /**
  * SyncMode.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 enum SyncMode: string
 {
     case DumpLocal = 'DUMP_LOCAL';

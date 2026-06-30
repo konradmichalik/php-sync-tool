@@ -23,14 +23,12 @@ use function sprintf;
 use function str_starts_with;
 use function sys_get_temp_dir;
 
-
 /**
  * FileSync.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final readonly class FileSync
 {
     public function __construct(

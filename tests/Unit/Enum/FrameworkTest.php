@@ -18,14 +18,12 @@ use MoveElevator\DbSyncTool\Exception\ConfigException;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * FrameworkTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class FrameworkTest extends TestCase
 {
     #[Test]

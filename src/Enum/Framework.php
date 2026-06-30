@@ -17,14 +17,12 @@ use MoveElevator\DbSyncTool\Exception\ConfigException;
 
 use function sprintf;
 
-
 /**
  * Framework.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 enum Framework: string
 {
     case Typo3 = 'TYPO3';
