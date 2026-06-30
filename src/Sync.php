@@ -18,6 +18,7 @@ use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
 use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\{MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, TableStatements};
 use KonradMichalik\SyncTool\Enum\{LifecyclePhase, SyncMode};
+use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
 use KonradMichalik\SyncTool\Recipe\CredentialResolver;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, ProxyTransfer, RsyncCommandBuilder, RunnerFactory, SftpTransfer};
@@ -227,6 +228,10 @@ final readonly class Sync
                 ? $config->importFile
                 : $this->dumpDir($client).$dumpName.'.gz';
 
+            if ($config->checkDump) {
+                $this->checkDump($runner, $dumpPath);
+            }
+
             if ($config->clearDatabase) {
                 $this->clearDatabase($config, $runner, $credentialsArg);
             }
@@ -239,11 +244,31 @@ final readonly class Sync
             $this->logCommand($command);
             $runner->run($command);
 
+            $this->importAfterDump($client, $runner, $credentialsArg);
             $this->runPostSql($client, $runner, $credentialsArg);
             $this->pruneDumps($client, $runner);
         } finally {
             $this->cleanupCredentials($client, $runner, $credentialsPath);
         }
+    }
+
+    private function checkDump(CommandRunner $runner, string $dumpPath): void
+    {
+        $result = $runner->run(sprintf('test -s %s && echo VALID', escapeshellarg($dumpPath)), true);
+
+        if ('VALID' !== trim($result)) {
+            throw new SyncException(sprintf('Dump validation failed: %s is missing or empty', $dumpPath));
+        }
+    }
+
+    private function importAfterDump(ClientConfig $client, CommandRunner $runner, string $credentialsArg): void
+    {
+        if (null === $client->afterDump || '' === $client->afterDump) {
+            return;
+        }
+
+        ($this->log)('Importing additional dump '.$client->afterDump);
+        $runner->run($this->commands->importCommand('mysql', $credentialsArg, $client->db->name, 'gunzip', $client->afterDump));
     }
 
     private function runPostSql(ClientConfig $client, CommandRunner $runner, string $credentialsArg): void
