@@ -50,4 +50,18 @@ final readonly class JumpHostConfig
             name: ConfigAccessor::getStringOrNull($data, 'name'),
         );
     }
+
+    /**
+     * SSH ProxyJump destination: [user@]host[:port] (port omitted when default 22).
+     */
+    public function sshSpec(): string
+    {
+        $spec = '' !== $this->user ? $this->user.'@'.$this->host : $this->host;
+
+        if (22 !== $this->port) {
+            $spec .= ':'.$this->port;
+        }
+
+        return $spec;
+    }
 }

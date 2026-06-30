@@ -50,7 +50,7 @@ final class RsyncCommandBuilder
     public function authorization(ClientConfig $client, bool $useSshpass, ?JumpHostConfig $jump = null): string
     {
         $port = $client->port;
-        $jumpOpt = null !== $jump ? ' -J '.$this->jumpSpec($jump) : '';
+        $jumpOpt = null !== $jump ? ' -J '.$jump->sshSpec() : '';
 
         if (null !== $client->sshKey) {
             return sprintf('-e "ssh%s -i %s -p%d"', $jumpOpt, $client->sshKey, $port);
@@ -105,18 +105,5 @@ final class RsyncCommandBuilder
             $target,
             $targetPath,
         );
-    }
-
-    private function jumpSpec(JumpHostConfig $jump): string
-    {
-        $spec = '' !== $jump->user
-            ? sprintf('%s@%s', $jump->user, $jump->host)
-            : $jump->host;
-
-        if (22 !== $jump->port) {
-            $spec .= ':'.$jump->port;
-        }
-
-        return $spec;
     }
 }

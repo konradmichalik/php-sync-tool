@@ -29,7 +29,7 @@ final class JumpHostSshCommand
 {
     public function build(ClientConfig $client, JumpHostConfig $jump, string $remoteCommand): string
     {
-        $parts = ['ssh', '-J '.$this->jumpSpec($jump)];
+        $parts = ['ssh', '-J '.escapeshellarg($jump->sshSpec())];
 
         if (null !== $client->sshKey) {
             $parts[] = '-i '.escapeshellarg($client->sshKey);
@@ -40,18 +40,5 @@ final class JumpHostSshCommand
         $parts[] = escapeshellarg($remoteCommand);
 
         return implode(' ', $parts);
-    }
-
-    private function jumpSpec(JumpHostConfig $jump): string
-    {
-        $spec = '' !== $jump->user
-            ? sprintf('%s@%s', $jump->user, $jump->host)
-            : $jump->host;
-
-        if (22 !== $jump->port) {
-            $spec .= ':'.$jump->port;
-        }
-
-        return escapeshellarg($spec);
     }
 }
