@@ -1,0 +1,36 @@
+# PROXY scenario, driven from inside the proxy node:
+#   origin = www1 (remote over SSH), its database lives on db1
+#   target = www2 (remote over SSH), its database lives on db2
+#   both endpoints are remote, so the dump is pulled to a local temp on the
+#   proxy node and then pushed on to the target (remote → local → remote).
+#
+# Run: docker compose exec proxy php /app/bin/sync-tool \
+#        -f /app/docker/configs/proxy.yaml -y
+use_sshpass: true
+ssh_strict_host_key_checking: false
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db1
+    user: db
+    password: db
+    port: 3306
+
+target:
+  host: www2
+  user: root
+  password: root
+  port: 22
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db2
+    user: db
+    password: db
+    port: 3306

@@ -5,6 +5,7 @@
 # Run: docker compose exec www2 php /app/bin/sync-tool \
 #        -f /app/docker/configs/receiver.yaml -y
 use_sshpass: true
+ssh_strict_host_key_checking: false
 
 origin:
   host: www1

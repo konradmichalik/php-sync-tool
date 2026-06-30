@@ -17,6 +17,8 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
+use function sprintf;
+
 /**
  * SyncScenarioTest.
  *
@@ -51,6 +53,53 @@ final class SyncScenarioTest extends TestCase
         self::assertSame(3, $this->rowCount('db2'), 'target should hold the origin rows after sync');
     }
 
+    #[Test]
+    public function senderSyncPushesAllRowsToRemoteTarget(): void
+    {
+        $this->resetDatabases();
+
+        $result = $this->runSyncTool('www1', 'sender.yaml');
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCount('db2'));
+    }
+
+    #[Test]
+    public function proxySyncTransfersBetweenTwoRemoteHosts(): void
+    {
+        $this->resetDatabases();
+
+        $result = $this->runSyncTool('proxy', 'proxy.yaml');
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCount('db2'));
+    }
+
+    #[Test]
+    public function receiverSyncViaSftpFallbackCopiesAllRows(): void
+    {
+        $this->resetDatabases();
+
+        $result = $this->runSyncTool('www2', 'receiver.yaml', ['--no-rsync']);
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCount('db2'));
+    }
+
+    #[Test]
+    public function clearDatabaseDropsOrphanTablesBeforeImport(): void
+    {
+        $this->resetDatabases();
+        $this->mysql('db2', 'CREATE TABLE orphan (id INT);');
+        self::assertSame(1, $this->tableCount('db2', 'orphan'), 'orphan table should exist before sync');
+
+        $result = $this->runSyncTool('www2', 'receiver.yaml', ['--clear-database']);
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCount('db2'));
+        self::assertSame(0, $this->tableCount('db2', 'orphan'), 'orphan table should be dropped by --clear-database');
+    }
+
     private function resetDatabases(): void
     {
         $this->mysql('db1', 'DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');
@@ -67,6 +116,25 @@ final class SyncScenarioTest extends TestCase
     private function mysql(string $dbService, string $sql): void
     {
         $this->compose(['exec', '-T', $dbService, 'mariadb', '-udb', '-pdb', 'db', '-e', $sql]);
+    }
+
+    private function tableCount(string $dbService, string $table): int
+    {
+        $output = $this->compose(['exec', '-T', $dbService, 'mariadb', '-udb', '-pdb', 'db', '-N', '-e', sprintf("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='db' AND table_name='%s';", $table)])->getOutput();
+
+        return (int) trim($output);
+    }
+
+    /**
+     * @param list<string> $extraArgs
+     */
+    private function runSyncTool(string $node, string $configFile, array $extraArgs = []): Process
+    {
+        return $this->compose([
+            'exec', '-T', $node,
+            'php', '/app/bin/sync-tool', '-f', '/app/docker/configs/'.$configFile, '-y',
+            ...$extraArgs,
+        ]);
     }
 
     private function isStackRunning(): bool
