@@ -201,6 +201,22 @@ final class SyncCommandTest extends TestCase
         self::assertStringContainsString('validation failed', $tester->getDisplay());
     }
 
+    #[Test]
+    public function importFileWithoutOriginValidatesAndResolves(): void
+    {
+        $file = $this->dir.'/imp.yaml';
+        file_put_contents($file, "target:\n  db: {name: db, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $exit = $tester->execute([
+            '--config-file' => $file,
+            '--import-file' => '/tmp/seed.sql',
+            '--dry-run' => true,
+        ]);
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+    }
+
     private function tester(): CommandTester
     {
         $application = new Application();

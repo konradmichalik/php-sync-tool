@@ -171,14 +171,8 @@ final class SyncCommand extends Command
 
         $config = array_merge($base, $this->cliOverrides($input, $output));
 
-        $config['origin'] = $this->mergeEndpoint(
-            $this->asArray($config['origin'] ?? null),
-            EndpointOverrides::build($this->endpointRaw($input, 'origin')),
-        );
-        $config['target'] = $this->mergeEndpoint(
-            $this->asArray($config['target'] ?? null),
-            EndpointOverrides::build($this->endpointRaw($input, 'target')),
-        );
+        $config = $this->applyEndpoint($config, 'origin', $input);
+        $config = $this->applyEndpoint($config, 'target', $input);
 
         /** @var string|null $afterDump */
         $afterDump = $input->getOption('target-after-dump');
@@ -271,6 +265,32 @@ final class SyncCommand extends Command
         }
 
         return $raw;
+    }
+
+    /**
+     * Merge an endpoint's config + CLI overrides; leave it absent when empty so
+     * the JSON schema never sees an empty array (`[]`) where it expects an object.
+     *
+     * @param array<string, mixed> $config
+     *
+     * @return array<string, mixed>
+     */
+    private function applyEndpoint(array $config, string $key, InputInterface $input): array
+    {
+        $merged = $this->mergeEndpoint(
+            $this->asArray($config[$key] ?? null),
+            EndpointOverrides::build($this->endpointRaw($input, $key)),
+        );
+
+        if ([] === $merged) {
+            unset($config[$key]);
+
+            return $config;
+        }
+
+        $config[$key] = $merged;
+
+        return $config;
     }
 
     /**
