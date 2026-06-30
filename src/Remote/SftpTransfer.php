@@ -19,6 +19,14 @@ use phpseclib3\Net\SFTP;
 
 use function sprintf;
 
+
+/**
+ * SftpTransfer.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final readonly class SftpTransfer
 {
     public function __construct(

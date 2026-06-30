@@ -17,22 +17,24 @@ use MoveElevator\DbSyncTool\Exception\DbSyncException;
 
 use function sprintf;
 
+
+/**
+ * HostKeyVerifier.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final class HostKeyVerifier
 {
     public function assert(HostKeyStatus $status, bool $strict, string $host): void
     {
         if (HostKeyStatus::Mismatch === $status) {
-            throw new DbSyncException(sprintf(
-                'Host key verification failed for %s: the server key does not match the known_hosts entry (possible man-in-the-middle).',
-                $host,
-            ));
+            throw new DbSyncException(sprintf('Host key verification failed for %s: the server key does not match the known_hosts entry (possible man-in-the-middle).', $host));
         }
 
         if (HostKeyStatus::Unknown === $status && $strict) {
-            throw new DbSyncException(sprintf(
-                'Host key verification failed for %s: host is not in known_hosts. Add it (e.g. via ssh-keyscan) or set ssh_strict_host_key_checking: false.',
-                $host,
-            ));
+            throw new DbSyncException(sprintf('Host key verification failed for %s: host is not in known_hosts. Add it (e.g. via ssh-keyscan) or set ssh_strict_host_key_checking: false.', $host));
         }
     }
 }

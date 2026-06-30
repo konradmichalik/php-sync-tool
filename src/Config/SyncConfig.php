@@ -20,14 +20,12 @@ use function is_array;
 use function is_scalar;
 use function sprintf;
 
-
 /**
  * SyncConfig.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final readonly class SyncConfig
 {
     /**

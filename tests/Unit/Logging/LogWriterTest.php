@@ -17,6 +17,14 @@ use MoveElevator\DbSyncTool\Logging\LogWriter;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+
+/**
+ * LogWriterTest.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final class LogWriterTest extends TestCase
 {
     #[Test]

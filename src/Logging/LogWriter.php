@@ -15,6 +15,14 @@ namespace MoveElevator\DbSyncTool\Logging;
 
 use Closure;
 
+
+/**
+ * LogWriter.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final class LogWriter
 {
     /** @var Closure(string): void */

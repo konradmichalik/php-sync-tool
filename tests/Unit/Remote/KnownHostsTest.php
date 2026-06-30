@@ -17,6 +17,14 @@ use MoveElevator\DbSyncTool\Remote\{HostKeyStatus, KnownHosts};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+
+/**
+ * KnownHostsTest.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final class KnownHostsTest extends TestCase
 {
     private string $file;
@@ -31,13 +39,6 @@ final class KnownHostsTest extends TestCase
         if (is_file($this->file)) {
             unlink($this->file);
         }
-    }
-
-    private function write(string $contents): KnownHosts
-    {
-        file_put_contents($this->file, $contents);
-
-        return new KnownHosts($this->file);
     }
 
     #[Test]
@@ -104,5 +105,12 @@ final class KnownHostsTest extends TestCase
     {
         $kh = $this->write("# a comment\n@revoked example.com ssh-ed25519 REVOKEDKEY\n");
         self::assertSame(HostKeyStatus::Unknown, $kh->match('example.com', 22, 'ssh-ed25519 AAAAKEY'));
+    }
+
+    private function write(string $contents): KnownHosts
+    {
+        file_put_contents($this->file, $contents);
+
+        return new KnownHosts($this->file);
     }
 }

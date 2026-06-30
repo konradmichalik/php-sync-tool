@@ -18,16 +18,16 @@ use MoveElevator\DbSyncTool\Remote\ProxyTransfer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+
+/**
+ * ProxyTransferTest.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final class ProxyTransferTest extends TestCase
 {
-    private function config(): SyncConfig
-    {
-        return SyncConfig::fromArray([
-            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
-            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
-        ]);
-    }
-
     #[Test]
     public function pullCommandFetchesFromOriginToLocalTemp(): void
     {
@@ -46,5 +46,13 @@ final class ProxyTransferTest extends TestCase
         self::assertStringContainsString('deploy@t.example.com:/t/dump.gz', $push);
         self::assertStringContainsString('/tmp/dump.gz', $push);
         self::assertStringNotContainsString('o.example.com', $push);
+    }
+
+    private function config(): SyncConfig
+    {
+        return SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
     }
 }

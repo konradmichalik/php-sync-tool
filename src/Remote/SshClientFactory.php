@@ -17,8 +17,7 @@ use MoveElevator\DbSyncTool\Config\ClientConfig;
 use MoveElevator\DbSyncTool\Exception\DbSyncException;
 use phpseclib3\Crypt\Common\PrivateKey;
 use phpseclib3\Crypt\PublicKeyLoader;
-use phpseclib3\Net\SFTP;
-use phpseclib3\Net\SSH2;
+use phpseclib3\Net\{SFTP, SSH2};
 use phpseclib3\System\SSH\Agent;
 
 use function sprintf;

@@ -18,14 +18,12 @@ use MoveElevator\DbSyncTool\Database\{MysqlCredentials, MysqlDefaultsFile};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * MysqlDefaultsFileTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class MysqlDefaultsFileTest extends TestCase
 {
     #[Test]

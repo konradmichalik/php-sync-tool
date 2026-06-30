@@ -17,6 +17,14 @@ use MoveElevator\DbSyncTool\Command\EndpointOverrides;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+
+/**
+ * EndpointOverridesTest.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final class EndpointOverridesTest extends TestCase
 {
     #[Test]

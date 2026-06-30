@@ -18,6 +18,14 @@ use MoveElevator\DbSyncTool\Remote\FileSync;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+
+/**
+ * FileSyncTest.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final class FileSyncTest extends TestCase
 {
     #[Test]

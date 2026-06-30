@@ -17,14 +17,12 @@ use MoveElevator\DbSyncTool\Config\SyncConfig;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * SyncConfigTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class SyncConfigTest extends TestCase
 {
     #[Test]

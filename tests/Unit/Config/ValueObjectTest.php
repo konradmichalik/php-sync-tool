@@ -17,14 +17,12 @@ use MoveElevator\DbSyncTool\Config\{ClientConfig, DatabaseConfig, JumpHostConfig
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * ValueObjectTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class ValueObjectTest extends TestCase
 {
     #[Test]

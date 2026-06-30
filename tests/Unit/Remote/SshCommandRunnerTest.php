@@ -20,14 +20,12 @@ use phpseclib3\Net\SSH2;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-
 /**
  * SshCommandRunnerTest.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-
 final class SshCommandRunnerTest extends TestCase
 {
     #[Test]

@@ -110,7 +110,7 @@ final class SyncCommand extends Command
 
             $console = $syncConfig->jsonLog
                 ? static function (string $line) use ($output): void { $output->writeln($line); }
-                : static function (string $line) use ($io): void { $io->text($line); };
+            : static function (string $line) use ($io): void { $io->text($line); };
             $logWriter = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, $console);
 
             $sync = new Sync(log: $logWriter->log(...));

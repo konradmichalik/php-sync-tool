@@ -18,6 +18,14 @@ use function in_array;
 use function sprintf;
 use function str_starts_with;
 
+
+/**
+ * KnownHosts.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final readonly class KnownHosts
 {
     public function __construct(private string $path = '') {}

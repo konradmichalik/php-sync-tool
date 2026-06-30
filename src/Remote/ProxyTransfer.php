@@ -18,6 +18,14 @@ use MoveElevator\DbSyncTool\Config\SyncConfig;
 use function basename;
 use function sys_get_temp_dir;
 
+
+/**
+ * ProxyTransfer.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+
 final readonly class ProxyTransfer
 {
     public function __construct(
