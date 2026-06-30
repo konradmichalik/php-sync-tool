@@ -14,12 +14,14 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool;
 
 use Closure;
-use KonradMichalik\SyncTool\Backup\DumpFileNamer;
+use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
 use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\{MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, TableStatements};
-use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Enum\{LifecyclePhase, SyncMode};
+use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, ProxyTransfer, RsyncCommandBuilder, RunnerFactory, SftpTransfer};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
+use Throwable;
 
 use function array_slice;
 use function sprintf;
@@ -46,6 +48,8 @@ final readonly class Sync
         private SftpTransfer $sftp = new SftpTransfer(),
         private ProxyTransfer $proxy = new ProxyTransfer(),
         private FileSync $fileSync = new FileSync(),
+        private ScriptRunner $scripts = new ScriptRunner(),
+        private DumpManager $dumps = new DumpManager(),
         ?Closure $log = null,
     ) {
         $this->log = $log ?? static function (string $message): void {};
@@ -53,25 +57,36 @@ final readonly class Sync
 
     public function run(SyncConfig $config, SyncMode $mode): void
     {
-        if (!$config->filesOnly) {
-            $dumpName = $this->namer->generate($config);
+        $local = $this->runners->local();
+        $this->scripts->run($local, $config, LifecyclePhase::Before);
 
-            if (!$mode->isImport()) {
-                $this->createOriginDump($config, $dumpName);
+        try {
+            if (!$config->filesOnly) {
+                $dumpName = $this->namer->generate($config);
+
+                if (!$mode->isImport()) {
+                    $this->createOriginDump($config, $dumpName);
+                }
+
+                if (!$mode->isDump()) {
+                    $this->transferDump($config, $mode, $dumpName);
+                }
+
+                if (!$config->keepDump && !$mode->isDump()) {
+                    $this->importDump($config, $mode, $dumpName);
+                }
             }
 
-            if (!$mode->isDump()) {
-                $this->transferDump($config, $mode, $dumpName);
+            if ($config->filesOnly || $config->withFiles) {
+                ($this->log)('Synchronizing files');
+                $this->fileSync->sync($config, $mode);
             }
 
-            if (!$config->keepDump && !$mode->isDump()) {
-                $this->importDump($config, $mode, $dumpName);
-            }
-        }
+            $this->scripts->run($local, $config, LifecyclePhase::After);
+        } catch (Throwable $exception) {
+            $this->scripts->run($local, $config, LifecyclePhase::Error);
 
-        if ($config->filesOnly || $config->withFiles) {
-            ($this->log)('Synchronizing files');
-            $this->fileSync->sync($config, $mode);
+            throw $exception;
         }
     }
 
@@ -101,6 +116,8 @@ final readonly class Sync
         ($this->log)('Creating origin dump '.$dumpName);
         $this->logCommand($command);
         $runner->run($command);
+
+        $this->pruneDumps($client, $runner);
     }
 
     private function transferDump(SyncConfig $config, SyncMode $mode, string $dumpName): void
@@ -185,6 +202,42 @@ final readonly class Sync
         ($this->log)('Importing dump into target');
         $this->logCommand($command);
         $runner->run($command);
+
+        $this->runPostSql($client, $runner, $credentialsArg);
+        $this->pruneDumps($client, $runner);
+    }
+
+    private function runPostSql(ClientConfig $client, CommandRunner $runner, string $credentialsArg): void
+    {
+        foreach ($client->postSql as $sql) {
+            if ('' === $sql) {
+                continue;
+            }
+
+            ($this->log)('Running post-import SQL');
+            $runner->run($this->commands->execCommand('mysql', $credentialsArg, $client->db->name, $sql));
+        }
+    }
+
+    private function pruneDumps(ClientConfig $client, CommandRunner $runner): void
+    {
+        if (null === $client->keepDumps) {
+            return;
+        }
+
+        $isDarwin = !$client->isRemote() && 'Darwin' === \PHP_OS_FAMILY;
+        $listing = $runner->run(
+            $this->dumps->listDumpsCommand('stat', 'sort', 'grep', $this->dumpDir($client).'*', $isDarwin),
+            true,
+        );
+
+        $lines = array_values(array_filter(array_map(trim(...), explode("\n", $listing))));
+        $files = array_map($this->dumps->extractFilename(...), $lines);
+
+        foreach ($this->dumps->filesToRemove($files, $client->keepDumps) as $file) {
+            ($this->log)('Removing old dump '.$file);
+            $runner->run(sprintf('rm -f %s', escapeshellarg($file)), true);
+        }
     }
 
     private function clearDatabase(SyncConfig $config, CommandRunner $runner, string $credentialsArg): void
