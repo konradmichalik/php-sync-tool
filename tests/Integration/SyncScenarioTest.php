@@ -144,6 +144,31 @@ final class SyncScenarioTest extends TestCase
         self::assertSame(0, $this->rowCount('db2'), 'keep-dump creates the dump but skips the import');
     }
 
+    #[Test]
+    public function withFilesSyncsDatabaseAndTransfersFile(): void
+    {
+        $this->resetDatabases();
+        $this->compose(['exec', '-T', 'www2', 'rm', '-f', '/tmp/synced-file.txt']);
+
+        $result = $this->runSyncTool('www2', 'withfiles.yaml', ['--with-files']);
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCount('db2'), 'database still syncs alongside files');
+        $transferred = $this->compose(['exec', '-T', 'www2', 'cat', '/tmp/synced-file.txt'])->getOutput();
+        self::assertStringContainsString('php-sync-tool-file-transfer-ok', $transferred);
+    }
+
+    #[Test]
+    public function importFileLoadsAnExistingDumpIntoTheTarget(): void
+    {
+        $this->resetDatabases();
+
+        $result = $this->runSyncTool('www2', 'importfile.yaml', ['--import-file=/app/docker/fixtures/seed.sql']);
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(2, $this->rowCount('db2'), 'the two rows from the seed dump are imported');
+    }
+
     private function resetDatabases(): void
     {
         $this->mysql('db1', 'DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');

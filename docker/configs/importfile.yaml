@@ -1,0 +1,17 @@
+# IMPORT_LOCAL scenario, driven from inside www2:
+#   no origin export — an existing dump file is imported into the local target
+#   database (db2) via --import-file.
+#
+# Run: docker compose exec www2 php /app/bin/sync-tool \
+#        -f /app/docker/configs/importfile.yaml \
+#        --import-file=/app/docker/fixtures/seed.sql -y
+ssh_strict_host_key_checking: false
+
+target:
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db2
+    user: db
+    password: db
+    port: 3306

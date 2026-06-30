@@ -1,0 +1,33 @@
+# File synchronization scenario (RECEIVER + files), driven from inside www2:
+#   the database syncs db1 → db2 and the configured file is pulled from www1.
+#
+# Run: docker compose exec www2 php /app/bin/sync-tool \
+#        -f /app/docker/configs/withfiles.yaml --with-files -y
+use_sshpass: true
+ssh_strict_host_key_checking: false
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db1
+    user: db
+    password: db
+    port: 3306
+
+target:
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db2
+    user: db
+    password: db
+    port: 3306
+
+files:
+  - origin: /app/docker/fixtures/syncfile.txt
+    target: /tmp/synced-file.txt
