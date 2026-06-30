@@ -23,7 +23,7 @@ docker compose up -d --build
 ## Run a sync (RECEIVER: www1 → www2)
 
 ```bash
-docker compose exec www2 php /app/bin/db-sync-tool \
+docker compose exec www2 php /app/bin/sync-tool \
   -f /app/docker/configs/receiver.yaml -y
 ```
 

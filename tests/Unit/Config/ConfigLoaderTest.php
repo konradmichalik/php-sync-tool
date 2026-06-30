@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Config;
+namespace KonradMichalik\SyncTool\Tests\Unit\Config;
 
-use MoveElevator\DbSyncTool\Config\ConfigLoader;
-use MoveElevator\DbSyncTool\Exception\ConfigException;
+use KonradMichalik\SyncTool\Config\ConfigLoader;
+use KonradMichalik\SyncTool\Exception\ConfigException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

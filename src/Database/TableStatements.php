@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Database;
+namespace KonradMichalik\SyncTool\Database;
 
-use MoveElevator\DbSyncTool\Security\TableName;
+use KonradMichalik\SyncTool\Security\TableName;
 
 use function sprintf;
 

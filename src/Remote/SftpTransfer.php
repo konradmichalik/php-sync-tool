@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Remote;
+namespace KonradMichalik\SyncTool\Remote;
 
-use MoveElevator\DbSyncTool\Config\SyncConfig;
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
+use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Exception\SyncException;
 use phpseclib3\Net\SFTP;
 
 use function sprintf;
@@ -34,7 +34,7 @@ final readonly class SftpTransfer
     public static function direction(bool $originRemote, bool $targetRemote): SftpDirection
     {
         if ($originRemote && $targetRemote) {
-            throw new DbSyncException('SFTP fallback does not support remote-to-remote (proxy) transfers; enable rsync for this sync mode.');
+            throw new SyncException('SFTP fallback does not support remote-to-remote (proxy) transfers; enable rsync for this sync mode.');
         }
 
         return $originRemote ? SftpDirection::Download : SftpDirection::Upload;
@@ -47,7 +47,7 @@ final readonly class SftpTransfer
         if (SftpDirection::Download === $direction) {
             $sftp = $this->factory->createSftp($config->origin, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
             if (false === $sftp->get($originGz, $targetGz)) {
-                throw new DbSyncException(sprintf('SFTP download failed: %s', $originGz));
+                throw new SyncException(sprintf('SFTP download failed: %s', $originGz));
             }
 
             return;
@@ -55,7 +55,7 @@ final readonly class SftpTransfer
 
         $sftp = $this->factory->createSftp($config->target, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
         if (false === $sftp->put($targetGz, $originGz, SFTP::SOURCE_LOCAL_FILE)) {
-            throw new DbSyncException(sprintf('SFTP upload failed: %s', $targetGz));
+            throw new SyncException(sprintf('SFTP upload failed: %s', $targetGz));
         }
     }
 }

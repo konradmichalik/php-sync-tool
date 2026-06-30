@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Remote;
+namespace KonradMichalik\SyncTool\Remote;
 
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
+use KonradMichalik\SyncTool\Exception\SyncException;
 use Symfony\Component\Process\Process;
 
 /**
@@ -35,7 +35,7 @@ final readonly class LocalCommandRunner implements CommandRunner
         $process->run();
 
         if (!$process->isSuccessful() && '' !== trim($process->getErrorOutput()) && !$allowFail) {
-            throw new DbSyncException($process->getErrorOutput());
+            throw new SyncException($process->getErrorOutput());
         }
 
         return rtrim($process->getOutput(), "\n");

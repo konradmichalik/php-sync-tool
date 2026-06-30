@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Config;
+namespace KonradMichalik\SyncTool\Config;
 
 use JsonException;
-use MoveElevator\DbSyncTool\Exception\ConfigException;
+use KonradMichalik\SyncTool\Exception\ConfigException;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 

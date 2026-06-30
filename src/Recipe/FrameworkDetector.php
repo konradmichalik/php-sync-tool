@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Recipe;
+namespace KonradMichalik\SyncTool\Recipe;
 
-use MoveElevator\DbSyncTool\Config\SyncConfig;
-use MoveElevator\DbSyncTool\Enum\Framework;
+use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Enum\Framework;
 
 use function in_array;
 

@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Enum;
+namespace KonradMichalik\SyncTool\Tests\Unit\Enum;
 
-use MoveElevator\DbSyncTool\Enum\Framework;
-use MoveElevator\DbSyncTool\Exception\ConfigException;
+use KonradMichalik\SyncTool\Enum\Framework;
+use KonradMichalik\SyncTool\Exception\ConfigException;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 

@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Util;
+namespace KonradMichalik\SyncTool\Tests\Unit\Util;
 
-use MoveElevator\DbSyncTool\Util\Pure;
+use KonradMichalik\SyncTool\Util\Pure;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 

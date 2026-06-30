@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Database;
+namespace KonradMichalik\SyncTool\Database;
 
-use MoveElevator\DbSyncTool\Config\DatabaseConfig;
+use KonradMichalik\SyncTool\Config\DatabaseConfig;
 
 /**
  * MysqlCredentials.

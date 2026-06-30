@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Config;
+namespace KonradMichalik\SyncTool\Tests\Unit\Config;
 
-use MoveElevator\DbSyncTool\Config\ConfigResolver;
-use MoveElevator\DbSyncTool\Exception\{ConfigException, NoConfigFoundException};
+use KonradMichalik\SyncTool\Config\ConfigResolver;
+use KonradMichalik\SyncTool\Exception\{ConfigException, NoConfigFoundException};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -36,8 +36,8 @@ final class ConfigResolverTest extends TestCase
         $base = sys_get_temp_dir().'/db-sync-resolver-'.uniqid();
         $this->home = $base.'/home';
         $this->work = $base.'/work';
-        mkdir($this->home.'/.db-sync-tool', 0o777, true);
-        mkdir($this->work.'/.db-sync-tool', 0o777, true);
+        mkdir($this->home.'/.sync-tool', 0o777, true);
+        mkdir($this->work.'/.sync-tool', 0o777, true);
     }
 
     protected function tearDown(): void
@@ -154,12 +154,12 @@ final class ConfigResolverTest extends TestCase
 
     private function writeGlobal(string $name, string $contents): void
     {
-        file_put_contents($this->home.'/.db-sync-tool/'.$name, $contents);
+        file_put_contents($this->home.'/.sync-tool/'.$name, $contents);
     }
 
     private function writeProject(string $name, string $contents): void
     {
-        file_put_contents($this->work.'/.db-sync-tool/'.$name, $contents);
+        file_put_contents($this->work.'/.sync-tool/'.$name, $contents);
     }
 
     private function removeTree(string $dir): void

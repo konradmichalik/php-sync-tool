@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Config;
+namespace KonradMichalik\SyncTool\Config;
 
-use MoveElevator\DbSyncTool\Exception\{ConfigException, NoConfigFoundException};
+use KonradMichalik\SyncTool\Exception\{ConfigException, NoConfigFoundException};
 
 use function array_key_exists;
 use function dirname;
@@ -29,7 +29,7 @@ use function sprintf;
  */
 final class ConfigResolver
 {
-    private const PROJECT_CONFIG_DIR = '.db-sync-tool';
+    private const PROJECT_CONFIG_DIR = '.sync-tool';
     private const HOSTS_FILE = 'hosts.yaml';
     private const DEFAULTS_FILE = 'defaults.yaml';
 

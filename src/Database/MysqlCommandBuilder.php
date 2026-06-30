@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Database;
+namespace KonradMichalik\SyncTool\Database;
 
-use MoveElevator\DbSyncTool\Enum\DatabaseSystem;
-use MoveElevator\DbSyncTool\Security\{Shell, TableName};
+use KonradMichalik\SyncTool\Enum\DatabaseSystem;
+use KonradMichalik\SyncTool\Security\{Shell, TableName};
 
 use function sprintf;
 

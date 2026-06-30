@@ -11,11 +11,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Recipe;
+namespace KonradMichalik\SyncTool\Tests\Unit\Recipe;
 
-use MoveElevator\DbSyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
-use MoveElevator\DbSyncTool\Enum\Framework;
-use MoveElevator\DbSyncTool\Recipe\FrameworkDetector;
+use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
+use KonradMichalik\SyncTool\Enum\Framework;
+use KonradMichalik\SyncTool\Recipe\FrameworkDetector;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Recipe;
+namespace KonradMichalik\SyncTool\Recipe;
 
-use MoveElevator\DbSyncTool\Exception\ParsingException;
-use MoveElevator\DbSyncTool\Util\Pure;
+use KonradMichalik\SyncTool\Exception\ParsingException;
+use KonradMichalik\SyncTool\Util\Pure;
 use OutOfBoundsException;
 
 use function array_key_exists;

@@ -11,7 +11,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Config;
+namespace KonradMichalik\SyncTool\Config;
 
 use function is_array;
 

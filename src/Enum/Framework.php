@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Enum;
+namespace KonradMichalik\SyncTool\Enum;
 
-use MoveElevator\DbSyncTool\Exception\ConfigException;
+use KonradMichalik\SyncTool\Exception\ConfigException;
 
 use function sprintf;
 

@@ -11,11 +11,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Lifecycle;
+namespace KonradMichalik\SyncTool\Lifecycle;
 
-use MoveElevator\DbSyncTool\Config\SyncConfig;
-use MoveElevator\DbSyncTool\Enum\LifecyclePhase;
-use MoveElevator\DbSyncTool\Remote\CommandRunner;
+use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Enum\LifecyclePhase;
+use KonradMichalik\SyncTool\Remote\CommandRunner;
 
 /**
  * ScriptRunner.

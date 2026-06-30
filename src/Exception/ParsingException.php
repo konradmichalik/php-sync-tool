@@ -11,7 +11,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Exception;
+namespace KonradMichalik\SyncTool\Exception;
 
 use RuntimeException;
 
@@ -21,4 +21,4 @@ use RuntimeException;
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final class ParsingException extends RuntimeException implements DbSyncToolException {}
+final class ParsingException extends RuntimeException implements SyncToolException {}

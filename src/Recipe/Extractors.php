@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Recipe;
+namespace KonradMichalik\SyncTool\Recipe;
 
-use MoveElevator\DbSyncTool\Util\Pure;
+use KonradMichalik\SyncTool\Util\Pure;
 
 use function is_string;
 

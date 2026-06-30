@@ -11,11 +11,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Mode;
+namespace KonradMichalik\SyncTool\Mode;
 
-use MoveElevator\DbSyncTool\Config\SyncConfig;
-use MoveElevator\DbSyncTool\Enum\SyncMode;
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
+use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Exception\SyncException;
 
 use function sprintf;
 
@@ -53,14 +53,14 @@ final class SyncModeResolver
     }
 
     /**
-     * @throws DbSyncException if the target is protected against writing modes
+     * @throws SyncException if the target is protected against writing modes
      */
     public function checkForProtection(SyncMode $mode, SyncConfig $cfg): void
     {
         if ($mode->isProtectable() && $cfg->target->protect) {
             $host = '' !== $cfg->target->host ? $cfg->target->host : 'local';
 
-            throw new DbSyncException(sprintf('The host %s is protected against the import of a database dump. Please check synchronisation target or adjust the host configuration.', $host));
+            throw new SyncException(sprintf('The host %s is protected against the import of a database dump. Please check synchronisation target or adjust the host configuration.', $host));
         }
     }
 

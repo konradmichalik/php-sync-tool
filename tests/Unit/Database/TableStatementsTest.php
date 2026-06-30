@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Database;
+namespace KonradMichalik\SyncTool\Tests\Unit\Database;
 
-use MoveElevator\DbSyncTool\Database\TableStatements;
-use MoveElevator\DbSyncTool\Exception\ValidationException;
+use KonradMichalik\SyncTool\Database\TableStatements;
+use KonradMichalik\SyncTool\Exception\ValidationException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

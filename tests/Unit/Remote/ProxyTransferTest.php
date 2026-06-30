@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Remote;
+namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
-use MoveElevator\DbSyncTool\Config\SyncConfig;
-use MoveElevator\DbSyncTool\Remote\ProxyTransfer;
+use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Remote\ProxyTransfer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

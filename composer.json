@@ -1,5 +1,5 @@
 {
-	"name": "move-elevator/php-sync-tool",
+	"name": "konradmichalik/php-sync-tool",
 	"description": "Synchronize databases and files between local and remote systems over SSH/rsync/SFTP with framework credential auto-detection (TYPO3, Symfony, Drupal, WordPress, Laravel). PHP port of db-sync-tool.",
 	"license": "GPL-3.0-or-later",
 	"type": "library",
@@ -45,16 +45,16 @@
 	},
 	"autoload": {
 		"psr-4": {
-			"MoveElevator\\DbSyncTool\\": "src"
+			"KonradMichalik\\SyncTool\\": "src"
 		}
 	},
 	"autoload-dev": {
 		"psr-4": {
-			"MoveElevator\\DbSyncTool\\Tests\\": "tests"
+			"KonradMichalik\\SyncTool\\Tests\\": "tests"
 		}
 	},
 	"bin": [
-		"bin/db-sync-tool"
+		"bin/sync-tool"
 	],
 	"config": {
 		"allow-plugins": {

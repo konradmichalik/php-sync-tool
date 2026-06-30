@@ -11,7 +11,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Util;
+namespace KonradMichalik\SyncTool\Util;
 
 use function is_scalar;
 use function is_string;

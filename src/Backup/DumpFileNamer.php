@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Backup;
+namespace KonradMichalik\SyncTool\Backup;
 
 use DateTimeImmutable;
-use MoveElevator\DbSyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Config\SyncConfig;
 
 /**
  * DumpFileNamer.

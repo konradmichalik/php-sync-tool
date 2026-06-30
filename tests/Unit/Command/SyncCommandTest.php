@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Command;
+namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 
-use MoveElevator\DbSyncTool\Application;
+use KonradMichalik\SyncTool\Application;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;

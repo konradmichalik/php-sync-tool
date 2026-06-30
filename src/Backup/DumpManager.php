@@ -11,7 +11,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Backup;
+namespace KonradMichalik\SyncTool\Backup;
 
 use function array_slice;
 use function sprintf;

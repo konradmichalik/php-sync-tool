@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Logging;
+namespace KonradMichalik\SyncTool\Tests\Unit\Logging;
 
-use MoveElevator\DbSyncTool\Logging\LogWriter;
+use KonradMichalik\SyncTool\Logging\LogWriter;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

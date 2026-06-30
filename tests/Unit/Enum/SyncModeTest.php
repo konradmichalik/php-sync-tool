@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Enum;
+namespace KonradMichalik\SyncTool\Tests\Unit\Enum;
 
-use MoveElevator\DbSyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Enum\SyncMode;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 

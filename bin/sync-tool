@@ -3,7 +3,7 @@
 
 declare(strict_types=1);
 
-use MoveElevator\DbSyncTool\Application;
+use KonradMichalik\SyncTool\Application;
 
 (static function (): void {
     $autoloaders = [

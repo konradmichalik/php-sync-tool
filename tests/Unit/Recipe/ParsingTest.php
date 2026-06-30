@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Recipe;
+namespace KonradMichalik\SyncTool\Tests\Unit\Recipe;
 
-use MoveElevator\DbSyncTool\Exception\ParsingException;
-use MoveElevator\DbSyncTool\Recipe\Parsing;
+use KonradMichalik\SyncTool\Exception\ParsingException;
+use KonradMichalik\SyncTool\Recipe\Parsing;
 use OutOfBoundsException;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;

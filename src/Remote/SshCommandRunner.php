@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Remote;
+namespace KonradMichalik\SyncTool\Remote;
 
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
+use KonradMichalik\SyncTool\Exception\SyncException;
 use phpseclib3\Net\SSH2;
 
 use function is_int;
@@ -40,12 +40,12 @@ final readonly class SshCommandRunner implements CommandRunner
                 return '';
             }
 
-            throw new DbSyncException(sprintf('Remote command failed: %s', $command));
+            throw new SyncException(sprintf('Remote command failed: %s', $command));
         }
 
         $exitStatus = $this->ssh->getExitStatus();
         if (!$allowFail && is_int($exitStatus) && 0 !== $exitStatus) {
-            throw new DbSyncException(sprintf('Remote command exited with status %d: %s', $exitStatus, $command));
+            throw new SyncException(sprintf('Remote command exited with status %d: %s', $exitStatus, $command));
         }
 
         return rtrim((string) $output, "\n");

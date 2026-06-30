@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Config;
+namespace KonradMichalik\SyncTool\Config;
 
-use MoveElevator\DbSyncTool\Exception\ValidationException;
+use KonradMichalik\SyncTool\Exception\ValidationException;
 use Opis\JsonSchema\Errors\ErrorFormatter;
 use Opis\JsonSchema\Validator;
 use stdClass;

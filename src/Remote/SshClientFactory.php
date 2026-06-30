@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Remote;
+namespace KonradMichalik\SyncTool\Remote;
 
-use MoveElevator\DbSyncTool\Config\ClientConfig;
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
+use KonradMichalik\SyncTool\Config\ClientConfig;
+use KonradMichalik\SyncTool\Exception\SyncException;
 use phpseclib3\Crypt\Common\PrivateKey;
 use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Net\{SFTP, SSH2};
@@ -62,7 +62,7 @@ final readonly class SshClientFactory
 
         $serverKey = $ssh->getServerPublicHostKey();
         if (false === $serverKey) {
-            throw new DbSyncException(sprintf('Could not retrieve the host key from %s', $client->host));
+            throw new SyncException(sprintf('Could not retrieve the host key from %s', $client->host));
         }
         $this->verifier->assert(
             $this->knownHosts->match($client->host, $client->port, $serverKey),
@@ -71,7 +71,7 @@ final readonly class SshClientFactory
         );
 
         if (!$this->authenticate($ssh, $client, $useSshAgent, $forcePassword)) {
-            throw new DbSyncException(sprintf('SSH authentication failed for %s@%s', $client->user, $client->host));
+            throw new SyncException(sprintf('SSH authentication failed for %s@%s', $client->user, $client->host));
         }
 
         return $ssh;
@@ -82,12 +82,12 @@ final readonly class SshClientFactory
         if (!$forcePassword && null !== $client->sshKey) {
             $keyContents = file_get_contents($client->sshKey);
             if (false === $keyContents) {
-                throw new DbSyncException(sprintf('SSH key not readable: %s', $client->sshKey));
+                throw new SyncException(sprintf('SSH key not readable: %s', $client->sshKey));
             }
 
             $key = PublicKeyLoader::load($keyContents);
             if (!$key instanceof PrivateKey) {
-                throw new DbSyncException(sprintf('SSH key is not a usable private key: %s', $client->sshKey));
+                throw new SyncException(sprintf('SSH key is not a usable private key: %s', $client->sshKey));
             }
 
             return $ssh->login($client->user, $key);
@@ -101,6 +101,6 @@ final readonly class SshClientFactory
             return $ssh->login($client->user, new Agent());
         }
 
-        throw new DbSyncException(sprintf('No SSH authentication method configured for host %s', $client->host));
+        throw new SyncException(sprintf('No SSH authentication method configured for host %s', $client->host));
     }
 }

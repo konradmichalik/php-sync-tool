@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Security;
+namespace KonradMichalik\SyncTool\Security;
 
-use MoveElevator\DbSyncTool\Exception\ValidationException;
+use KonradMichalik\SyncTool\Exception\ValidationException;
 
 use function sprintf;
 

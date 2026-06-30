@@ -11,7 +11,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Remote;
+namespace KonradMichalik\SyncTool\Remote;
 
 /**
  * CommandRunner.
@@ -22,7 +22,7 @@ namespace MoveElevator\DbSyncTool\Remote;
 interface CommandRunner
 {
     /**
-     * @throws \MoveElevator\DbSyncTool\Exception\DbSyncException on failure unless $allowFail
+     * @throws \KonradMichalik\SyncTool\Exception\SyncException on failure unless $allowFail
      */
     public function run(string $command, bool $allowFail = false): string;
 }

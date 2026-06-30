@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Remote;
+namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
-use MoveElevator\DbSyncTool\Remote\LocalCommandRunner;
+use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Remote\LocalCommandRunner;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -35,7 +35,7 @@ final class LocalCommandRunnerTest extends TestCase
     #[Test]
     public function failingCommandThrows(): void
     {
-        $this->expectException(DbSyncException::class);
+        $this->expectException(SyncException::class);
 
         (new LocalCommandRunner())->run('echo boom >&2; exit 1');
     }

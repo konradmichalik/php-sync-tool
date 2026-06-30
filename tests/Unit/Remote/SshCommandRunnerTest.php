@@ -11,11 +11,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Remote;
+namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
-use MoveElevator\DbSyncTool\Config\ClientConfig;
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
-use MoveElevator\DbSyncTool\Remote\{LocalCommandRunner, RunnerFactory, SshCommandRunner};
+use KonradMichalik\SyncTool\Config\ClientConfig;
+use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Remote\{LocalCommandRunner, RunnerFactory, SshCommandRunner};
 use phpseclib3\Net\SSH2;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -46,7 +46,7 @@ final class SshCommandRunnerTest extends TestCase
 
         self::assertSame('', (new SshCommandRunner($ssh))->run('boom', true));
 
-        $this->expectException(DbSyncException::class);
+        $this->expectException(SyncException::class);
         (new SshCommandRunner($ssh))->run('boom');
     }
 
@@ -57,7 +57,7 @@ final class SshCommandRunnerTest extends TestCase
         $ssh->method('exec')->willReturn('partial output');
         $ssh->method('getExitStatus')->willReturn(1);
 
-        $this->expectException(DbSyncException::class);
+        $this->expectException(SyncException::class);
         $this->expectExceptionMessage('status 1');
 
         (new SshCommandRunner($ssh))->run('false');

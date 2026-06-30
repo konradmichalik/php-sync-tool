@@ -11,14 +11,14 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Exception;
+namespace KonradMichalik\SyncTool\Exception;
 
 use Throwable;
 
 /**
- * DbSyncToolException.
+ * SyncToolException.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-interface DbSyncToolException extends Throwable {}
+interface SyncToolException extends Throwable {}

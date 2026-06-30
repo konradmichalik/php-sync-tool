@@ -2,7 +2,7 @@
 #   origin = www1 (remote over SSH), its database lives on db1
 #   target = www2 itself (local), its database lives on db2
 #
-# Run: docker compose exec www2 php /app/bin/db-sync-tool \
+# Run: docker compose exec www2 php /app/bin/sync-tool \
 #        -f /app/docker/configs/receiver.yaml -y
 use_sshpass: true
 

@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Security;
+namespace KonradMichalik\SyncTool\Tests\Unit\Security;
 
-use MoveElevator\DbSyncTool\Security\Shell;
+use KonradMichalik\SyncTool\Security\Shell;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 

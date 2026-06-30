@@ -11,12 +11,12 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Lifecycle;
+namespace KonradMichalik\SyncTool\Tests\Unit\Lifecycle;
 
-use MoveElevator\DbSyncTool\Config\{ClientConfig, SyncConfig};
-use MoveElevator\DbSyncTool\Enum\LifecyclePhase;
-use MoveElevator\DbSyncTool\Lifecycle\ScriptRunner;
-use MoveElevator\DbSyncTool\Remote\CommandRunner;
+use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
+use KonradMichalik\SyncTool\Enum\LifecyclePhase;
+use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
+use KonradMichalik\SyncTool\Remote\CommandRunner;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

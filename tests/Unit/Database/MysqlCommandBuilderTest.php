@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Database;
+namespace KonradMichalik\SyncTool\Tests\Unit\Database;
 
-use MoveElevator\DbSyncTool\Database\MysqlCommandBuilder;
-use MoveElevator\DbSyncTool\Enum\DatabaseSystem;
+use KonradMichalik\SyncTool\Database\MysqlCommandBuilder;
+use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

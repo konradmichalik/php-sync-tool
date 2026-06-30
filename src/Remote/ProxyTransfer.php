@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Remote;
+namespace KonradMichalik\SyncTool\Remote;
 
-use MoveElevator\DbSyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Config\SyncConfig;
 
 use function basename;
 use function sys_get_temp_dir;

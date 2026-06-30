@@ -11,13 +11,13 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Command;
+namespace KonradMichalik\SyncTool\Command;
 
-use MoveElevator\DbSyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, SyncConfig};
-use MoveElevator\DbSyncTool\Exception\DbSyncToolException;
-use MoveElevator\DbSyncTool\Logging\LogWriter;
-use MoveElevator\DbSyncTool\Mode\SyncModeResolver;
-use MoveElevator\DbSyncTool\Sync;
+use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, SyncConfig};
+use KonradMichalik\SyncTool\Exception\SyncToolException;
+use KonradMichalik\SyncTool\Logging\LogWriter;
+use KonradMichalik\SyncTool\Mode\SyncModeResolver;
+use KonradMichalik\SyncTool\Sync;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption};
@@ -119,7 +119,7 @@ final class SyncCommand extends Command
             $io->success('Synchronization complete.');
 
             return Command::SUCCESS;
-        } catch (DbSyncToolException $e) {
+        } catch (SyncToolException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;

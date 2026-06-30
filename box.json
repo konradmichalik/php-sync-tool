@@ -1,6 +1,6 @@
 {
-	"main": "bin/db-sync-tool",
-	"output": "build/db-sync-tool.phar",
+	"main": "bin/sync-tool",
+	"output": "build/sync-tool.phar",
 	"compression": "GZ",
 	"directories": ["src"],
 	"finder": [

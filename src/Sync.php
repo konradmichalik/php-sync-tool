@@ -11,15 +11,15 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool;
+namespace KonradMichalik\SyncTool;
 
 use Closure;
-use MoveElevator\DbSyncTool\Backup\DumpFileNamer;
-use MoveElevator\DbSyncTool\Config\{ClientConfig, SyncConfig};
-use MoveElevator\DbSyncTool\Database\{MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, TableStatements};
-use MoveElevator\DbSyncTool\Enum\SyncMode;
-use MoveElevator\DbSyncTool\Remote\{CommandRunner, FileSync, ProxyTransfer, RsyncCommandBuilder, RunnerFactory, SftpTransfer};
-use MoveElevator\DbSyncTool\Security\LogSanitizer;
+use KonradMichalik\SyncTool\Backup\DumpFileNamer;
+use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
+use KonradMichalik\SyncTool\Database\{MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, TableStatements};
+use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, ProxyTransfer, RsyncCommandBuilder, RunnerFactory, SftpTransfer};
+use KonradMichalik\SyncTool\Security\LogSanitizer;
 
 use function array_slice;
 use function sprintf;

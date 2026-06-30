@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Remote;
+namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
-use MoveElevator\DbSyncTool\Remote\{HostKeyStatus, HostKeyVerifier};
+use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Remote\{HostKeyStatus, HostKeyVerifier};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -36,14 +36,14 @@ final class HostKeyVerifierTest extends TestCase
     #[Test]
     public function mismatchThrowsEvenWhenNotStrict(): void
     {
-        $this->expectException(DbSyncException::class);
+        $this->expectException(SyncException::class);
         (new HostKeyVerifier())->assert(HostKeyStatus::Mismatch, false, 'h');
     }
 
     #[Test]
     public function unknownThrowsWhenStrict(): void
     {
-        $this->expectException(DbSyncException::class);
+        $this->expectException(SyncException::class);
         (new HostKeyVerifier())->assert(HostKeyStatus::Unknown, true, 'h');
     }
 

@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool;
+namespace KonradMichalik\SyncTool;
 
-use MoveElevator\DbSyncTool\Command\SyncCommand;
+use KonradMichalik\SyncTool\Command\SyncCommand;
 use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
 

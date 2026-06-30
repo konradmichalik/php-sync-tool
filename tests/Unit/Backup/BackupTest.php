@@ -11,11 +11,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Backup;
+namespace KonradMichalik\SyncTool\Tests\Unit\Backup;
 
 use DateTimeImmutable;
-use MoveElevator\DbSyncTool\Backup\{DumpFileNamer, DumpManager};
-use MoveElevator\DbSyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
+use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
+use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

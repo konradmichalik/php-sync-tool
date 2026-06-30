@@ -11,9 +11,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Security;
+namespace KonradMichalik\SyncTool\Tests\Unit\Security;
 
-use MoveElevator\DbSyncTool\Security\LogSanitizer;
+use KonradMichalik\SyncTool\Security\LogSanitizer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

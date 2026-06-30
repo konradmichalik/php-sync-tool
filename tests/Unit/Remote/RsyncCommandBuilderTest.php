@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Remote;
+namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
-use MoveElevator\DbSyncTool\Config\ClientConfig;
-use MoveElevator\DbSyncTool\Remote\RsyncCommandBuilder;
+use KonradMichalik\SyncTool\Config\ClientConfig;
+use KonradMichalik\SyncTool\Remote\RsyncCommandBuilder;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

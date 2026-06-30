@@ -11,7 +11,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Integration;
+namespace KonradMichalik\SyncTool\Tests\Integration;
 
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -44,7 +44,7 @@ final class SyncScenarioTest extends TestCase
 
         $result = $this->compose([
             'exec', '-T', 'www2',
-            'php', '/app/bin/db-sync-tool', '-f', '/app/docker/configs/receiver.yaml', '-y',
+            'php', '/app/bin/sync-tool', '-f', '/app/docker/configs/receiver.yaml', '-y',
         ]);
 
         self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());

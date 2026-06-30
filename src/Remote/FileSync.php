@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Remote;
+namespace KonradMichalik\SyncTool\Remote;
 
-use MoveElevator\DbSyncTool\Config\{FileTransferConfig, SyncConfig};
-use MoveElevator\DbSyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Config\{FileTransferConfig, SyncConfig};
+use KonradMichalik\SyncTool\Enum\SyncMode;
 
 use function basename;
 use function implode;

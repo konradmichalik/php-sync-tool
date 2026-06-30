@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Recipe;
+namespace KonradMichalik\SyncTool\Tests\Unit\Recipe;
 
-use MoveElevator\DbSyncTool\Exception\ValidationException;
-use MoveElevator\DbSyncTool\Recipe\{CredentialValidator, Extractors};
+use KonradMichalik\SyncTool\Exception\ValidationException;
+use KonradMichalik\SyncTool\Recipe\{CredentialValidator, Extractors};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

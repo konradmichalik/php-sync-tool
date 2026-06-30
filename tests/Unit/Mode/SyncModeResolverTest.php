@@ -11,12 +11,12 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Mode;
+namespace KonradMichalik\SyncTool\Tests\Unit\Mode;
 
-use MoveElevator\DbSyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
-use MoveElevator\DbSyncTool\Enum\SyncMode;
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
-use MoveElevator\DbSyncTool\Mode\SyncModeResolver;
+use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
+use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Mode\SyncModeResolver;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -145,7 +145,7 @@ final class SyncModeResolverTest extends TestCase
 
         $mode = $this->resolver->resolve($config);
 
-        $this->expectException(DbSyncException::class);
+        $this->expectException(SyncException::class);
         $this->expectExceptionMessage('protected');
 
         $this->resolver->checkForProtection($mode, $config);

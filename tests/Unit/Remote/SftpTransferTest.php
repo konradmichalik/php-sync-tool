@@ -11,10 +11,10 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace MoveElevator\DbSyncTool\Tests\Unit\Remote;
+namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
-use MoveElevator\DbSyncTool\Exception\DbSyncException;
-use MoveElevator\DbSyncTool\Remote\{SftpDirection, SftpTransfer};
+use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Remote\{SftpDirection, SftpTransfer};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -41,7 +41,7 @@ final class SftpTransferTest extends TestCase
     #[Test]
     public function remoteToRemoteIsRejected(): void
     {
-        $this->expectException(DbSyncException::class);
+        $this->expectException(SyncException::class);
         SftpTransfer::direction(true, true);
     }
 }
