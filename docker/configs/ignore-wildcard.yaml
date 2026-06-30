@@ -1,0 +1,33 @@
+# Wildcard ignore-tables scenario, driven from www2 (RECEIVER):
+#   `cache_*` is expanded live (SHOW TABLES … LIKE 'cache_%') on the origin and
+#   each match is excluded from the dump, so those tables never reach the target.
+#
+# Run: docker compose exec www2 php /app/bin/sync-tool \
+#        -f /app/docker/configs/ignore-wildcard.yaml -y
+use_sshpass: true
+ssh_strict_host_key_checking: false
+
+ignore_tables:
+  - cache_*
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db1
+    user: db
+    password: db
+    port: 3306
+
+target:
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db2
+    user: db
+    password: db
+    port: 3306

@@ -219,9 +219,23 @@ final class SyncScenarioTest extends TestCase
         self::assertSame(3, $this->rowCount('db2'), 'origin reached only via the bastion still syncs');
     }
 
+    #[Test]
+    public function ignoreTablesWildcardExcludesMatchingTables(): void
+    {
+        $this->resetDatabases();
+        $this->mysql('db1', 'CREATE TABLE cache_a (id INT); CREATE TABLE cache_b (id INT); INSERT INTO cache_a VALUES (1);');
+
+        $result = $this->runSyncTool('www2', 'ignore-wildcard.yaml');
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCountOf('db2', 'person'), 'person is synced');
+        self::assertSame(0, $this->tableCount('db2', 'cache_a'), 'cache_* tables are excluded from the dump');
+        self::assertSame(0, $this->tableCount('db2', 'cache_b'), 'cache_* tables are excluded from the dump');
+    }
+
     private function resetDatabases(): void
     {
-        $this->mysql('db1', 'DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');
+        $this->mysql('db1', 'DROP TABLE IF EXISTS person, cache_a, cache_b; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');
         $this->mysql('db2', 'DROP TABLE IF EXISTS legacy; DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));');
     }
 

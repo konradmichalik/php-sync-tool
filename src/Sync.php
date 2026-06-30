@@ -130,7 +130,7 @@ final readonly class Sync
         try {
             $dumpPath = $this->dumpDir($client).$dumpName;
 
-            $ignoreOptions = $this->ignoreOptions($config);
+            $ignoreOptions = $this->ignoreOptions($config, $runner, $credentialsArg);
             $exportTables = $this->tables->exportTables($config->tables);
             $options = $this->commands->dumpOptions(null, null, $config->where, $config->additionalMysqldumpOptions);
 
@@ -335,17 +335,40 @@ final readonly class Sync
         }
     }
 
-    private function ignoreOptions(SyncConfig $config): string
+    private function ignoreOptions(SyncConfig $config, CommandRunner $runner, string $credentialsArg): string
     {
+        $dbName = $config->origin->db->name;
         $options = [];
+
         foreach ($config->ignoreTables as $table) {
             if (str_contains($table, '*')) {
-                continue; // wildcard expansion needs a live query — integration scope
+                foreach ($this->expandWildcardTables($dbName, $runner, $credentialsArg, $table) as $match) {
+                    $options[] = $this->tables->ignoreTableOption($dbName, $match);
+                }
+
+                continue;
             }
-            $options[] = $this->tables->ignoreTableOption($config->origin->db->name, $table);
+
+            $options[] = $this->tables->ignoreTableOption($dbName, $table);
         }
 
         return implode(' ', $options);
+    }
+
+    /**
+     * Expand a `table*` wildcard to the matching table names via a live
+     * `SHOW TABLES … LIKE 'table%'` query on the origin.
+     *
+     * @return list<string>
+     */
+    private function expandWildcardTables(string $dbName, CommandRunner $runner, string $credentialsArg, string $pattern): array
+    {
+        $sql = $this->commands->showTablesLikeSql($dbName, str_replace('*', '%', $pattern));
+        $result = $runner->run($this->commands->execCommand('mysql', $credentialsArg, $dbName, $sql), true);
+
+        $lines = array_values(array_filter(array_map(trim(...), explode("\n", $result))));
+
+        return array_slice($lines, 1);
     }
 
     private function prepareCredentials(ClientConfig $client, CommandRunner $runner): string
