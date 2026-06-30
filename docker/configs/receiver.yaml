@@ -1,0 +1,29 @@
+# RECEIVER scenario, driven from inside www2:
+#   origin = www1 (remote over SSH), its database lives on db1
+#   target = www2 itself (local), its database lives on db2
+#
+# Run: docker compose exec www2 php /app/bin/db-sync-tool \
+#        -f /app/docker/configs/receiver.yaml -y
+use_sshpass: true
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db1
+    user: db
+    password: db
+    port: 3306
+
+target:
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db2
+    user: db
+    password: db
+    port: 3306

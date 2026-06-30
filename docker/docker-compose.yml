@@ -1,0 +1,81 @@
+# Local integration playground for php-sync-tool.
+#
+#   db1  ── origin database (seeded: person has 3 rows)
+#   db2  ── target database (empty: person has 0 rows)
+#   www1 ── origin host (SSH), reaches db1
+#   www2 ── target host (SSH), reaches db2 — sync is driven from here
+#   proxy── bastion host for jump-host scenarios
+#
+# The repository is mounted read-write at /app in every web node, so the tool
+# runs straight from source. See docker/README.md for usage.
+
+services:
+  db1:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: db
+      MARIADB_USER: db
+      MARIADB_PASSWORD: db
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "33861:3306"
+    networks: [syncnet]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  db2:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: db
+      MARIADB_USER: db
+      MARIADB_PASSWORD: db
+    volumes:
+      - ./db/empty.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "33862:3306"
+    networks: [syncnet]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  www1:
+    build: ./web
+    volumes:
+      - ..:/app
+    ports:
+      - "2211:22"
+    networks: [syncnet]
+    depends_on:
+      db1:
+        condition: service_healthy
+
+  www2:
+    build: ./web
+    volumes:
+      - ..:/app
+    ports:
+      - "2212:22"
+    networks: [syncnet]
+    depends_on:
+      db2:
+        condition: service_healthy
+
+  proxy:
+    build: ./web
+    volumes:
+      - ..:/app
+    ports:
+      - "2213:22"
+    networks: [syncnet]
+
+networks:
+  syncnet:
+    driver: bridge
