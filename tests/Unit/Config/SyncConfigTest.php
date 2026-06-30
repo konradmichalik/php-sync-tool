@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Config;
 
-use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -126,5 +126,16 @@ final class SyncConfigTest extends TestCase
     {
         self::assertTrue(SyncConfig::fromArray([])->strictHostKeyChecking);
         self::assertFalse(SyncConfig::fromArray(['ssh_strict_host_key_checking' => false])->strictHostKeyChecking);
+    }
+
+    #[Test]
+    public function withClientsReplacesOriginAndTargetOnly(): void
+    {
+        $config = SyncConfig::fromArray(['yes' => true, 'origin' => ['host' => 'o'], 'target' => ['host' => 't']]);
+        $next = $config->withClients(ClientConfig::fromArray(['host' => 'o2']), ClientConfig::fromArray(['host' => 't2']));
+
+        self::assertSame('o2', $next->origin->host);
+        self::assertSame('t2', $next->target->host);
+        self::assertTrue($next->yes, 'other config is preserved');
     }
 }

@@ -19,6 +19,7 @@ use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\{MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, TableStatements};
 use KonradMichalik\SyncTool\Enum\{LifecyclePhase, SyncMode};
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
+use KonradMichalik\SyncTool\Recipe\CredentialResolver;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, ProxyTransfer, RsyncCommandBuilder, RunnerFactory, SftpTransfer};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 use Throwable;
@@ -50,6 +51,7 @@ final readonly class Sync
         private FileSync $fileSync = new FileSync(),
         private ScriptRunner $scripts = new ScriptRunner(),
         private DumpManager $dumps = new DumpManager(),
+        private CredentialResolver $credentialResolver = new CredentialResolver(),
         ?Closure $log = null,
     ) {
         $this->log = $log ?? static function (string $message): void {};
@@ -57,6 +59,8 @@ final readonly class Sync
 
     public function run(SyncConfig $config, SyncMode $mode): void
     {
+        $config = $this->resolveCredentials($config);
+
         $local = $this->runners->local();
         $this->scripts->run($local, $config, LifecyclePhase::Before);
 
@@ -88,6 +92,30 @@ final readonly class Sync
 
             throw $exception;
         }
+    }
+
+    private function resolveCredentials(SyncConfig $config): SyncConfig
+    {
+        $origin = $config->origin;
+        $target = $config->target;
+
+        if ('' === $origin->db->name && '' !== $origin->path) {
+            $runner = $this->runners->forClient($origin, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+            $db = $this->credentialResolver->resolve($config, $origin, $runner);
+            if (null !== $db) {
+                $origin = $origin->withDb($db);
+            }
+        }
+
+        if ('' === $target->db->name && '' !== $target->path) {
+            $runner = $this->runners->forClient($target, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+            $db = $this->credentialResolver->resolve($config, $target, $runner);
+            if (null !== $db) {
+                $target = $target->withDb($db);
+            }
+        }
+
+        return $config->withClients($origin, $target);
     }
 
     private function createOriginDump(SyncConfig $config, string $dumpName): void

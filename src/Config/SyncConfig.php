@@ -129,6 +129,52 @@ final readonly class SyncConfig
         );
     }
 
+    public function withClients(ClientConfig $origin, ClientConfig $target): self
+    {
+        return new self(
+            verbose: $this->verbose,
+            mute: $this->mute,
+            dryRun: $this->dryRun,
+            yes: $this->yes,
+            reverse: $this->reverse,
+            keepDump: $this->keepDump,
+            dumpName: $this->dumpName,
+            checkDump: $this->checkDump,
+            clearDatabase: $this->clearDatabase,
+            importFile: $this->importFile,
+            tables: $this->tables,
+            where: $this->where,
+            additionalMysqldumpOptions: $this->additionalMysqldumpOptions,
+            ignoreTables: $this->ignoreTables,
+            truncateTables: $this->truncateTables,
+            useRsync: $this->useRsync,
+            useRsyncOptions: $this->useRsyncOptions,
+            useSshpass: $this->useSshpass,
+            files: $this->files,
+            filesOptions: $this->filesOptions,
+            withFiles: $this->withFiles,
+            filesOnly: $this->filesOnly,
+            sshAgent: $this->sshAgent,
+            forcePassword: $this->forcePassword,
+            strictHostKeyChecking: $this->strictHostKeyChecking,
+            sshPasswordOrigin: $this->sshPasswordOrigin,
+            sshPasswordTarget: $this->sshPasswordTarget,
+            linkHosts: $this->linkHosts,
+            linkOrigin: $this->linkOrigin,
+            linkTarget: $this->linkTarget,
+            configFilePath: $this->configFilePath,
+            isSameClient: $this->isSameClient,
+            defaultOriginDumpDir: $this->defaultOriginDumpDir,
+            defaultTargetDumpDir: $this->defaultTargetDumpDir,
+            logFile: $this->logFile,
+            jsonLog: $this->jsonLog,
+            type: $this->type,
+            scripts: $this->scripts,
+            origin: $origin,
+            target: $target,
+        );
+    }
+
     public function getClient(string $client): ClientConfig
     {
         return match ($client) {

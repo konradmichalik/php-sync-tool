@@ -145,4 +145,16 @@ final class ValueObjectTest extends TestCase
         self::assertFalse(DatabaseConfig::fromArray(['name' => 'db'])->sslDisabled);
         self::assertFalse((new DatabaseConfig())->sslDisabled);
     }
+
+    #[Test]
+    public function clientConfigWithDbReplacesDatabaseKeepingOtherFields(): void
+    {
+        $client = ClientConfig::fromArray(['host' => 'h', 'user' => 'u', 'path' => '/p']);
+        $updated = $client->withDb(new DatabaseConfig(name: 'db', user: 'app'));
+
+        self::assertSame('db', $updated->db->name);
+        self::assertSame('h', $updated->host);
+        self::assertSame('/p', $updated->path);
+        self::assertSame('', $client->db->name, 'original is unchanged (immutable)');
+    }
 }

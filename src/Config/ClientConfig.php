@@ -78,6 +78,15 @@ final readonly class ClientConfig
         );
     }
 
+    public function withDb(DatabaseConfig $db): self
+    {
+        return new self(
+            $this->path, $this->name, $this->host, $this->user, $this->password, $this->sshKey,
+            $this->port, $this->dumpDir, $this->keepDumps, $db, $this->jumpHost, $this->afterDump,
+            $this->postSql, $this->console, $this->scripts, $this->protect, $this->link,
+        );
+    }
+
     public function isRemote(): bool
     {
         return '' !== $this->host;
