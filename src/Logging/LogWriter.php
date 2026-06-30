@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Logging;
 
 use Closure;
+use KonradMichalik\SyncTool\Security\LogSanitizer;
 
 /**
  * LogWriter.
@@ -41,7 +42,7 @@ final readonly class LogWriter
 
     public function log(string $message): void
     {
-        $line = $this->format($message);
+        $line = $this->format(LogSanitizer::sanitize($message));
         ($this->console)($line);
 
         if (null !== $this->logFile) {
