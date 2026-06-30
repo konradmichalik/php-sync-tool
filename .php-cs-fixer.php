@@ -1,0 +1,34 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+ * This file is part of the "php-sync-tool" project.
+ *
+ * (c) 2026 Konrad Michalik <km@move-elevator.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+use KonradMichalik\PhpCsFixerPreset\Config;
+use KonradMichalik\PhpCsFixerPreset\Rules\Header;
+use KonradMichalik\PhpCsFixerPreset\Rules\Set\RuleSet;
+use KonradMichalik\PhpDocBlockHeaderFixer\Generators\DocBlockHeader;
+use KonradMichalik\PhpDocBlockHeaderFixer\Rules\DocBlockHeaderFixer;
+use Symfony\Component\Finder\Finder;
+
+return Config::create()
+    ->registerCustomFixers([
+        new DocBlockHeaderFixer(),
+    ])
+    ->withRule(
+        Header::fromComposer(),
+    )
+    ->withRule(
+        RuleSet::fromArray(
+            DocBlockHeader::fromComposer()->__toArray(),
+        ),
+    )
+    ->withFinder(static fn (Finder $finder) => $finder->in(__DIR__)->exclude(['docker', 'build']))
+;

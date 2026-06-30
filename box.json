@@ -1,0 +1,14 @@
+{
+	"main": "bin/db-sync-tool",
+	"output": "build/db-sync-tool.phar",
+	"compression": "GZ",
+	"directories": ["src"],
+	"finder": [
+		{
+			"name": "*.php",
+			"exclude": ["test", "tests", "Tests", "docs"],
+			"in": "vendor"
+		}
+	],
+	"git-version": "package_version"
+}

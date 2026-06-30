@@ -1,0 +1,100 @@
+{
+	"name": "move-elevator/php-sync-tool",
+	"description": "Synchronize databases and files between local and remote systems over SSH/rsync/SFTP with framework credential auto-detection (TYPO3, Symfony, Drupal, WordPress, Laravel). PHP port of db-sync-tool.",
+	"license": "GPL-3.0-or-later",
+	"type": "library",
+	"keywords": [
+		"database",
+		"sync",
+		"mysql",
+		"ssh",
+		"rsync",
+		"typo3",
+		"symfony",
+		"drupal",
+		"wordpress",
+		"laravel",
+		"cli"
+	],
+	"authors": [
+		{
+			"name": "Konrad Michalik",
+			"email": "km@move-elevator.de",
+			"role": "Maintainer"
+		}
+	],
+	"require": {
+		"php": "~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0",
+		"ext-json": "*",
+		"composer/semver": "^3.4",
+		"opis/json-schema": "^2.3",
+		"phpseclib/phpseclib": "^3.0",
+		"symfony/console": "^6.4 || ^7.0 || ^8.0",
+		"symfony/process": "^6.4 || ^7.0 || ^8.0",
+		"symfony/yaml": "^6.4 || ^7.0 || ^8.0"
+	},
+	"require-dev": {
+		"armin/editorconfig-cli": "^1.0 || ^2.0",
+		"ergebnis/composer-normalize": "^2.44",
+		"konradmichalik/php-cs-fixer-preset": "^0.2.0",
+		"konradmichalik/php-doc-block-header-fixer": "^0.3.0",
+		"phpstan/phpstan": "^2.0",
+		"phpstan/phpstan-phpunit": "^2.0",
+		"phpstan/phpstan-symfony": "^2.0",
+		"phpunit/phpunit": "^11.0 || ^12.0",
+		"rector/rector": "^2.2"
+	},
+	"autoload": {
+		"psr-4": {
+			"MoveElevator\\DbSyncTool\\": "src"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"MoveElevator\\DbSyncTool\\Tests\\": "tests"
+		}
+	},
+	"bin": [
+		"bin/db-sync-tool"
+	],
+	"config": {
+		"allow-plugins": {
+			"ergebnis/composer-normalize": true
+		},
+		"sort-packages": true
+	},
+	"extra": {
+		"konradmichalik/php-cs-fixer-preset": {
+			"copyright": 2026
+		}
+	},
+	"scripts": {
+		"fix": [
+			"@fix:composer",
+			"@fix:editorconfig",
+			"@fix:php"
+		],
+		"fix:composer": "@composer normalize",
+		"fix:editorconfig": "@lint:editorconfig --fix",
+		"fix:php": "php-cs-fixer fix",
+		"lint": [
+			"@lint:composer",
+			"@lint:editorconfig",
+			"@lint:php"
+		],
+		"lint:composer": "@fix:composer --dry-run",
+		"lint:editorconfig": "ec",
+		"lint:php": "@fix:php --dry-run",
+		"migration": [
+			"@migration:rector"
+		],
+		"migration:rector": "rector process -c rector.php",
+		"sca": [
+			"@sca:php"
+		],
+		"sca:php": "phpstan analyse --memory-limit=2G",
+		"test": "@test:coverage --no-coverage",
+		"test:coverage": "XDEBUG_MODE=coverage phpunit -c phpunit.xml --testsuite=unit",
+		"test:integration": "phpunit -c phpunit.xml --testsuite=integration --no-coverage"
+	}
+}
