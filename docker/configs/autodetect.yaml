@@ -1,0 +1,27 @@
+# Framework auto-detection scenario, driven from inside www2:
+#   origin = www1 (remote), with NO explicit db block — the credentials are
+#   extracted from the WordPress wp-config.php fixture at origin.path.
+#   target = www2 itself (local), db2.
+#
+# Run: docker compose exec www2 php /app/bin/sync-tool \
+#        -f /app/docker/configs/autodetect.yaml -y
+use_sshpass: true
+ssh_strict_host_key_checking: false
+type: WordPress
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  path: /app/docker/fixtures/wp-config.php
+  dump_dir: /tmp/
+
+target:
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db2
+    user: db
+    password: db
+    port: 3306

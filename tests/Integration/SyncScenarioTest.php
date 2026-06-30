@@ -100,6 +100,50 @@ final class SyncScenarioTest extends TestCase
         self::assertSame(0, $this->tableCount('db2', 'orphan'), 'orphan table should be dropped by --clear-database');
     }
 
+    #[Test]
+    public function autoDetectsWordpressCredentialsFromConfigFile(): void
+    {
+        $this->resetDatabases();
+
+        $result = $this->runSyncTool('www2', 'autodetect.yaml');
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCount('db2'), 'credentials extracted from wp-config.php should drive a working sync');
+    }
+
+    #[Test]
+    public function postSqlRunsAfterImport(): void
+    {
+        $this->resetDatabases();
+
+        $result = $this->runSyncTool('www2', 'postsql.yaml');
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(4, $this->rowCount('db2'), 'post_sql INSERT adds one row on top of the 3 imported');
+    }
+
+    #[Test]
+    public function whereClauseLimitsExportedRows(): void
+    {
+        $this->resetDatabases();
+
+        $result = $this->runSyncTool('www2', 'receiver.yaml', ['--where=id <= 2']);
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(2, $this->rowCount('db2'), 'only rows matching the WHERE clause are transferred');
+    }
+
+    #[Test]
+    public function keepDumpSkipsTheImport(): void
+    {
+        $this->resetDatabases();
+
+        $result = $this->runSyncTool('www2', 'receiver.yaml', ['--keep-dump']);
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(0, $this->rowCount('db2'), 'keep-dump creates the dump but skips the import');
+    }
+
     private function resetDatabases(): void
     {
         $this->mysql('db1', 'DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');
