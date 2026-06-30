@@ -74,8 +74,37 @@ services:
       - ..:/app
     ports:
       - "2213:22"
-    networks: [syncnet]
+    networks: [syncnet, internal]
+
+  # Isolated origin for the jump-host scenario: db3/www3 live only on `internal`,
+  # which www2 is NOT attached to — so www2 can reach www3 only through `proxy`.
+  db3:
+    image: mariadb:11
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: db
+      MARIADB_USER: db
+      MARIADB_PASSWORD: db
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  www3:
+    build: ./web
+    volumes:
+      - ..:/app
+    networks: [internal]
+    depends_on:
+      db3:
+        condition: service_healthy
 
 networks:
   syncnet:
+    driver: bridge
+  internal:
     driver: bridge

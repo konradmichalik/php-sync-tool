@@ -206,6 +206,19 @@ final class SyncScenarioTest extends TestCase
         self::assertSame(0, $this->rowCountOf('db2', 'legacy'), 'legacy is truncated before the import');
     }
 
+    #[Test]
+    public function jumpHostSyncReachesIsolatedOriginViaBastion(): void
+    {
+        $seed = 'DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");';
+        $this->mysql('db3', $seed);
+        $this->mysql('db2', 'DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));');
+
+        $result = $this->runSyncTool('www2', 'jumphost.yaml');
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCount('db2'), 'origin reached only via the bastion still syncs');
+    }
+
     private function resetDatabases(): void
     {
         $this->mysql('db1', 'DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');
