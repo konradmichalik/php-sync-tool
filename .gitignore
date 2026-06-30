@@ -5,6 +5,8 @@
 /.phpunit.cache
 /.phpstan.cache
 /.build
+/build
+/tools
 /php-cs-fixer.xml
 /phpstan.xml
 *.phar

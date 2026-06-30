@@ -69,6 +69,7 @@
 		}
 	},
 	"scripts": {
+		"build:phar": "@php tools/box compile",
 		"fix": [
 			"@fix:composer",
 			"@fix:editorconfig",
