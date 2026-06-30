@@ -53,9 +53,13 @@ final class ConfigResolver
         private readonly ?string $workingDir = null,
     ) {}
 
-    public function resolve(?string $configFile = null, ?string $origin = null, ?string $target = null): ResolvedConfig
+    public function resolve(?string $configFile = null, ?string $origin = null, ?string $target = null, ?string $hostFile = null): ResolvedConfig
     {
         $this->load();
+
+        if (null !== $hostFile && '' !== $hostFile) {
+            $this->mergeHostFile($hostFile);
+        }
 
         if (null !== $configFile && '' !== $configFile) {
             return $this->resolveExplicitFile($configFile);
@@ -93,6 +97,19 @@ final class ConfigResolver
         $this->load();
 
         return $this->globalHosts;
+    }
+
+    private function mergeHostFile(string $hostFile): void
+    {
+        if (!is_file($hostFile)) {
+            throw new ConfigException(sprintf('Host file not found: %s', $hostFile));
+        }
+
+        foreach ($this->loader->load($hostFile) as $name => $hostData) {
+            if (is_array($hostData)) {
+                $this->globalHosts[(string) $name] = HostDefinition::fromArray((string) $name, $hostData);
+            }
+        }
     }
 
     private function resolveExplicitFile(string $configFile): ResolvedConfig

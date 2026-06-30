@@ -67,7 +67,10 @@ final class SyncCommand extends Command
             ->addOption('with-files', null, InputOption::VALUE_NONE, 'Enable file synchronization alongside the database')
             ->addOption('files-only', null, InputOption::VALUE_NONE, 'Synchronize only files, skip the database')
             ->addOption('log-file', 'l', InputOption::VALUE_REQUIRED, 'Write log output to a file')
-            ->addOption('json-log', null, InputOption::VALUE_NONE, 'Format log output as JSON lines');
+            ->addOption('json-log', null, InputOption::VALUE_NONE, 'Format log output as JSON lines')
+            ->addOption('host-file', 'o', InputOption::VALUE_REQUIRED, 'Additional hosts file to merge')
+            ->addOption('force-password', null, InputOption::VALUE_NONE, 'Force interactive password authentication')
+            ->addOption('use-rsync-options', null, InputOption::VALUE_REQUIRED, 'Additional rsync options');
 
         foreach (['origin', 'target'] as $prefix) {
             foreach ([...array_keys(EndpointOverrides::SUFFIX_MAP), ...array_keys(EndpointOverrides::DB_SUFFIX_MAP)] as $suffix) {
@@ -137,8 +140,10 @@ final class SyncCommand extends Command
         $origin = $input->getArgument('origin');
         /** @var string|null $target */
         $target = $input->getArgument('target');
+        /** @var string|null $hostFile */
+        $hostFile = $input->getOption('host-file');
 
-        $resolved = $this->resolver->resolve($configFile, $origin, $target);
+        $resolved = $this->resolver->resolve($configFile, $origin, $target, $hostFile);
 
         if (str_starts_with($resolved->source, 'explicit file') && null !== $resolved->configFile) {
             $base = $this->loader->load($resolved->configFile);
@@ -200,6 +205,7 @@ final class SyncCommand extends Command
             'with-files' => 'with_files',
             'files-only' => 'files_only',
             'json-log' => 'json_log',
+            'force-password' => 'force_password',
         ];
         foreach ($booleanFlags as $option => $key) {
             if (true === $input->getOption($option)) {
@@ -215,6 +221,7 @@ final class SyncCommand extends Command
             'additional-mysqldump-options' => 'additional_mysqldump_options',
             'type' => 'type',
             'log-file' => 'log_file',
+            'use-rsync-options' => 'use_rsync_options',
         ] as $option => $key) {
             $value = $input->getOption($option);
             if (null !== $value) {

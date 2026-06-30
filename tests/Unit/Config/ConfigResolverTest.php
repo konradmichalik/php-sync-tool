@@ -147,6 +147,26 @@ final class ConfigResolverTest extends TestCase
         self::assertStringContainsString('project config: prod', $resolved->source);
     }
 
+    #[Test]
+    public function mergesAdditionalHostFileForReferences(): void
+    {
+        $hostFile = $this->work.'/extra-hosts.yaml';
+        file_put_contents($hostFile, "x:\n  host: x.example.com\n  user: u\ny:\n  host: y.example.com\n  user: u\n");
+
+        $resolved = $this->resolver()->resolve(origin: 'x', target: 'y', hostFile: $hostFile);
+
+        self::assertSame('x.example.com', $resolved->originConfig['host']);
+        self::assertSame('y.example.com', $resolved->targetConfig['host']);
+    }
+
+    #[Test]
+    public function missingHostFileThrowsConfigError(): void
+    {
+        $this->expectException(ConfigException::class);
+
+        $this->resolver()->resolve(origin: 'x', target: 'y', hostFile: $this->work.'/nope.yaml');
+    }
+
     private function resolver(): ConfigResolver
     {
         return new ConfigResolver(homeDir: $this->home, workingDir: $this->work);
