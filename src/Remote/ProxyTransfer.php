@@ -41,7 +41,7 @@ final readonly class ProxyTransfer
         $pull = $this->rsync->build(
             $this->rsync->passwordEnvironment($config->origin, $config->useSshpass),
             $options,
-            $this->rsync->authorization($config->origin, $config->useSshpass),
+            $this->rsync->authorization($config->origin, $config->useSshpass, $config->origin->jumpHost),
             $this->rsync->userHost($config->origin),
             $originGz,
             '',
@@ -51,7 +51,7 @@ final readonly class ProxyTransfer
         $push = $this->rsync->build(
             $this->rsync->passwordEnvironment($config->target, $config->useSshpass),
             $options,
-            $this->rsync->authorization($config->target, $config->useSshpass),
+            $this->rsync->authorization($config->target, $config->useSshpass, $config->target->jumpHost),
             '',
             $localTemp,
             $this->rsync->userHost($config->target),

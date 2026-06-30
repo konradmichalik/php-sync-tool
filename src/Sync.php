@@ -145,7 +145,7 @@ final readonly class Sync
         // RECEIVER pulls from the remote origin; SENDER pushes to the remote target.
         $remoteClient = $config->origin->isRemote() ? $config->origin : $config->target;
         $passwordEnvironment = $this->rsync->passwordEnvironment($remoteClient, $config->useSshpass);
-        $authorization = $this->rsync->authorization($remoteClient, $config->useSshpass);
+        $authorization = $this->rsync->authorization($remoteClient, $config->useSshpass, $remoteClient->jumpHost);
         $options = $this->rsync->options($config->useRsyncOptions);
 
         $command = $this->rsync->build(

@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
-use KonradMichalik\SyncTool\Config\ClientConfig;
+use KonradMichalik\SyncTool\Config\{ClientConfig, JumpHostConfig};
 use KonradMichalik\SyncTool\Remote\RsyncCommandBuilder;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -89,6 +89,30 @@ final class RsyncCommandBuilderTest extends TestCase
             '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --progress',
             $this->builder->options(' --progress'),
         );
+    }
+
+    #[Test]
+    public function authorizationIncludesProxyJumpWhenJumpHostSet(): void
+    {
+        $auth = (new RsyncCommandBuilder())->authorization(
+            new ClientConfig(host: 'db.internal', user: 'app', sshKey: '/keys/id', port: 2222),
+            false,
+            new JumpHostConfig(host: 'bastion.example.com', user: 'jump', port: 2200),
+        );
+
+        self::assertStringContainsString('-J jump@bastion.example.com:2200', $auth);
+        self::assertStringContainsString('ssh', $auth);
+    }
+
+    #[Test]
+    public function authorizationOmitsProxyJumpWhenNoJumpHost(): void
+    {
+        $auth = (new RsyncCommandBuilder())->authorization(
+            new ClientConfig(host: 'db.internal', user: 'app', port: 22),
+            false,
+        );
+
+        self::assertStringNotContainsString('-J ', $auth);
     }
 
     #[Test]

@@ -75,7 +75,7 @@ final readonly class FileSync
         return $this->rsync->build(
             $this->rsync->passwordEnvironment($remoteClient, $config->useSshpass),
             $this->entryOptions($config, $entry),
-            $this->rsync->authorization($remoteClient, $config->useSshpass),
+            $this->rsync->authorization($remoteClient, $config->useSshpass, $remoteClient->jumpHost),
             $this->rsync->userHost($config->origin),
             self::resolvePath($entry->origin, $config->origin->path),
             $this->rsync->userHost($config->target),
@@ -93,7 +93,7 @@ final readonly class FileSync
         $pull = $this->rsync->build(
             $this->rsync->passwordEnvironment($config->origin, $config->useSshpass),
             $options,
-            $this->rsync->authorization($config->origin, $config->useSshpass),
+            $this->rsync->authorization($config->origin, $config->useSshpass, $config->origin->jumpHost),
             $this->rsync->userHost($config->origin),
             self::resolvePath($entry->origin, $config->origin->path),
             '',
@@ -103,7 +103,7 @@ final readonly class FileSync
         $push = $this->rsync->build(
             $this->rsync->passwordEnvironment($config->target, $config->useSshpass),
             $options,
-            $this->rsync->authorization($config->target, $config->useSshpass),
+            $this->rsync->authorization($config->target, $config->useSshpass, $config->target->jumpHost),
             '',
             $localTemp,
             $this->rsync->userHost($config->target),

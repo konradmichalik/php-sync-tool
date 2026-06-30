@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
-use KonradMichalik\SyncTool\Config\ClientConfig;
+use KonradMichalik\SyncTool\Config\{ClientConfig, JumpHostConfig};
 
 use function sprintf;
 
@@ -47,19 +47,20 @@ final class RsyncCommandBuilder
         return '';
     }
 
-    public function authorization(ClientConfig $client, bool $useSshpass): string
+    public function authorization(ClientConfig $client, bool $useSshpass, ?JumpHostConfig $jump = null): string
     {
         $port = $client->port;
+        $jumpOpt = null !== $jump ? ' -J '.$this->jumpSpec($jump) : '';
 
         if (null !== $client->sshKey) {
-            return sprintf('-e "ssh -i %s -p%d"', $client->sshKey, $port);
+            return sprintf('-e "ssh%s -i %s -p%d"', $jumpOpt, $client->sshKey, $port);
         }
 
         if ($useSshpass && '' !== $this->passwordEnvironment($client, $useSshpass)) {
-            return sprintf('--rsh="sshpass -e ssh -p%d -o StrictHostKeyChecking=no -l %s"', $port, $client->user);
+            return sprintf('--rsh="sshpass -e ssh%s -p%d -o StrictHostKeyChecking=no -l %s"', $jumpOpt, $port, $client->user);
         }
 
-        return sprintf('-e "ssh -p%d -o StrictHostKeyChecking=no"', $port);
+        return sprintf('-e "ssh%s -p%d -o StrictHostKeyChecking=no"', $jumpOpt, $port);
     }
 
     public function userHost(ClientConfig $client): string
@@ -104,5 +105,18 @@ final class RsyncCommandBuilder
             $target,
             $targetPath,
         );
+    }
+
+    private function jumpSpec(JumpHostConfig $jump): string
+    {
+        $spec = '' !== $jump->user
+            ? sprintf('%s@%s', $jump->user, $jump->host)
+            : $jump->host;
+
+        if (22 !== $jump->port) {
+            $spec .= ':'.$jump->port;
+        }
+
+        return $spec;
     }
 }

@@ -30,6 +30,10 @@ final readonly class RunnerFactory
     public function forClient(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, bool $strictHostKeyChecking = true): CommandRunner
     {
         if ($client->isRemote()) {
+            if (null !== $client->jumpHost) {
+                return new SystemSshCommandRunner($client, $client->jumpHost);
+            }
+
             return new SshCommandRunner($this->sshClientFactory->create($client, $useSshAgent, $forcePassword, $strictHostKeyChecking));
         }
 
