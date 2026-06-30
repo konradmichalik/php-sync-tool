@@ -43,6 +43,16 @@ composer test         # unit tests
 composer fix          # apply all fixers
 ```
 
+### Building the PHAR
+
+The standalone PHAR is built with [Box](https://github.com/box-project/box),
+pinned via [PHIVE](https://phar.io):
+
+```bash
+phive install            # installs box into ./tools
+composer build:phar      # writes build/db-sync-tool.phar
+```
+
 ## Local sync playground (Docker)
 
 A ready-to-run stack simulates a sync between two hosts (`www1` → `www2`) with
@@ -61,4 +71,4 @@ not running.
 
 ## License
 
-MIT
+This project is licensed under the [GPL-3.0-or-later](LICENSE) license.
