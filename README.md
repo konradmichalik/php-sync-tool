@@ -1,74 +1,47 @@
+<div align="center">
+
 # php-sync-tool
 
-> PHP port of [`db-sync-tool`](https://github.com/jackd248/db-sync-tool) — synchronize databases
-> (and optionally files) between local and remote systems over SSH/rsync/SFTP, with framework
-> credential auto-detection for **TYPO3, Symfony, Drupal, WordPress and Laravel**.
+</div>
 
-Target: **feature parity** with the Python tool `3.0.3`.
+PHP port of [`db-sync-tool`](https://github.com/jackd248/db-sync-tool) — synchronize databases
+(and optionally files) between local and remote systems over SSH/rsync/SFTP, with framework
+credential auto-detection for **TYPO3, Symfony, Drupal, WordPress and Laravel**.
 
-## Status
+## ✨ Features
 
-🚧 Work in progress — see `~/.claude/plans/plane-die-umsetzung-einer-parallel-pie.md` for the
-implementation plan and the migration checklist in `db-sync-tool/PHP_MIGRATION_REQUIREMENTS.md`.
+* Synchronize databases between local and remote systems
+* Optional file synchronization over SSH/rsync/SFTP
+* Framework credential auto-detection for TYPO3, Symfony, Drupal, WordPress and Laravel
 
-## Requirements
+## 🔥 Installation
+
+```bash
+composer require konradmichalik/php-sync-tool
+```
+
+Or use the standalone PHAR build (`sync-tool.phar`).
+
+### Requirements
 
 - PHP **8.2+**
 - `mysql` / `mysqldump`, `gzip`/`gunzip` on the executing host(s)
 - `rsync` (default transfer) and optionally `sshpass` for password-based rsync
 
-## Installation
+## 📊 Usage
+
+Synchronize databases by running the command:
 
 ```bash
-composer require move-elevator/php-sync-tool
+bin/sync-tool origin target -f config.yaml
 ```
 
-Or use the standalone PHAR build (`db-sync-tool.phar`).
+See `bin/sync-tool --help` for the full option reference.
 
-## Usage
+## 🧑‍💻 Contributing
 
-```bash
-bin/db-sync-tool origin target -f config.yaml
-```
+Please have a look at [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-See `bin/db-sync-tool --help` for the full option reference.
-
-## Development
-
-```bash
-composer install
-composer lint         # composer-normalize + editorconfig + php-cs-fixer (dry-run)
-composer sca          # PHPStan (level 8)
-composer test         # unit tests
-composer fix          # apply all fixers
-```
-
-### Building the PHAR
-
-The standalone PHAR is built with [Box](https://github.com/box-project/box),
-pinned via [PHIVE](https://phar.io):
-
-```bash
-phive install            # installs box into ./tools
-composer build:phar      # writes build/db-sync-tool.phar
-```
-
-## Local sync playground (Docker)
-
-A ready-to-run stack simulates a sync between two hosts (`www1` → `www2`) with
-separate MariaDB databases:
-
-```bash
-cd docker
-docker compose up -d --build
-docker compose exec www2 php /app/bin/db-sync-tool -f /app/docker/configs/receiver.yaml -y
-docker compose exec db2 mariadb -udb -pdb db -N -e "SELECT COUNT(*) FROM person;"
-```
-
-See [`docker/README.md`](docker/README.md) for details. The integration test
-suite (`composer test:integration`) drives this stack and is skipped when it is
-not running.
-
-## License
+## ⭐ License
 
 This project is licensed under the [GPL-3.0-or-later](LICENSE) license.
