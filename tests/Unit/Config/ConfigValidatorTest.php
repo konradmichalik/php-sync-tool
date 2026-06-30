@@ -97,6 +97,20 @@ final class ConfigValidatorTest extends TestCase
     }
 
     #[Test]
+    public function acceptsJumpHostObjectAndLink(): void
+    {
+        $this->expectNotToPerformAssertions();
+        (new ConfigValidator())->validate(['origin' => ['link' => '@prod', 'jump_host' => ['host' => 'bastion', 'port' => 22]]]);
+    }
+
+    #[Test]
+    public function rejectsNonObjectJumpHost(): void
+    {
+        $this->expectException(ValidationException::class);
+        (new ConfigValidator())->validate(['origin' => ['jump_host' => 'bastion']]);
+    }
+
+    #[Test]
     public function rejectsNonBooleanStrictHostKeyChecking(): void
     {
         $this->expectException(ValidationException::class);

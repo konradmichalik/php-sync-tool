@@ -40,6 +40,20 @@ final class ConfigValidator
             "port": {"type": "number"},
             "dump_dir": {"type": "string"},
             "after_dump": {"type": "string"},
+            "link": {"type": "string"},
+            "protect": {"type": "boolean"},
+            "post_sql": {"type": "array"},
+            "console": {"type": "object"},
+            "jump_host": {
+                "type": "object",
+                "properties": {
+                    "host": {"type": "string"},
+                    "user": {"type": "string"},
+                    "password": {"type": "string"},
+                    "ssh_key": {"type": "string"},
+                    "port": {"type": "number"}
+                }
+            },
             "db": {
                 "type": "object",
                 "properties": {
