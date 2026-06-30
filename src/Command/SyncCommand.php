@@ -14,9 +14,11 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Command;
 
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, SyncConfig};
+use KonradMichalik\SyncTool\Enum\OutputMode;
 use KonradMichalik\SyncTool\Exception\SyncToolException;
 use KonradMichalik\SyncTool\Logging\LogWriter;
 use KonradMichalik\SyncTool\Mode\SyncModeResolver;
+use KonradMichalik\SyncTool\Output\ConsoleReporter;
 use KonradMichalik\SyncTool\Sync;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -70,7 +72,8 @@ final class SyncCommand extends Command
             ->addOption('json-log', null, InputOption::VALUE_NONE, 'Format log output as JSON lines')
             ->addOption('host-file', 'o', InputOption::VALUE_REQUIRED, 'Additional hosts file to merge')
             ->addOption('force-password', null, InputOption::VALUE_NONE, 'Force interactive password authentication')
-            ->addOption('use-rsync-options', null, InputOption::VALUE_REQUIRED, 'Additional rsync options');
+            ->addOption('use-rsync-options', null, InputOption::VALUE_REQUIRED, 'Additional rsync options')
+            ->addOption('output', null, InputOption::VALUE_REQUIRED, 'Output mode: interactive|ci|json|quiet', 'interactive');
 
         foreach (['origin', 'target'] as $prefix) {
             foreach ([...array_keys(EndpointOverrides::SUFFIX_MAP), ...array_keys(EndpointOverrides::DB_SUFFIX_MAP)] as $suffix) {
@@ -91,39 +94,48 @@ final class SyncCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         try {
+            /** @var string|null $outputOption */
+            $outputOption = $input->getOption('output');
+            $mode = OutputMode::fromString($outputOption);
+            if (true === $input->getOption('quiet') || true === $input->getOption('mute')) {
+                $mode = OutputMode::Quiet;
+            }
+
+            $reporter = new ConsoleReporter($mode, $io, $output);
+
             $config = $this->buildConfig($input, $output);
             $this->validator->validate($config);
 
             $syncConfig = SyncConfig::fromArray($config);
-            $mode = $this->modeResolver->resolve($syncConfig);
-            $this->modeResolver->checkForProtection($mode, $syncConfig);
+            $syncMode = $this->modeResolver->resolve($syncConfig);
+            $this->modeResolver->checkForProtection($syncMode, $syncConfig);
 
-            $io->title('php-sync-tool');
-            $io->definitionList(
-                ['Sync mode' => $mode->value.' '.$mode->description()],
-                ['Origin' => $this->describeClient($syncConfig->origin->isRemote(), $syncConfig->origin->host)],
-                ['Target' => $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host)],
+            $reporter->summary(
+                $syncMode->value.' '.$syncMode->description(),
+                $this->describeClient($syncConfig->origin->isRemote(), $syncConfig->origin->host),
+                $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host),
             );
 
             if ($syncConfig->dryRun) {
-                $io->success('Dry run: configuration resolved and validated, no changes made.');
+                $reporter->success('Dry run: configuration resolved and validated, no changes made.');
 
                 return Command::SUCCESS;
             }
 
-            $console = $syncConfig->jsonLog
-                ? static function (string $line) use ($output): void { $output->writeln($line); }
-            : static function (string $line) use ($io): void { $io->text($line); };
-            $logWriter = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, $console);
+            $fileLog = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, static function (string $l): void {});
 
-            $sync = new Sync(log: $logWriter->log(...));
-            $sync->run($syncConfig, $mode);
+            $sync = new Sync(log: static function (string $m) use ($reporter, $fileLog): void {
+                $reporter->step($m);
+                $fileLog->log($m);
+            });
+            $sync->run($syncConfig, $syncMode);
 
-            $io->success('Synchronization complete.');
+            $reporter->success('Synchronization complete.');
 
             return Command::SUCCESS;
         } catch (SyncToolException $e) {
-            $io->error($e->getMessage());
+            $reporter ??= new ConsoleReporter(OutputMode::Interactive, $io, $output);
+            $reporter->error($e->getMessage());
 
             return Command::FAILURE;
         }

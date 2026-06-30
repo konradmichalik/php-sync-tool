@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 use KonradMichalik\SyncTool\Application;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
@@ -157,6 +158,47 @@ final class SyncCommandTest extends TestCase
 
         self::assertSame(0, $exitCode);
         self::assertStringContainsString('RECEIVER', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function ciOutputModeEmitsPlainSummary(): void
+    {
+        $file = $this->dir.'/ci.yaml';
+        file_put_contents($file, "origin: {host: o.example.com, user: u, db: {name: a, user: a, password: a}}\ntarget: {path: /var/www, db: {name: b, user: r, password: r}}\n");
+
+        $tester = $this->tester();
+        $tester->execute(['--config-file' => $file, '--output' => 'ci', '--dry-run' => true]);
+
+        $out = $tester->getDisplay();
+        self::assertStringContainsString('RECEIVER', $out);
+        self::assertStringNotContainsString('[OK]', $out); // no SymfonyStyle box in ci mode
+    }
+
+    #[Test]
+    public function unknownOutputModeFails(): void
+    {
+        $file = $this->dir.'/bad-out.yaml';
+        file_put_contents($file, "origin: {path: /a, db: {name: a, user: a, password: a}}\ntarget: {path: /b, db: {name: b, user: r, password: r}}\n");
+
+        $tester = $this->tester();
+        $exit = $tester->execute(['--config-file' => $file, '--output' => 'nope', '--dry-run' => true]);
+        self::assertSame(1, $exit);
+    }
+
+    #[Test]
+    public function quietModeStillShowsErrorsAtQuietVerbosity(): void
+    {
+        $file = $this->dir.'/q.yaml';
+        file_put_contents($file, "type: Joomla\n");
+
+        $tester = $this->tester();
+        $exit = $tester->execute(
+            ['--config-file' => $file, '--output' => 'quiet', '--dry-run' => true],
+            ['verbosity' => OutputInterface::VERBOSITY_QUIET],
+        );
+
+        self::assertSame(1, $exit);
+        self::assertStringContainsString('validation failed', $tester->getDisplay());
     }
 
     private function tester(): CommandTester
