@@ -1,0 +1,11 @@
+name: CGL
+on:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  cgl:
+    uses: konradmichalik/reusable-github-actions/.github/workflows/cgl.yml@main
+    with:
+      php-version: '8.4'

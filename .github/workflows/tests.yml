@@ -1,0 +1,74 @@
+name: Tests
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.2'
+            symfony_constraint: '^6.4'
+            name_suffix: ' (PHP 8.2, Symfony 6.x)'
+          - php: '8.3'
+            symfony_constraint: '^7.0'
+            name_suffix: ' (PHP 8.3, Symfony 7.x)'
+          - php: '8.4'
+            symfony_constraint: '^7.0'
+            name_suffix: ' (PHP 8.4, Symfony 7.x)'
+          - php: '8.5'
+            symfony_constraint: '^7.0'
+            name_suffix: ' (PHP 8.5, Symfony 7.x)'
+
+    name: Test ${{ matrix.name_suffix }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer update --no-interaction --no-progress --with=symfony/console:${{ matrix.symfony_constraint }}
+
+      - name: Run unit tests
+        run: composer test
+
+  coverage:
+    runs-on: ubuntu-latest
+    name: Code Coverage Report
+    needs: tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: xdebug
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer update --no-interaction --no-progress
+
+      - name: Run unit tests with coverage
+        run: composer test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: .build/coverage/clover.xml
+          retention-days: 5
