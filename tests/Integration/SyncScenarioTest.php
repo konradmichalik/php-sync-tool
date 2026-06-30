@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Integration;
 
-use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
@@ -167,6 +167,29 @@ final class SyncScenarioTest extends TestCase
 
         self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
         self::assertSame(2, $this->rowCount('db2'), 'the two rows from the seed dump are imported');
+    }
+
+    #[Test]
+    #[DataProvider('frameworkConfigs')]
+    public function autoDetectsCredentialsForFramework(string $config): void
+    {
+        $this->resetDatabases();
+
+        $result = $this->runSyncTool('www2', $config);
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCount('db2'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function frameworkConfigs(): iterable
+    {
+        yield 'symfony (DATABASE_URL)' => ['framework-symfony.yaml'];
+        yield 'typo3 (LocalConfiguration.php)' => ['framework-typo3.yaml'];
+        yield 'drupal (settings.php)' => ['framework-drupal.yaml'];
+        yield 'laravel (.env)' => ['framework-laravel.yaml'];
     }
 
     private function resetDatabases(): void

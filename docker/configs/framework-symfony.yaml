@@ -1,0 +1,21 @@
+# Symfony credential auto-detection (DATABASE_URL), driven from www2.
+use_sshpass: true
+ssh_strict_host_key_checking: false
+type: Symfony
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  path: /app/docker/fixtures/symfony/.env
+  dump_dir: /tmp/
+
+target:
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db2
+    user: db
+    password: db
+    port: 3306
