@@ -21,11 +21,8 @@ use Closure;
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final class LogWriter
+final readonly class LogWriter
 {
-    /** @var Closure(string): void */
-    private Closure $console;
-
     /** @var Closure(): string */
     private Closure $clock;
 
@@ -34,12 +31,11 @@ final class LogWriter
      * @param Closure(): string|null $clock
      */
     public function __construct(
-        private readonly bool $json,
-        private readonly ?string $logFile,
-        Closure $console,
+        private bool $json,
+        private ?string $logFile,
+        private Closure $console,
         ?Closure $clock = null,
     ) {
-        $this->console = $console;
         $this->clock = $clock ?? static fn (): string => date(\DATE_ATOM);
     }
 
