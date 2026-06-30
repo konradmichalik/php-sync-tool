@@ -20,6 +20,21 @@ cd docker
 docker compose up -d --build
 ```
 
+## Run the full scenario suite (composer)
+
+From the project root:
+
+```bash
+composer docker:up        # build + start the stack (waits for the databases)
+composer test:scenarios   # run every integration scenario against the stack
+composer docker:down      # stop and remove the stack
+```
+
+`composer test:scenarios` brings the stack up and exercises all configs in
+`docker/configs/`: RECEIVER, SENDER, PROXY, SFTP fallback, clear-database,
+post_sql, where-clause, keep-dump, with-files, import-file, and framework
+credential auto-detection for TYPO3, Symfony, Drupal, WordPress and Laravel.
+
 ## Run a sync (RECEIVER: www1 → www2)
 
 ```bash
