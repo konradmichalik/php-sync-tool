@@ -192,15 +192,34 @@ final class SyncScenarioTest extends TestCase
         yield 'laravel (.env)' => ['framework-laravel.yaml'];
     }
 
+    #[Test]
+    public function truncateTablesEmptiesConfiguredTablesBeforeImport(): void
+    {
+        $this->resetDatabases();
+        $this->mysql('db2', 'DROP TABLE IF EXISTS legacy; CREATE TABLE legacy (id INT); INSERT INTO legacy VALUES (1),(2);');
+        self::assertSame(2, $this->rowCountOf('db2', 'legacy'), 'legacy should hold rows before the sync');
+
+        $result = $this->runSyncTool('www2', 'truncate.yaml');
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCountOf('db2', 'person'), 'person is imported from the origin');
+        self::assertSame(0, $this->rowCountOf('db2', 'legacy'), 'legacy is truncated before the import');
+    }
+
     private function resetDatabases(): void
     {
         $this->mysql('db1', 'DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');
-        $this->mysql('db2', 'DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));');
+        $this->mysql('db2', 'DROP TABLE IF EXISTS legacy; DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));');
     }
 
     private function rowCount(string $dbService): int
     {
-        $output = $this->compose(['exec', '-T', $dbService, 'mariadb', '-udb', '-pdb', 'db', '-N', '-e', 'SELECT COUNT(*) FROM person;'])->getOutput();
+        return $this->rowCountOf($dbService, 'person');
+    }
+
+    private function rowCountOf(string $dbService, string $table): int
+    {
+        $output = $this->compose(['exec', '-T', $dbService, 'mariadb', '-udb', '-pdb', 'db', '-N', '-e', sprintf('SELECT COUNT(*) FROM %s;', $table)])->getOutput();
 
         return (int) trim($output);
     }
