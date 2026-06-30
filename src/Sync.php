@@ -95,29 +95,35 @@ final readonly class Sync
         $client = $config->origin;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
 
-        $credentialsArg = $this->prepareCredentials($client, $runner);
-        $dumpPath = $this->dumpDir($client).$dumpName;
+        $credentialsPath = $this->prepareCredentials($client, $runner);
+        $credentialsArg = $this->credentials->defaultsExtraFileArgument($credentialsPath);
 
-        $ignoreOptions = $this->ignoreOptions($config);
-        $exportTables = $this->tables->exportTables($config->tables);
-        $options = $this->commands->dumpOptions(null, null, $config->where, $config->additionalMysqldumpOptions);
+        try {
+            $dumpPath = $this->dumpDir($client).$dumpName;
 
-        $command = $this->commands->dumpCommand(
-            'mysqldump',
-            $credentialsArg,
-            $options,
-            $client->db->name,
-            $ignoreOptions,
-            $exportTables,
-            'gzip',
-            $dumpPath,
-        );
+            $ignoreOptions = $this->ignoreOptions($config);
+            $exportTables = $this->tables->exportTables($config->tables);
+            $options = $this->commands->dumpOptions(null, null, $config->where, $config->additionalMysqldumpOptions);
 
-        ($this->log)('Creating origin dump '.$dumpName);
-        $this->logCommand($command);
-        $runner->run($command);
+            $command = $this->commands->dumpCommand(
+                'mysqldump',
+                $credentialsArg,
+                $options,
+                $client->db->name,
+                $ignoreOptions,
+                $exportTables,
+                'gzip',
+                $dumpPath,
+            );
 
-        $this->pruneDumps($client, $runner);
+            ($this->log)('Creating origin dump '.$dumpName);
+            $this->logCommand($command);
+            $runner->run($command);
+
+            $this->pruneDumps($client, $runner);
+        } finally {
+            $this->cleanupCredentials($client, $runner, $credentialsPath);
+        }
     }
 
     private function transferDump(SyncConfig $config, SyncMode $mode, string $dumpName): void
@@ -185,26 +191,31 @@ final readonly class Sync
         $client = $config->target;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
 
-        $credentialsArg = $this->prepareCredentials($client, $runner);
+        $credentialsPath = $this->prepareCredentials($client, $runner);
+        $credentialsArg = $this->credentials->defaultsExtraFileArgument($credentialsPath);
 
-        $dumpPath = $mode->isImport() && '' !== $config->importFile
-            ? $config->importFile
-            : $this->dumpDir($client).$dumpName.'.gz';
+        try {
+            $dumpPath = $mode->isImport() && '' !== $config->importFile
+                ? $config->importFile
+                : $this->dumpDir($client).$dumpName.'.gz';
 
-        if ($config->clearDatabase) {
-            $this->clearDatabase($config, $runner, $credentialsArg);
+            if ($config->clearDatabase) {
+                $this->clearDatabase($config, $runner, $credentialsArg);
+            }
+
+            $this->truncateTables($config, $runner, $credentialsArg);
+
+            $command = $this->commands->importCommand('mysql', $credentialsArg, $client->db->name, 'gunzip', $dumpPath);
+
+            ($this->log)('Importing dump into target');
+            $this->logCommand($command);
+            $runner->run($command);
+
+            $this->runPostSql($client, $runner, $credentialsArg);
+            $this->pruneDumps($client, $runner);
+        } finally {
+            $this->cleanupCredentials($client, $runner, $credentialsPath);
         }
-
-        $this->truncateTables($config, $runner, $credentialsArg);
-
-        $command = $this->commands->importCommand('mysql', $credentialsArg, $client->db->name, 'gunzip', $dumpPath);
-
-        ($this->log)('Importing dump into target');
-        $this->logCommand($command);
-        $runner->run($command);
-
-        $this->runPostSql($client, $runner, $credentialsArg);
-        $this->pruneDumps($client, $runner);
     }
 
     private function runPostSql(ClientConfig $client, CommandRunner $runner, string $credentialsArg): void
@@ -296,7 +307,20 @@ final readonly class Sync
             chmod($path, 0o600);
         }
 
-        return $this->credentials->defaultsExtraFileArgument($path);
+        return $path;
+    }
+
+    private function cleanupCredentials(ClientConfig $client, CommandRunner $runner, string $path): void
+    {
+        if ($client->isRemote()) {
+            $runner->run(sprintf('rm -f %s', escapeshellarg($path)), true);
+
+            return;
+        }
+
+        if (is_file($path)) {
+            unlink($path);
+        }
     }
 
     private function dumpDir(ClientConfig $client): string
