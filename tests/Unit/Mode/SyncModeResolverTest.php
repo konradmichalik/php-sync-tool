@@ -92,6 +92,17 @@ final class SyncModeResolverTest extends TestCase
     }
 
     #[Test]
+    public function syncRemoteWhenBothRemoteSameHostDifferentDatabase(): void
+    {
+        $config = new SyncConfig(
+            origin: new ClientConfig(host: 'a.example.com', user: 'u', db: new DatabaseConfig(name: 'db_a', host: 'h')),
+            target: new ClientConfig(host: 'a.example.com', user: 'u', db: new DatabaseConfig(name: 'db_b', host: 'h')),
+        );
+
+        self::assertSame(SyncMode::SyncRemote, $this->resolver->resolve($config));
+    }
+
+    #[Test]
     public function dumpLocalWhenBothLocalIdentical(): void
     {
         $config = new SyncConfig(

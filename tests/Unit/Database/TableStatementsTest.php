@@ -38,6 +38,7 @@ final class TableStatementsTest extends TestCase
     {
         self::assertSame(['users', 'orders', 'cache_pages'], $this->tables->exportTables('users, orders ,cache_pages'));
         self::assertSame([], $this->tables->exportTables(''));
+        self::assertSame(['users', 'orders'], $this->tables->exportTables('users,,orders,'));
     }
 
     #[Test]

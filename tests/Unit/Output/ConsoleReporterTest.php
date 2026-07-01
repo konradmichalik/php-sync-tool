@@ -51,6 +51,16 @@ final class ConsoleReporterTest extends TestCase
     }
 
     #[Test]
+    public function jsonSummaryIncludesEndpoints(): void
+    {
+        $out = new BufferedOutput();
+        $this->reporter(OutputMode::Json, $out)->summary('RECEIVER (REMOTE)', 'remote (h)', 'local');
+        $line = $out->fetch();
+        self::assertStringContainsString('"event":"summary"', $line);
+        self::assertStringContainsString('remote (h)', $line);
+    }
+
+    #[Test]
     public function quietSuppressesEverythingButErrors(): void
     {
         $out = new BufferedOutput();

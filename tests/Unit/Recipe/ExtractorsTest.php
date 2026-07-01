@@ -179,4 +179,13 @@ final class ExtractorsTest extends TestCase
     {
         self::assertSame('', Extractors::symfonyDatabaseUrlLine("# DATABASE_URL is commented\nAPP_ENV=prod"));
     }
+
+    #[Test]
+    public function symfonyParametersReturnEmptyForMissingFields(): void
+    {
+        $result = Extractors::symfonyFromParameters("parameters:\n    database_name: only_db\n");
+
+        self::assertSame('only_db', $result['name']);
+        self::assertSame('', $result['host']);
+    }
 }
