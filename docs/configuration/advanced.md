@@ -37,6 +37,37 @@ target:
     - "UPDATE be_users SET email = CONCAT('test-', uid, '@example.com');"
 ```
 
+## Data Anonymization (GDPR/DSGVO)
+
+Production databases pulled into a development environment routinely contain
+personal data (names, emails, addresses, hashed passwords). Under the GDPR you
+must not keep that data in a non-production system without cause. `post_sql`
+runs on the target **after** the import, so it is the natural place to mask
+personal data before it is ever used:
+
+```yaml
+target:
+  path: /var/www/html/.env
+  post_sql:
+    # Overwrite direct identifiers with deterministic, non-personal values
+    - "UPDATE users SET email = CONCAT('user', id, '@example.test'), name = CONCAT('User ', id), phone = NULL;"
+    # Neutralize credentials so no real password hash leaves production
+    - "UPDATE users SET password = '$2y$10$abcdefghijklmnopqrstuv';"
+    # Drop rows that have no place in a dev database at all
+    - "TRUNCATE TABLE payment_tokens;"
+    - "DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL 30 DAY;"
+```
+
+For reusable, multi-line masking, keep the statements in a file and apply it
+with [after-dump import](#after-dump-import) or a lifecycle
+[script](#lifecycle-scripts) instead of inlining every rule.
+
+::: tip
+Combine this with [Partial Sync](#partial-sync) (`--tables` / `--where`) to leave
+bulky or sensitive tables behind entirely, rather than copying and then masking
+them.
+:::
+
 ## After-Dump Import
 
 Import an additional SQL file after the main import completes:
@@ -130,10 +161,27 @@ target:
 bin/sync-tool -f config.yaml -o hosts.yaml
 ```
 
+## Import Confirmation
+
+Any run that writes to a target database asks for confirmation before it starts:
+
+```
+This overwrites the remote (prod.example.com) database. Continue? (yes/no) [no]:
+```
+
+The prompt only appears on an interactive terminal. Non-interactive contexts
+(CI pipelines, Deployer, cron) proceed automatically, as does `--dry-run`. Skip
+it explicitly with `--yes` / `-y`:
+
+```bash
+bin/sync-tool -f config.yaml --yes
+```
+
 ## Protect Host
 
-Prevent accidental imports into a critical system. A protected endpoint used as
-a **target** requires explicit confirmation:
+Prevent accidental imports into a critical system entirely. When an endpoint
+marked `protect: true` is used as the **target**, the sync is refused with an
+error before any change is made — regardless of `--yes`:
 
 ```yaml
 origin:
@@ -142,6 +190,9 @@ origin:
   path: /var/www/html/LocalConfiguration.php
   protect: true
 ```
+
+Mark every production host `protect: true` so it can only ever be a sync
+**source**, never overwritten.
 
 ## Reverse Origin and Target
 
