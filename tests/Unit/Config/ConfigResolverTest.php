@@ -184,6 +184,43 @@ final class ConfigResolverTest extends TestCase
     }
 
     #[Test]
+    public function resolvesProjectConfigWithInlineEndpoints(): void
+    {
+        $this->writeProject('prod.yaml', <<<'YAML'
+            origin:
+              host: o.example.com
+              user: u
+              db: {name: a, user: a, password: a}
+            target:
+              path: /var/www
+              db: {name: b, user: r, password: r}
+            YAML);
+
+        $resolved = $this->resolver()->resolve(origin: 'prod');
+
+        self::assertSame('o.example.com', $resolved->originConfig['host']);
+        self::assertStringContainsString('project config: prod', $resolved->source);
+    }
+
+    #[Test]
+    public function throwsWhenOriginHostReferenceUnknown(): void
+    {
+        $this->writeGlobal('hosts.yaml', "known:\n  host: known.example.com\n  user: u\n");
+
+        $this->expectException(ConfigException::class);
+
+        $this->resolver()->resolve(origin: 'ghost', target: 'known');
+    }
+
+    #[Test]
+    public function silentlySkipsBrokenProjectFile(): void
+    {
+        $this->writeProject('broken.yaml', "- not\n- a\n- mapping\n");
+
+        self::assertArrayNotHasKey('broken', $this->resolver()->getProjectConfigs());
+    }
+
+    #[Test]
     public function exposesLoadedProjectConfigsAndGlobalHosts(): void
     {
         $this->writeGlobal('hosts.yaml', "live:\n  host: live.example.com\n  user: deploy\n");

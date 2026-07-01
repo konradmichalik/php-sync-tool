@@ -60,6 +60,7 @@ final class ConfigAccessorTest extends TestCase
         self::assertSame(22, ConfigAccessor::getInt(['port' => 'invalid'], 'port', 22));
         self::assertSame(22, ConfigAccessor::getInt(['port' => null], 'port', 22));
         self::assertSame(22, ConfigAccessor::getInt(['port' => '3306.5'], 'port', 22));
+        self::assertSame(3306, ConfigAccessor::getInt(['port' => 3306.7], 'port', 22));
     }
 
     #[Test]
