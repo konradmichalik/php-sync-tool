@@ -39,10 +39,8 @@ final class FrameworkDetector
 
     public function detect(SyncConfig $config): ?Framework
     {
-        if (null !== $config->type && '' !== $config->type) {
-            return null;
-        }
-
+        // Skip auto-detection once any endpoint already carries explicit credentials —
+        // the caller only reaches this when no `type` was configured.
         if ('' !== $config->origin->db->name || '' !== $config->target->db->name) {
             return null;
         }

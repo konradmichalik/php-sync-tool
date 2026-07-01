@@ -75,14 +75,6 @@ final class FrameworkDetectorTest extends TestCase
     }
 
     #[Test]
-    public function skipsWhenTypeAlreadySet(): void
-    {
-        $config = new SyncConfig(type: 'TYPO3', origin: new ClientConfig(path: '/var/www/wp-config.php'));
-
-        self::assertNull($this->detector->detect($config));
-    }
-
-    #[Test]
     public function skipsWhenManualDatabaseConfigured(): void
     {
         $config = new SyncConfig(
