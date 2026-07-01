@@ -58,7 +58,7 @@ final class Parsing
         $port = $parsed['port'] ?? null;
         $path = $parsed['path'] ?? null;
 
-        if (empty($scheme) || empty($user) || empty($host) || empty($port) || empty($path)) {
+        if (self::isBlank($scheme) || self::isBlank($user) || self::isBlank($host) || null === $port || self::isBlank($path)) {
             throw new ParsingException('Mismatch of expected database credentials');
         }
 
@@ -130,6 +130,14 @@ final class Parsing
         }
 
         return $config;
+    }
+
+    /**
+     * @phpstan-assert-if-false non-empty-string $value
+     */
+    private static function isBlank(?string $value): bool
+    {
+        return null === $value || '' === $value;
     }
 
     /**
