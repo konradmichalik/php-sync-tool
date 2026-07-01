@@ -81,9 +81,23 @@ final readonly class ClientConfig
     public function withDb(DatabaseConfig $db): self
     {
         return new self(
-            $this->path, $this->name, $this->host, $this->user, $this->password, $this->sshKey,
-            $this->port, $this->dumpDir, $this->keepDumps, $db, $this->jumpHost, $this->afterDump,
-            $this->postSql, $this->console, $this->scripts, $this->protect, $this->link,
+            path: $this->path,
+            name: $this->name,
+            host: $this->host,
+            user: $this->user,
+            password: $this->password,
+            sshKey: $this->sshKey,
+            port: $this->port,
+            dumpDir: $this->dumpDir,
+            keepDumps: $this->keepDumps,
+            db: $db,
+            jumpHost: $this->jumpHost,
+            afterDump: $this->afterDump,
+            postSql: $this->postSql,
+            console: $this->console,
+            scripts: $this->scripts,
+            protect: $this->protect,
+            link: $this->link,
         );
     }
 
