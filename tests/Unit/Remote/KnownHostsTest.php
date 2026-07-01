@@ -99,6 +99,33 @@ final class KnownHostsTest extends TestCase
     }
 
     #[Test]
+    public function malformedServerKeyIsUnknown(): void
+    {
+        $kh = $this->write("example.com ssh-ed25519 AAAAKEY\n");
+        self::assertSame(HostKeyStatus::Unknown, $kh->match('example.com', 22, 'onlyonefield'));
+    }
+
+    #[Test]
+    public function malformedHashedEntriesAreSkipped(): void
+    {
+        // A |1| entry with the wrong number of segments and one with an invalid
+        // base64 salt must both be skipped without matching.
+        $kh = $this->write("|1|tooFewParts ssh-ed25519 AAAAKEY\n|1|!!!notbase64!!!|zzz ssh-ed25519 AAAAKEY\n");
+        self::assertSame(HostKeyStatus::Unknown, $kh->match('example.com', 22, 'ssh-ed25519 AAAAKEY'));
+    }
+
+    #[Test]
+    public function hashedEntryForDifferentHostDoesNotMatch(): void
+    {
+        $salt = random_bytes(20);
+        $hash = base64_encode(hash_hmac('sha1', 'other.example.com', $salt, true));
+        $line = '|1|'.base64_encode($salt).'|'.$hash.' ssh-ed25519 AAAAKEY';
+        $kh = $this->write($line."\n");
+
+        self::assertSame(HostKeyStatus::Unknown, $kh->match('example.com', 22, 'ssh-ed25519 AAAAKEY'));
+    }
+
+    #[Test]
     public function commentsAndMarkersAreSkipped(): void
     {
         $kh = $this->write("# a comment\n@revoked example.com ssh-ed25519 REVOKEDKEY\n");

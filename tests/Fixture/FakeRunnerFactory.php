@@ -11,37 +11,28 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace KonradMichalik\SyncTool\Remote;
+namespace KonradMichalik\SyncTool\Tests\Fixture;
 
 use KonradMichalik\SyncTool\Config\ClientConfig;
+use KonradMichalik\SyncTool\Remote\{CommandRunner, RunnerFactory};
 
 /**
- * RunnerFactory.
+ * FakeRunnerFactory.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-readonly class RunnerFactory
+final readonly class FakeRunnerFactory extends RunnerFactory
 {
-    public function __construct(
-        private SshClientFactory $sshClientFactory = new SshClientFactory(),
-    ) {}
+    public function __construct(private CommandRunner $runner) {}
 
     public function forClient(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, bool $strictHostKeyChecking = true): CommandRunner
     {
-        if ($client->isRemote()) {
-            if (null !== $client->jumpHost) {
-                return new SystemSshCommandRunner($client, $client->jumpHost);
-            }
-
-            return new SshCommandRunner($this->sshClientFactory->create($client, $useSshAgent, $forcePassword, $strictHostKeyChecking));
-        }
-
-        return new LocalCommandRunner();
+        return $this->runner;
     }
 
     public function local(): CommandRunner
     {
-        return new LocalCommandRunner();
+        return $this->runner;
     }
 }

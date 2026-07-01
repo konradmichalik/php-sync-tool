@@ -92,6 +92,28 @@ final class ConfigLoaderTest extends TestCase
     }
 
     #[Test]
+    public function autoFallsBackToYamlWhenNotJson(): void
+    {
+        $path = $this->write('config', "type: Symfony\norigin:\n  path: /srv/app\n");
+
+        $data = $this->loader->load($path);
+
+        self::assertSame('Symfony', $data['type']);
+        self::assertSame('/srv/app', $data['origin']['path']);
+    }
+
+    #[Test]
+    public function throwsOnInvalidYaml(): void
+    {
+        $path = $this->write('broken.yaml', "origin:\n  host: :\n bad: indent:\n\t- x\n");
+
+        $this->expectException(ConfigException::class);
+        $this->expectExceptionMessage('Invalid YAML');
+
+        $this->loader->load($path);
+    }
+
+    #[Test]
     public function throwsWhenTopLevelIsNotAMapping(): void
     {
         $path = $this->write('list.yaml', "- one\n- two\n");

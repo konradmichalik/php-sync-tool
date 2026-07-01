@@ -13,8 +13,10 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Recipe;
 
+use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\Framework;
 use KonradMichalik\SyncTool\Recipe\CredentialResolver;
+use KonradMichalik\SyncTool\Tests\Fixture\RecordingCommandRunner;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -26,6 +28,85 @@ use PHPUnit\Framework\TestCase;
  */
 final class CredentialResolverTest extends TestCase
 {
+    #[Test]
+    public function resolveReadsTypo3ViaPhpInclude(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'typo3', 'origin' => ['path' => '/app/LocalConfiguration.php']]);
+        $json = json_encode(['DB' => ['Connections' => ['Default' => [
+            'dbname' => 'typo3_db', 'host' => 'db', 'user' => 'u', 'password' => 'p', 'port' => 3306,
+        ]]]], \JSON_THROW_ON_ERROR);
+        $runner = new RecordingCommandRunner(['LocalConfiguration.php' => $json]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame('typo3_db', $db->name);
+        self::assertTrue($runner->ran('php -r'), 'reads the file through a PHP include');
+    }
+
+    #[Test]
+    public function resolveDetectsFrameworkFromPathWhenTypeAbsent(): void
+    {
+        $config = SyncConfig::fromArray(['origin' => ['path' => '/app/wp-config.php']]);
+        $runner = new RecordingCommandRunner(['cat ' => "<?php\ndefine('DB_NAME', 'detected');\ndefine('DB_USER', 'wp');\ndefine('DB_PASSWORD', 's');\ndefine('DB_HOST', 'localhost');"]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame('detected', $db->name);
+    }
+
+    #[Test]
+    public function resolveFallsBackToDrushWhenDrupalSettingsAreEmpty(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'drupal', 'origin' => ['path' => '/app/settings.php']]);
+        $drush = json_encode([
+            'db-name' => 'drupal_db', 'db-hostname' => 'db', 'db-username' => 'u', 'db-password' => 'p', 'db-port' => '3306',
+        ], \JSON_THROW_ON_ERROR);
+        $runner = new RecordingCommandRunner(['core-status' => $drush]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame('drupal_db', $db->name);
+        self::assertTrue($runner->ran('drush core-status'), 'falls back to a drush query');
+    }
+
+    #[Test]
+    public function resolveReturnsNullWhenNoFrameworkDetected(): void
+    {
+        $config = SyncConfig::fromArray(['origin' => ['path' => '/app/unknown.txt']]);
+
+        self::assertNull((new CredentialResolver())->resolve($config, $config->origin, new RecordingCommandRunner()));
+    }
+
+    #[Test]
+    public function extractTypo3AdditionalConfiguration(): void
+    {
+        $content = <<<'PHP'
+            <?php
+            return [
+                'dbname' => 'add_db',
+                'user' => 'add_user',
+            ];
+            PHP;
+
+        $result = CredentialResolver::extract(Framework::Typo3, 'AdditionalConfiguration.php', $content);
+
+        self::assertSame('add_db', $result['name']);
+        self::assertSame('add_user', $result['user']);
+    }
+
+    #[Test]
+    public function extractReturnsEmptyOnUnparsableContent(): void
+    {
+        $typo3 = CredentialResolver::extract(Framework::Typo3, 'LocalConfiguration.php', 'not-json');
+        $drush = CredentialResolver::extract(Framework::Drupal, '__drush__', 'not-json');
+
+        self::assertSame('', $typo3['name']);
+        self::assertSame('', $drush['name']);
+    }
+
     #[Test]
     public function extractWordPressConfig(): void
     {
