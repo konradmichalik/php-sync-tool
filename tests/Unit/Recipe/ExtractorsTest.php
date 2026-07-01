@@ -173,4 +173,10 @@ final class ExtractorsTest extends TestCase
             'name' => 'db', 'host' => 'localhost', 'user' => 'u', 'password' => '',
         ]);
     }
+
+    #[Test]
+    public function symfonyDatabaseUrlLineReturnsEmptyWhenAbsent(): void
+    {
+        self::assertSame('', Extractors::symfonyDatabaseUrlLine("# DATABASE_URL is commented\nAPP_ENV=prod"));
+    }
 }

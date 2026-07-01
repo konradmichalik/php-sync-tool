@@ -111,6 +111,15 @@ final class ParsingTest extends TestCase
         yield 'empty' => [''];
         yield 'missing port' => ['mysql://user:pass@host/db'];
         yield 'missing password' => ['mysql://user@host:3306/db'];
+        yield 'empty database name' => ['mysql://user:pass@host:3306/'];
+    }
+
+    #[Test]
+    public function parseTypo3ThrowsWhenConnectionsHasNoDefault(): void
+    {
+        $this->expectException(OutOfBoundsException::class);
+
+        Parsing::parseTypo3DatabaseCredentials(['Connections' => ['Other' => []]]);
     }
 
     #[Test]

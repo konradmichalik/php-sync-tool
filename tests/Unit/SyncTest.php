@@ -1,0 +1,294 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+ * This file is part of the "php-sync-tool" Composer package.
+ *
+ * (c) 2026 Konrad Michalik <km@move-elevator.de>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+namespace KonradMichalik\SyncTool\Tests\Unit;
+
+use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, ProxyTransfer};
+use KonradMichalik\SyncTool\Sync;
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
+use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * SyncTest.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+final class SyncTest extends TestCase
+{
+    private const DEFAULT_RESPONSES = [
+        'LIKE' => "col\ncache_pages\ncache_hash",
+        'SHOW TABLES;' => "Tables_in_app\nusers\nposts",
+        'echo VALID' => 'VALID',
+        'stat ' => "d1 /tmp/_app_a.gz\nd2 /tmp/_app_b.gz\nd3 /tmp/_app_c.gz",
+    ];
+    /** @var list<string> */
+    private array $logs = [];
+
+    #[Test]
+    public function syncLocalCreatesTransfersAndImports(): void
+    {
+        $recorder = $this->runSync($this->localConfig(), SyncMode::SyncLocal);
+
+        self::assertTrue($recorder->ran('mysqldump'), 'creates origin dump');
+        self::assertTrue($recorder->ran('cp '), 'copies dump locally');
+        self::assertTrue($recorder->ran('gunzip -c'), 'imports dump into target');
+        self::assertContains('Copying dump locally', $this->logs);
+    }
+
+    #[Test]
+    public function receiverPullsDumpViaRsync(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::Receiver);
+
+        self::assertTrue($recorder->ran('rsync'), 'transfers dump via rsync');
+        self::assertContains('Transferring dump', $this->logs);
+    }
+
+    #[Test]
+    public function proxyModeUsesProxyTransfer(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+
+        $this->runSync($config, SyncMode::Proxy);
+
+        self::assertContains('Transferring dump via proxy (origin → local → target)', $this->logs);
+    }
+
+    #[Test]
+    public function syncRemoteCopiesDumpOnRemoteHost(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::SyncRemote);
+
+        self::assertTrue($recorder->ran('cp '), 'copies dump on remote host');
+        self::assertContains('Copying dump on the remote host', $this->logs);
+    }
+
+    #[Test]
+    public function dumpModeSkipsTransferAndImport(): void
+    {
+        $recorder = $this->runSync($this->localConfig(), SyncMode::DumpLocal);
+
+        self::assertTrue($recorder->ran('mysqldump'));
+        self::assertFalse($recorder->ran('cp '), 'no transfer in dump-only mode');
+        self::assertFalse($recorder->ran('gunzip -c'), 'no import in dump-only mode');
+    }
+
+    #[Test]
+    public function importModeSkipsCreateDumpAndUsesImportFile(): void
+    {
+        $config = SyncConfig::fromArray([
+            'import' => '/backups/manual.sql.gz',
+            'origin' => ['path' => '/var/www', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www2', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::ImportLocal);
+
+        self::assertFalse($recorder->ran('mysqldump'), 'import mode never dumps origin');
+        self::assertTrue($recorder->ran('/backups/manual.sql.gz'), 'imports the provided file');
+    }
+
+    #[Test]
+    public function keepDumpSkipsImport(): void
+    {
+        $config = $this->localConfig(['keep_dump' => true]);
+
+        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+
+        self::assertTrue($recorder->ran('mysqldump'));
+        self::assertFalse($recorder->ran('gunzip -c'), 'keepDump leaves the target untouched');
+    }
+
+    #[Test]
+    public function checkDumpFailureAborts(): void
+    {
+        $recorder = new RecordingCommandRunner(['echo VALID' => 'MISSING']);
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('Dump validation failed');
+
+        $this->syncWith($recorder)->run($this->localConfig(), SyncMode::SyncLocal);
+    }
+
+    #[Test]
+    public function clearDatabaseTruncateAfterDumpAndPostSqlAreExecuted(): void
+    {
+        $config = SyncConfig::fromArray([
+            'clear_database' => true,
+            'truncate_tables' => ['sessions', 'cache'],
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+            'target' => [
+                'path' => '/t',
+                'after_dump' => '/seed/extra.sql.gz',
+                'post_sql' => ['UPDATE config SET val = 1', ''],
+                'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p'],
+            ],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+
+        self::assertContains('Clearing target database', $this->logs);
+        self::assertContains('Truncating tables', $this->logs);
+        self::assertTrue($recorder->ran('/seed/extra.sql.gz'), 'imports the after-dump file');
+        self::assertTrue($recorder->ran('UPDATE config SET val = 1'), 'runs post-import SQL');
+    }
+
+    #[Test]
+    public function wildcardIgnoreTablesAreExpanded(): void
+    {
+        $config = $this->localConfig(['ignore_table' => ['cache_*', 'sys_log']]);
+
+        $recorder = $this->runSync($config, SyncMode::DumpLocal);
+
+        self::assertTrue($recorder->ran('cache_pages'), 'wildcard expands to matching tables');
+        self::assertTrue($recorder->ran('cache_hash'));
+        self::assertTrue($recorder->ran('sys_log'), 'plain ignore table kept verbatim');
+    }
+
+    #[Test]
+    public function oldDumpsArePrunedWhenKeepDumpsSet(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['path' => '/o', 'keep_dumps' => 1, 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::DumpLocal);
+
+        self::assertTrue($recorder->ran('rm -f'), 'removes dumps beyond the retention limit');
+        self::assertContains('Removing old dump /tmp/_app_b.gz', $this->logs);
+    }
+
+    #[Test]
+    public function filesOnlySyncsFilesAndSkipsDatabase(): void
+    {
+        $config = SyncConfig::fromArray([
+            'files_only' => true,
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'path' => '/srv/app', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+            'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::Receiver);
+
+        self::assertFalse($recorder->ran('mysqldump'), 'files-only skips the database');
+        self::assertTrue($recorder->ran('rsync'), 'transfers files');
+        self::assertContains('Synchronizing files', $this->logs);
+    }
+
+    #[Test]
+    public function withFilesSyncsBothDatabaseAndFiles(): void
+    {
+        $config = SyncConfig::fromArray([
+            'with_files' => true,
+            'origin' => ['path' => '/srv/app', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+            'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+
+        self::assertTrue($recorder->ran('mysqldump'), 'syncs the database');
+        self::assertTrue($recorder->ran('rsync'), 'syncs files too');
+    }
+
+    #[Test]
+    public function resolvesEmptyDatabaseNameFromClientPath(): void
+    {
+        $config = SyncConfig::fromArray([
+            'type' => 'symfony',
+            'origin' => ['path' => '/app/.env'],
+            'target' => ['path' => '/app2/.env'],
+        ]);
+
+        $recorder = new RecordingCommandRunner(
+            self::DEFAULT_RESPONSES + ['cat ' => 'DATABASE_URL=mysql://u:p@h:3306/resolved_db'],
+        );
+
+        $this->syncWith($recorder)->run($config, SyncMode::SyncLocal);
+
+        self::assertTrue($recorder->ran('resolved_db'), 'resolved db name flows into later commands');
+    }
+
+    #[Test]
+    public function errorPhaseScriptsRunWhenSyncFails(): void
+    {
+        $config = SyncConfig::fromArray([
+            'scripts' => ['error' => 'echo boom'],
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+        ]);
+
+        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: 'mysqldump');
+        $sync = $this->syncWith($recorder);
+
+        try {
+            $sync->run($config, SyncMode::SyncLocal);
+            self::fail('expected the sync to rethrow');
+        } catch (SyncException) {
+            self::assertTrue($recorder->ran('echo boom'), 'error-phase script executed');
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     */
+    private function localConfig(array $overrides = []): SyncConfig
+    {
+        return SyncConfig::fromArray($overrides + [
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+        ]);
+    }
+
+    private function runSync(SyncConfig $config, SyncMode $mode): RecordingCommandRunner
+    {
+        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES);
+        $this->syncWith($recorder)->run($config, $mode);
+
+        return $recorder;
+    }
+
+    private function syncWith(CommandRunner $recorder): Sync
+    {
+        $factory = new FakeRunnerFactory($recorder);
+        $this->logs = [];
+
+        return new Sync(
+            runners: $factory,
+            proxy: new ProxyTransfer($factory),
+            fileSync: new FileSync($factory),
+            log: function (string $message): void {
+                $this->logs[] = $message;
+            },
+        );
+    }
+}

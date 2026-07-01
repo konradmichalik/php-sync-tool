@@ -183,6 +183,18 @@ final class ConfigResolverTest extends TestCase
         $this->resolver()->resolveHostLink('@nope');
     }
 
+    #[Test]
+    public function exposesLoadedProjectConfigsAndGlobalHosts(): void
+    {
+        $this->writeGlobal('hosts.yaml', "live:\n  host: live.example.com\n  user: deploy\n");
+        $this->writeProject('prod.yaml', "target:\n  path: /var/www\n");
+
+        $resolver = $this->resolver();
+
+        self::assertArrayHasKey('prod', $resolver->getProjectConfigs());
+        self::assertArrayHasKey('live', $resolver->getGlobalHosts());
+    }
+
     private function resolver(): ConfigResolver
     {
         return new ConfigResolver(homeDir: $this->home, workingDir: $this->work);

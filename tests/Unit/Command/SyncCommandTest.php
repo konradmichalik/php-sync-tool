@@ -236,6 +236,62 @@ final class SyncCommandTest extends TestCase
         self::assertStringContainsString('remote (prod.example.com)', $tester->getDisplay());
     }
 
+    #[Test]
+    public function resolvesEndpointsFromHostFileArguments(): void
+    {
+        $hosts = $this->dir.'/pool.yaml';
+        file_put_contents($hosts, <<<'YAML'
+            prod:
+              host: prod.example.com
+              user: deploy
+              db: {name: p, user: p, password: p}
+            staging:
+              host: staging.example.com
+              user: deploy
+              db: {name: s, user: s, password: s}
+            YAML);
+
+        $tester = $this->tester();
+        $exit = $tester->execute([
+            'origin' => 'prod',
+            'target' => 'staging',
+            '--host-file' => $hosts,
+            '--dry-run' => true,
+        ]);
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+        self::assertStringContainsString('prod.example.com', $tester->getDisplay());
+        self::assertStringContainsString('staging.example.com', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function muteVerboseTransferAndAfterDumpFlagsAreApplied(): void
+    {
+        $file = $this->dir.'/flags.yaml';
+        file_put_contents($file, <<<'YAML'
+            origin:
+              path: /var/www
+              db: {name: a, user: root, password: root}
+            target:
+              path: /var/www2
+              db: {name: b, user: root, password: root}
+            YAML);
+
+        $tester = $this->tester();
+        $exit = $tester->execute(
+            [
+                '--config-file' => $file,
+                '--mute' => true,
+                '--no-rsync' => true,
+                '--target-after-dump' => '/seed/extra.sql.gz',
+                '--dry-run' => true,
+            ],
+            ['verbosity' => OutputInterface::VERBOSITY_VERBOSE],
+        );
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+    }
+
     private function tester(): CommandTester
     {
         $application = new Application();
