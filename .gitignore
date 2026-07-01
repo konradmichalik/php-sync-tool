@@ -1,5 +1,7 @@
 /.idea
 /vendor
+/node_modules
+/package-lock.json
 /.php-cs-fixer.cache
 /.phpunit.result.cache
 /.phpunit.cache
