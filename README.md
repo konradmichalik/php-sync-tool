@@ -8,6 +8,8 @@ PHP port of [`db-sync-tool`](https://github.com/jackd248/db-sync-tool) — synch
 (and optionally files) between local and remote systems over SSH/rsync/SFTP, with framework
 credential auto-detection for **TYPO3, Symfony, Drupal, WordPress and Laravel**.
 
+📖 **[Read the documentation](https://konradmichalik.github.io/php-sync-tool/)**
+
 ## ✨ Features
 
 * Synchronize databases between local and remote systems
