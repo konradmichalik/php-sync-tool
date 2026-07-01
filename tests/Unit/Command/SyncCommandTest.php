@@ -292,6 +292,48 @@ final class SyncCommandTest extends TestCase
         self::assertSame(0, $exit, $tester->getDisplay());
     }
 
+    #[Test]
+    public function decliningTheConfirmationAbortsBeforeAnyWrite(): void
+    {
+        $file = $this->dir.'/confirm.yaml';
+        file_put_contents($file, "target:\n  db: {name: db, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $tester->setInputs(['no']);
+        // ImportLocal is a protectable, purely local mode (no SSH) → the prompt fires
+        // and a "no" answer must abort before checkDump/import ever runs.
+        $exit = $tester->execute(
+            ['--config-file' => $file, '--import-file' => '/tmp/seed.sql'],
+            ['interactive' => true],
+        );
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+        $output = $tester->getDisplay();
+        self::assertStringContainsString('This overwrites', $output);
+        self::assertStringContainsString('Aborted by user', $output);
+    }
+
+    #[Test]
+    public function yesFlagSkipsTheConfirmationPrompt(): void
+    {
+        $file = $this->dir.'/confirm-yes.yaml';
+        file_put_contents($file, "target:\n  db: {name: db, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $tester->setInputs(['no']); // queued but must never be consumed
+        $exit = $tester->execute(
+            ['--config-file' => $file, '--import-file' => '/tmp/does-not-exist.sql', '--yes' => true],
+            ['interactive' => true],
+        );
+
+        $output = $tester->getDisplay();
+        // No prompt, no abort — it proceeds straight into the sync and fails on the
+        // missing local dump file (checkDump), proving the confirmation was skipped.
+        self::assertSame(1, $exit, $output);
+        self::assertStringNotContainsString('This overwrites', $output);
+        self::assertStringNotContainsString('Aborted by user', $output);
+    }
+
     private function tester(): CommandTester
     {
         $application = new Application();

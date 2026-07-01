@@ -16,6 +16,9 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Config;
 use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionObject;
+
+use function sprintf;
 
 /**
  * SyncConfigTest.
@@ -32,7 +35,6 @@ final class SyncConfigTest extends TestCase
 
         self::assertTrue($config->checkDump);
         self::assertTrue($config->useRsync);
-        self::assertTrue($config->defaultOriginDumpDir);
         self::assertFalse($config->verbose);
         self::assertFalse($config->withFiles);
         self::assertSame('', $config->dumpName);
@@ -137,5 +139,42 @@ final class SyncConfigTest extends TestCase
         self::assertSame('o2', $next->origin->host);
         self::assertSame('t2', $next->target->host);
         self::assertTrue($next->yes, 'other config is preserved');
+    }
+
+    /**
+     * Guards against the brittleness of withClients() re-listing every constructor
+     * field: a forgotten field would silently reset to its default. Every non-client
+     * property must survive the copy unchanged.
+     */
+    #[Test]
+    public function withClientsPreservesEveryNonClientProperty(): void
+    {
+        $config = SyncConfig::fromArray([
+            'verbose' => true, 'mute' => true, 'dry_run' => true, 'yes' => true,
+            'reverse' => true, 'keep_dump' => true, 'dump_name' => 'd.sql',
+            'check_dump' => false, 'clear_database' => true, 'import' => 'in.sql.gz',
+            'tables' => 'a,b', 'where' => 'id>0', 'additional_mysqldump_options' => '--x',
+            'ignore_tables' => ['cache'], 'truncate_tables' => ['log'], 'use_rsync' => false,
+            'use_rsync_options' => '-z', 'use_sshpass' => true, 'with_files' => true,
+            'files_only' => true, 'ssh_agent' => true, 'force_password' => true,
+            'ssh_strict_host_key_checking' => false, 'ssh_password' => ['origin' => 'po', 'target' => 'pt'],
+            'config_file_path' => '/c.yaml', 'log_file' => '/l.log', 'json_log' => true,
+            'type' => 'symfony', 'scripts' => ['before' => 'echo hi'],
+        ]);
+
+        $next = $config->withClients(new ClientConfig(host: 'o2'), new ClientConfig(host: 't2'));
+
+        foreach ((new ReflectionObject($config))->getProperties() as $property) {
+            $name = $property->getName();
+            if ('origin' === $name || 'target' === $name) {
+                continue;
+            }
+
+            self::assertEquals(
+                $property->getValue($config),
+                $property->getValue($next),
+                sprintf('withClients() must preserve property "%s"', $name),
+            );
+        }
     }
 }

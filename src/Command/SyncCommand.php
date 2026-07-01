@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Command;
 
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, SyncConfig};
-use KonradMichalik\SyncTool\Enum\OutputMode;
+use KonradMichalik\SyncTool\Enum\{OutputMode, SyncMode};
 use KonradMichalik\SyncTool\Exception\SyncToolException;
 use KonradMichalik\SyncTool\Logging\LogWriter;
 use KonradMichalik\SyncTool\Mode\SyncModeResolver;
@@ -119,6 +119,14 @@ final class SyncCommand extends Command
 
             if ($syncConfig->dryRun) {
                 $reporter->success('Dry run: configuration resolved and validated, no changes made.');
+
+                return Command::SUCCESS;
+            }
+
+            if ($this->needsConfirmation($syncMode, $syncConfig, $mode, $input->isInteractive())
+                && !$io->confirm(sprintf('This overwrites the %s database. Continue?', $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host)), false)
+            ) {
+                $reporter->success('Aborted by user.');
 
                 return Command::SUCCESS;
             }
@@ -345,5 +353,18 @@ final class SyncCommand extends Command
     private function describeClient(bool $isRemote, string $host): string
     {
         return $isRemote ? sprintf('remote (%s)', $host) : 'local';
+    }
+
+    /**
+     * A confirmation prompt is only warranted for writing modes on an interactive
+     * terminal. Non-interactive runs (CI, Deployer), quiet output and the explicit
+     * --yes flag all proceed without asking.
+     */
+    private function needsConfirmation(SyncMode $syncMode, SyncConfig $syncConfig, OutputMode $outputMode, bool $isInteractive): bool
+    {
+        return $syncMode->isProtectable()
+            && !$syncConfig->yes
+            && $isInteractive
+            && OutputMode::Quiet !== $outputMode;
     }
 }
