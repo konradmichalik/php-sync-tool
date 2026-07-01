@@ -21,7 +21,7 @@ use KonradMichalik\SyncTool\Config\ClientConfig;
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final readonly class RunnerFactory
+readonly class RunnerFactory
 {
     public function __construct(
         private SshClientFactory $sshClientFactory = new SshClientFactory(),
