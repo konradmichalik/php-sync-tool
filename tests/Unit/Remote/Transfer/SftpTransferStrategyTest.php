@@ -44,4 +44,16 @@ final class SftpTransferStrategyTest extends TestCase
     {
         self::assertSame(' via SFTP', (new SftpTransferStrategy())->describe());
     }
+
+    #[Test]
+    public function remoteToRemoteIsRejectedEvenForDirectoryPaths(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+
+        $this->expectException(SyncException::class);
+        (new SftpTransferStrategy())->transfer($config, new TransferPayload('/srv/app/fileadmin', '/srv/web/fileadmin', ['*.log']));
+    }
 }
