@@ -56,4 +56,13 @@ final class ExcludeMatcherTest extends TestCase
     {
         self::assertTrue(ExcludeMatcher::matches('nested/deep/app.log', ['*.log']));
     }
+
+    #[Test]
+    public function isPathExcludedPrunesEverythingUnderAnExcludedDirectory(): void
+    {
+        self::assertTrue(ExcludeMatcher::isPathExcluded('_processed_', ['_processed_']));
+        self::assertTrue(ExcludeMatcher::isPathExcluded('_processed_/image1.jpg', ['_processed_']));
+        self::assertTrue(ExcludeMatcher::isPathExcluded('a/_processed_/nested/image1.jpg', ['_processed_']));
+        self::assertFalse(ExcludeMatcher::isPathExcluded('kept/image1.jpg', ['_processed_']));
+    }
 }

@@ -107,7 +107,7 @@ final readonly class SftpTransferStrategy implements TransferStrategy
         }
 
         foreach ($entries as $relativePath) {
-            if (in_array(basename($relativePath), ['.', '..'], true) || ExcludeMatcher::matches($relativePath, $excludePatterns)) {
+            if (in_array(basename($relativePath), ['.', '..'], true) || ExcludeMatcher::isPathExcluded($relativePath, $excludePatterns)) {
                 continue;
             }
 
@@ -143,7 +143,7 @@ final readonly class SftpTransferStrategy implements TransferStrategy
 
         foreach ($iterator as $item) {
             $relativePath = substr($item->getPathname(), strlen($originDir) + 1);
-            if (ExcludeMatcher::matches($relativePath, $excludePatterns)) {
+            if (ExcludeMatcher::isPathExcluded($relativePath, $excludePatterns)) {
                 continue;
             }
 

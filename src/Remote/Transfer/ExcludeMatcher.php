@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote\Transfer;
 
+use function explode;
 use function fnmatch;
 
 /**
@@ -32,6 +33,29 @@ final class ExcludeMatcher
     {
         foreach ($patterns as $pattern) {
             if (fnmatch($pattern, $relativePath)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * True if the path itself matches, OR any ancestor directory segment
+     * matches — mirrors rsync's behavior of not descending into an excluded
+     * directory, so everything beneath it is implicitly excluded too.
+     *
+     * @param list<string> $patterns
+     */
+    public static function isPathExcluded(string $relativePath, array $patterns): bool
+    {
+        $segments = explode('/', $relativePath);
+        $path = '';
+
+        foreach ($segments as $segment) {
+            $path = '' === $path ? $segment : $path.'/'.$segment;
+
+            if (self::matches($path, $patterns) || self::matches($segment, $patterns)) {
                 return true;
             }
         }
