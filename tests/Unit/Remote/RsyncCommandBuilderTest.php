@@ -119,6 +119,15 @@ final class RsyncCommandBuilderTest extends TestCase
     }
 
     #[Test]
+    public function optionsEscapesSingleQuotesInExcludePatterns(): void
+    {
+        self::assertSame(
+            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --exclude='it'\\''s/*'",
+            $this->builder->options(null, ["it's/*"]),
+        );
+    }
+
+    #[Test]
     public function authorizationIncludesProxyJumpWhenJumpHostSet(): void
     {
         $auth = (new RsyncCommandBuilder())->authorization(

@@ -80,7 +80,7 @@ final class RsyncCommandBuilder
         $options = implode(' ', self::DEFAULT_OPTIONS);
 
         foreach ($excludePatterns as $pattern) {
-            $options .= sprintf(" --exclude='%s'", $pattern);
+            $options .= sprintf(" --exclude='%s'", str_replace("'", "'\\''", $pattern));
         }
 
         if (null !== $additionalOptions && '' !== ltrim($additionalOptions)) {
