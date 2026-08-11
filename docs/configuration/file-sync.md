@@ -64,6 +64,26 @@ files:
 - For proxy mode (remote → remote), files are relayed via the local machine in
   two hops, mirroring the database transfer.
 
+### rsync vs. SFTP fallback differences
+
+The SFTP fallback (`--no-rsync`) transfers the same files and honors
+`exclude` patterns, but is not a drop-in replacement for rsync's semantics:
+
+- **No mirroring.** rsync's defaults include `--delete`, so a file removed
+  from `origin` is also removed from `target` on the next sync. SFTP has no
+  equivalent — it only adds/overwrites files, so stale files already present
+  under `target` are never cleaned up. `--no-rsync` behaves like a merge, not
+  a mirror.
+- **`options` is ignored.** Per-entry `options` (and the global
+  `files_options`) are extra flags passed straight to the `rsync` binary —
+  they have no effect when the transfer falls back to SFTP.
+- **Directory layout.** rsync's behavior depends on whether `origin` ends
+  with a trailing slash (a bare path nests the source directory itself
+  under `target`, a trailing slash copies its contents into `target`). SFTP
+  always maps the origin directory's contents directly into `target`,
+  regardless of a trailing slash. Keep this in mind if you switch between
+  `--no-rsync` and the default transport for the same entry.
+
 ## Examples
 
 ### Files-Only Deploy of Assets

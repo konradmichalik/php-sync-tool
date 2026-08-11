@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Local-to-local and same-host (`SYNC_REMOTE`) dump transfers now use
   `rsync` instead of `cp`, unifying with how file synchronization already
-  handled these cases. The end result is identical.
+  handled these cases. The copied data is the same, but this now requires
+  the `rsync` binary to be present, and file permissions on the copy follow
+  rsync's `--chmod` defaults rather than a plain `cp`.
 
 ### Internal
 
