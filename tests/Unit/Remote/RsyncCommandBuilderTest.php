@@ -92,6 +92,33 @@ final class RsyncCommandBuilderTest extends TestCase
     }
 
     #[Test]
+    public function optionsInsertsASeparatingSpaceEvenWithoutOne(): void
+    {
+        self::assertSame(
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 -z',
+            $this->builder->options('-z'),
+        );
+    }
+
+    #[Test]
+    public function optionsAppendsExcludePatternsBeforeAdditional(): void
+    {
+        self::assertSame(
+            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --exclude='*.log' --exclude='cache/' --progress",
+            $this->builder->options(' --progress', ['*.log', 'cache/']),
+        );
+    }
+
+    #[Test]
+    public function optionsWithExcludePatternsAndNoAdditional(): void
+    {
+        self::assertSame(
+            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --exclude='*.log'",
+            $this->builder->options(null, ['*.log']),
+        );
+    }
+
+    #[Test]
     public function authorizationIncludesProxyJumpWhenJumpHostSet(): void
     {
         $auth = (new RsyncCommandBuilder())->authorization(

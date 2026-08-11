@@ -72,12 +72,19 @@ final class RsyncCommandBuilder
         return '';
     }
 
-    public function options(?string $additionalOptions): string
+    /**
+     * @param list<string> $excludePatterns
+     */
+    public function options(?string $additionalOptions, array $excludePatterns = []): string
     {
         $options = implode(' ', self::DEFAULT_OPTIONS);
 
-        if (null !== $additionalOptions) {
-            $options .= $additionalOptions;
+        foreach ($excludePatterns as $pattern) {
+            $options .= sprintf(" --exclude='%s'", $pattern);
+        }
+
+        if (null !== $additionalOptions && '' !== ltrim($additionalOptions)) {
+            $options .= ' '.ltrim($additionalOptions);
         }
 
         return $options;
