@@ -90,4 +90,17 @@ final class TransferStrategyResolverTest extends TestCase
 
         self::assertInstanceOf(RsyncTransferStrategy::class, $this->resolver->resolve($config, SyncMode::Receiver));
     }
+
+    #[Test]
+    public function noRsyncFlagOutranksProxyAndSyncRemoteModes(): void
+    {
+        $config = SyncConfig::fromArray([
+            'use_rsync' => false,
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+
+        self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, SyncMode::Proxy));
+        self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, SyncMode::SyncRemote));
+    }
 }
