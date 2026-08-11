@@ -70,4 +70,23 @@ final class ProxyTransferStrategyTest extends TestCase
     {
         self::assertSame(' via proxy (origin → local → target)', (new ProxyTransferStrategy())->describe());
     }
+
+    #[Test]
+    public function logsBothPullAndPushCommandsBeforeRunningThem(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+        $recorder = new RecordingCommandRunner();
+        $logs = [];
+
+        (new ProxyTransferStrategy(new FakeRunnerFactory($recorder), log: static function (string $message) use (&$logs): void {
+            $logs[] = $message;
+        }))->transfer($config, new TransferPayload('/o/dump.gz', '/t/dump.gz'));
+
+        self::assertCount(2, $logs, 'logs once per leg (pull, push)');
+        self::assertStringContainsString('deploy@o.example.com:/o/dump.gz', $logs[0]);
+        self::assertStringContainsString('deploy@t.example.com:/t/dump.gz', $logs[1]);
+    }
 }

@@ -69,4 +69,23 @@ final class RsyncTransferStrategyTest extends TestCase
     {
         self::assertSame('', (new RsyncTransferStrategy())->describe());
     }
+
+    #[Test]
+    public function logsTheSanitizedCommandBeforeRunningIt(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+        $recorder = new RecordingCommandRunner();
+        $logs = [];
+
+        (new RsyncTransferStrategy(new FakeRunnerFactory($recorder), log: static function (string $message) use (&$logs): void {
+            $logs[] = $message;
+        }))->transfer($config, new TransferPayload('/tmp/o.gz', '/tmp/t.gz'));
+
+        self::assertNotEmpty($logs);
+        self::assertStringContainsString('rsync', $logs[0]);
+        self::assertStringContainsString('/tmp/o.gz', $logs[0]);
+    }
 }

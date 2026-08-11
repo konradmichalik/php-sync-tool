@@ -15,7 +15,8 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Remote\Transfer;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\SyncMode;
-use KonradMichalik\SyncTool\Remote\Transfer\{ProxyTransferStrategy, RemoteCopyTransferStrategy, RsyncTransferStrategy, SftpTransferStrategy, TransferStrategyResolver};
+use KonradMichalik\SyncTool\Remote\Transfer\{ProxyTransferStrategy, RemoteCopyTransferStrategy, RsyncTransferStrategy, SftpTransferStrategy, TransferPayload, TransferStrategyResolver};
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -102,5 +103,25 @@ final class TransferStrategyResolverTest extends TestCase
 
         self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, SyncMode::Proxy));
         self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, SyncMode::SyncRemote));
+    }
+
+    #[Test]
+    public function optionalLogClosurePassedToResolveReachesTheReturnedStrategy(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/srv/b', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+        $recorder = new RecordingCommandRunner();
+        $resolver = new TransferStrategyResolver(new FakeRunnerFactory($recorder));
+        $logs = [];
+
+        $strategy = $resolver->resolve($config, SyncMode::Receiver, static function (string $message) use (&$logs): void {
+            $logs[] = $message;
+        });
+        $strategy->transfer($config, new TransferPayload('/tmp/o.gz', '/tmp/t.gz'));
+
+        self::assertInstanceOf(RsyncTransferStrategy::class, $strategy);
+        self::assertNotEmpty($logs, 'the log closure passed to resolve() reached the resolved strategy');
     }
 }

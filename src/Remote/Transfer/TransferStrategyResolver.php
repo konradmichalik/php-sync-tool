@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote\Transfer;
 
+use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory, SshClientFactory};
@@ -31,13 +32,13 @@ final readonly class TransferStrategyResolver
         private SshClientFactory $sshClientFactory = new SshClientFactory(),
     ) {}
 
-    public function resolve(SyncConfig $config, SyncMode $mode): TransferStrategy
+    public function resolve(SyncConfig $config, SyncMode $mode, ?Closure $log = null): TransferStrategy
     {
         $originRemote = $config->origin->isRemote();
         $targetRemote = $config->target->isRemote();
 
         if (!$originRemote && !$targetRemote) {
-            return new RsyncTransferStrategy($this->runners, $this->rsync);
+            return new RsyncTransferStrategy($this->runners, $this->rsync, $log);
         }
 
         if (!$config->useRsync) {
@@ -45,13 +46,13 @@ final readonly class TransferStrategyResolver
         }
 
         if (SyncMode::Proxy === $mode) {
-            return new ProxyTransferStrategy($this->runners, $this->rsync);
+            return new ProxyTransferStrategy($this->runners, $this->rsync, $log);
         }
 
         if (SyncMode::SyncRemote === $mode) {
-            return new RemoteCopyTransferStrategy($this->runners, $this->rsync);
+            return new RemoteCopyTransferStrategy($this->runners, $this->rsync, $log);
         }
 
-        return new RsyncTransferStrategy($this->runners, $this->rsync);
+        return new RsyncTransferStrategy($this->runners, $this->rsync, $log);
     }
 }

@@ -13,8 +13,10 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote\Transfer;
 
+use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
+use KonradMichalik\SyncTool\Security\LogSanitizer;
 
 /**
  * RsyncTransferStrategy.
@@ -24,10 +26,16 @@ use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
  */
 final readonly class RsyncTransferStrategy implements TransferStrategy
 {
+    /** @var Closure(string): void */
+    private Closure $log;
+
     public function __construct(
         private RunnerFactory $runners = new RunnerFactory(),
         private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
-    ) {}
+        ?Closure $log = null,
+    ) {
+        $this->log = $log ?? static function (string $message): void {};
+    }
 
     public function describe(): string
     {
@@ -48,6 +56,7 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
             $payload->targetPath,
         );
 
+        ($this->log)('  $ '.LogSanitizer::sanitize($command));
         $this->runners->local()->run($command);
     }
 }

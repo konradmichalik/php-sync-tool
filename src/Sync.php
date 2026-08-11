@@ -163,9 +163,10 @@ final readonly class Sync
         $payload = new TransferPayload(
             $this->dumpDir($config->origin).$dumpName.'.gz',
             $this->dumpDir($config->target).$dumpName.'.gz',
+            extraRsyncOptions: $config->useRsyncOptions,
         );
 
-        $strategy = $this->transferResolver->resolve($config, $mode);
+        $strategy = $this->transferResolver->resolve($config, $mode, $this->log);
         ($this->log)('Transferring dump'.$strategy->describe());
         $strategy->transfer($config, $payload);
     }

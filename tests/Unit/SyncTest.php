@@ -63,6 +63,24 @@ final class SyncTest extends TestCase
 
         self::assertTrue($recorder->ran('rsync'), 'transfers dump via rsync');
         self::assertContains('Transferring dump', $this->logs);
+        self::assertNotEmpty(
+            array_filter($this->logs, static fn (string $line): bool => str_contains($line, 'rsync')),
+            'the actual rsync command is logged too, not just the generic status line',
+        );
+    }
+
+    #[Test]
+    public function useRsyncOptionsIsThreadedIntoTheDumpTransferCommand(): void
+    {
+        $config = SyncConfig::fromArray([
+            'use_rsync_options' => '--bwlimit=1000',
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::Receiver);
+
+        self::assertTrue($recorder->ran('--bwlimit=1000'), 'use_rsync_options flows into the dump transfer command');
     }
 
     #[Test]

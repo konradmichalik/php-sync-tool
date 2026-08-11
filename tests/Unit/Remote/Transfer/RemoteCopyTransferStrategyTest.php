@@ -53,4 +53,23 @@ final class RemoteCopyTransferStrategyTest extends TestCase
     {
         self::assertSame(' on the remote host', (new RemoteCopyTransferStrategy())->describe());
     }
+
+    #[Test]
+    public function logsTheSanitizedCommandBeforeRunningIt(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+        $recorder = new RecordingCommandRunner();
+        $logs = [];
+
+        (new RemoteCopyTransferStrategy(new FakeRunnerFactory($recorder), log: static function (string $message) use (&$logs): void {
+            $logs[] = $message;
+        }))->transfer($config, new TransferPayload('/srv/app/fileadmin', '/srv/web/fileadmin'));
+
+        self::assertNotEmpty($logs);
+        self::assertStringContainsString('rsync', $logs[0]);
+        self::assertStringContainsString('/srv/app/fileadmin', $logs[0]);
+    }
 }
