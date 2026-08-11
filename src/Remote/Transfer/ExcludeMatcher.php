@@ -25,6 +25,8 @@ final class ExcludeMatcher
 {
     /**
      * @param list<string> $patterns
+     *
+     * Case-sensitive on POSIX (the only supported platform for this tool)
      */
     public static function matches(string $relativePath, array $patterns): bool
     {

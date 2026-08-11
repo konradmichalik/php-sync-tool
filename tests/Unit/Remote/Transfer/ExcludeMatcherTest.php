@@ -50,4 +50,10 @@ final class ExcludeMatcherTest extends TestCase
     {
         self::assertTrue(ExcludeMatcher::matches('nested/app.log', ['*.txt', 'nested/*']));
     }
+
+    #[Test]
+    public function matchesAcrossDirectorySeparatorsLikeRsyncsDefaultExclude(): void
+    {
+        self::assertTrue(ExcludeMatcher::matches('nested/deep/app.log', ['*.log']));
+    }
 }
