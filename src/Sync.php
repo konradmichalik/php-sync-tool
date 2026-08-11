@@ -21,7 +21,8 @@ use KonradMichalik\SyncTool\Enum\{LifecyclePhase, SyncMode};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
 use KonradMichalik\SyncTool\Recipe\CredentialResolver;
-use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, ProxyTransfer, RsyncCommandBuilder, RunnerFactory, SftpTransfer};
+use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, RunnerFactory};
+use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 use Throwable;
 
@@ -45,10 +46,8 @@ final readonly class Sync
         private MysqlCredentials $credentials = new MysqlCredentials(),
         private MysqlDefaultsFile $defaultsFile = new MysqlDefaultsFile(),
         private TableStatements $tables = new TableStatements(),
-        private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
+        private TransferStrategyResolver $transferResolver = new TransferStrategyResolver(),
         private DumpFileNamer $namer = new DumpFileNamer(),
-        private SftpTransfer $sftp = new SftpTransfer(),
-        private ProxyTransfer $proxy = new ProxyTransfer(),
         private FileSync $fileSync = new FileSync(),
         private ScriptRunner $scripts = new ScriptRunner(),
         private DumpManager $dumps = new DumpManager(),
@@ -84,7 +83,7 @@ final readonly class Sync
 
             if ($config->filesOnly || $config->withFiles) {
                 ($this->log)('Synchronizing files');
-                $this->fileSync->sync($config, $mode);
+                $this->fileSync->sync($config, $mode, $this->log);
             }
 
             $this->scripts->run($local, $config, LifecyclePhase::After);
@@ -157,62 +156,19 @@ final readonly class Sync
 
     private function transferDump(SyncConfig $config, SyncMode $mode, string $dumpName): void
     {
-        if (SyncMode::ImportLocal === $mode || SyncMode::ImportRemote === $mode) {
+        if ($mode->isImport()) {
             return;
         }
 
-        $originGz = $this->dumpDir($config->origin).$dumpName.'.gz';
-        $targetGz = $this->dumpDir($config->target).$dumpName.'.gz';
-
-        if (!$config->origin->isRemote() && !$config->target->isRemote()) {
-            // SYNC_LOCAL: a plain local copy.
-            ($this->log)('Copying dump locally');
-            $this->runners->local()->run(sprintf('cp %s %s', escapeshellarg($originGz), escapeshellarg($targetGz)));
-
-            return;
-        }
-
-        if (!$config->useRsync) {
-            ($this->log)('Transferring dump via SFTP');
-            $this->sftp->transfer($config, $originGz, $targetGz);
-
-            return;
-        }
-
-        if (SyncMode::Proxy === $mode) {
-            ($this->log)('Transferring dump via proxy (origin → local → target)');
-            $this->proxy->transfer($config, $originGz, $targetGz);
-
-            return;
-        }
-
-        if (SyncMode::SyncRemote === $mode) {
-            ($this->log)('Copying dump on the remote host');
-            $runner = $this->runners->forClient($config->origin, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
-            $runner->run(sprintf('cp %s %s', escapeshellarg($originGz), escapeshellarg($targetGz)));
-
-            return;
-        }
-
-        // RECEIVER pulls from the remote origin; SENDER pushes to the remote target.
-        $remoteClient = $config->origin->isRemote() ? $config->origin : $config->target;
-        $passwordEnvironment = $this->rsync->passwordEnvironment($remoteClient, $config->useSshpass);
-        $authorization = $this->rsync->authorization($remoteClient, $config->useSshpass, $remoteClient->jumpHost);
-        $options = $this->rsync->options($config->useRsyncOptions);
-
-        $command = $this->rsync->build(
-            $passwordEnvironment,
-            $options,
-            $authorization,
-            $this->rsync->userHost($config->origin),
-            $originGz,
-            $this->rsync->userHost($config->target),
-            $targetGz,
+        $payload = new TransferPayload(
+            $this->dumpDir($config->origin).$dumpName.'.gz',
+            $this->dumpDir($config->target).$dumpName.'.gz',
+            extraRsyncOptions: $config->useRsyncOptions,
         );
 
-        ($this->log)('Transferring dump');
-        $this->logCommand($command);
-        $this->runners->local()->run($command);
+        $strategy = $this->transferResolver->resolve($config, $mode, $this->log);
+        ($this->log)('Transferring dump'.$strategy->describe());
+        $strategy->transfer($config, $payload);
     }
 
     private function importDump(SyncConfig $config, SyncMode $mode, string $dumpName): void

@@ -11,16 +11,23 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace KonradMichalik\SyncTool\Remote;
+namespace KonradMichalik\SyncTool\Remote\Transfer;
 
 /**
- * SftpDirection.
+ * TransferPayload.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-enum SftpDirection
+final readonly class TransferPayload
 {
-    case Download;
-    case Upload;
+    /**
+     * @param list<string> $excludePatterns
+     */
+    public function __construct(
+        public string $originPath,
+        public string $targetPath,
+        public array $excludePatterns = [],
+        public ?string $extraRsyncOptions = null,
+    ) {}
 }

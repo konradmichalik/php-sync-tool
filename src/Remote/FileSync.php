@@ -13,15 +13,13 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use Closure;
 use KonradMichalik\SyncTool\Config\{FileTransferConfig, SyncConfig};
 use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
 
-use function basename;
-use function implode;
 use function rtrim;
-use function sprintf;
 use function str_starts_with;
-use function sys_get_temp_dir;
 
 /**
  * FileSync.
@@ -32,14 +30,15 @@ use function sys_get_temp_dir;
 final readonly class FileSync
 {
     public function __construct(
-        private RunnerFactory $runners = new RunnerFactory(),
-        private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
+        private TransferStrategyResolver $transferResolver = new TransferStrategyResolver(),
     ) {}
 
-    public function sync(SyncConfig $config, SyncMode $mode): void
+    public function sync(SyncConfig $config, SyncMode $mode, ?Closure $log = null): void
     {
+        $log ??= static function (string $message): void {};
+
         foreach ($config->files as $entry) {
-            $this->transferEntry($config, $mode, $entry);
+            $this->transferEntry($config, $mode, $entry, $log);
         }
     }
 
@@ -58,101 +57,17 @@ final readonly class FileSync
         return rtrim($base, '/').'/'.$path;
     }
 
-    public static function excludeArguments(FileTransferConfig $entry): string
+    private function transferEntry(SyncConfig $config, SyncMode $mode, FileTransferConfig $entry, Closure $log): void
     {
-        $args = [];
-        foreach ($entry->exclude as $pattern) {
-            $args[] = sprintf("--exclude='%s'", $pattern);
-        }
-
-        return implode(' ', $args);
-    }
-
-    public function directCommand(SyncConfig $config, FileTransferConfig $entry): string
-    {
-        $remoteClient = $config->origin->isRemote() ? $config->origin : $config->target;
-
-        return $this->rsync->build(
-            $this->rsync->passwordEnvironment($remoteClient, $config->useSshpass),
-            $this->entryOptions($config, $entry),
-            $this->rsync->authorization($remoteClient, $config->useSshpass, $remoteClient->jumpHost),
-            $this->rsync->userHost($config->origin),
+        $payload = new TransferPayload(
             self::resolvePath($entry->origin, $config->origin->path),
-            $this->rsync->userHost($config->target),
             self::resolvePath($entry->target, $config->target->path),
-        );
-    }
-
-    /**
-     * @return array{0: string, 1: string}
-     */
-    public function proxyCommands(SyncConfig $config, FileTransferConfig $entry, string $localTemp): array
-    {
-        $options = $this->entryOptions($config, $entry);
-
-        $pull = $this->rsync->build(
-            $this->rsync->passwordEnvironment($config->origin, $config->useSshpass),
-            $options,
-            $this->rsync->authorization($config->origin, $config->useSshpass, $config->origin->jumpHost),
-            $this->rsync->userHost($config->origin),
-            self::resolvePath($entry->origin, $config->origin->path),
-            '',
-            $localTemp,
+            $entry->exclude,
+            $entry->options ?? $config->filesOptions,
         );
 
-        $push = $this->rsync->build(
-            $this->rsync->passwordEnvironment($config->target, $config->useSshpass),
-            $options,
-            $this->rsync->authorization($config->target, $config->useSshpass, $config->target->jumpHost),
-            '',
-            $localTemp,
-            $this->rsync->userHost($config->target),
-            self::resolvePath($entry->target, $config->target->path),
-        );
-
-        return [$pull, $push];
-    }
-
-    private function entryOptions(SyncConfig $config, FileTransferConfig $entry): string
-    {
-        $extra = self::excludeArguments($entry);
-        $perEntry = $entry->options ?? $config->filesOptions;
-        if (null !== $perEntry && '' !== $perEntry) {
-            $extra = '' === $extra ? $perEntry : $extra.' '.$perEntry;
-        }
-
-        return $this->rsync->options('' === $extra ? null : ' '.$extra);
-    }
-
-    private function transferEntry(SyncConfig $config, SyncMode $mode, FileTransferConfig $entry): void
-    {
-        if (SyncMode::Proxy === $mode) {
-            $localTemp = sys_get_temp_dir().'/db-sync-files-'.basename(rtrim($entry->target, '/') ?: 'files');
-            [$pull, $push] = $this->proxyCommands($config, $entry, $localTemp);
-            $local = $this->runners->local();
-
-            try {
-                $local->run($pull);
-                $local->run($push);
-            } finally {
-                $local->run(sprintf('rm -rf %s', escapeshellarg($localTemp)), true);
-            }
-
-            return;
-        }
-
-        if (SyncMode::SyncRemote === $mode) {
-            $command = sprintf(
-                'rsync %s %s %s',
-                $this->entryOptions($config, $entry),
-                escapeshellarg(self::resolvePath($entry->origin, $config->origin->path)),
-                escapeshellarg(self::resolvePath($entry->target, $config->target->path)),
-            );
-            $this->runners->forClient($config->origin, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking)->run($command);
-
-            return;
-        }
-
-        $this->runners->local()->run($this->directCommand($config, $entry));
+        $strategy = $this->transferResolver->resolve($config, $mode, $log);
+        $log('Transferring files'.$strategy->describe());
+        $strategy->transfer($config, $payload);
     }
 }

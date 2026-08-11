@@ -159,6 +159,27 @@ final class SyncScenarioTest extends TestCase
     }
 
     #[Test]
+    public function sftpFallbackSyncsADirectoryRecursivelyWhileRespectingExcludes(): void
+    {
+        $this->resetDatabases();
+        $this->compose(['exec', '-T', 'www2', 'rm', '-rf', '/tmp/synced-dir']);
+
+        $result = $this->runSyncTool('www2', 'sftp-files.yaml', ['--no-rsync', '--with-files']);
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        self::assertSame(3, $this->rowCount('db2'), 'database still syncs alongside files');
+
+        $kept = $this->compose(['exec', '-T', 'www2', 'cat', '/tmp/synced-dir/keep.txt'])->getOutput();
+        self::assertStringContainsString('php-sync-tool-sftp-dir-keep', $kept);
+
+        $nested = $this->compose(['exec', '-T', 'www2', 'cat', '/tmp/synced-dir/nested/keep-nested.txt'])->getOutput();
+        self::assertStringContainsString('php-sync-tool-sftp-dir-keep-nested', $nested);
+
+        $excluded = $this->compose(['exec', '-T', 'www2', 'test', '-f', '/tmp/synced-dir/skip.log']);
+        self::assertFalse($excluded->isSuccessful(), 'the excluded *.log file must not have been transferred');
+    }
+
+    #[Test]
     public function importFileLoadsAnExistingDumpIntoTheTarget(): void
     {
         $this->resetDatabases();

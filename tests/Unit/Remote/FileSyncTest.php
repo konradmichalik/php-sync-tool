@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 use KonradMichalik\SyncTool\Config\{FileTransferConfig, SyncConfig};
 use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Remote\FileSync;
+use KonradMichalik\SyncTool\Remote\Transfer\TransferStrategyResolver;
 use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -39,6 +40,15 @@ final class FileSyncTest extends TestCase
     }
 
     #[Test]
+    public function fromArrayReturnsDefaultsForEmptyInput(): void
+    {
+        $entry = FileTransferConfig::fromArray(null);
+
+        self::assertSame('', $entry->origin);
+        self::assertSame([], $entry->exclude);
+    }
+
+    #[Test]
     public function syncTransfersEachEntryDirectlyForReceiver(): void
     {
         $config = SyncConfig::fromArray([
@@ -48,10 +58,28 @@ final class FileSyncTest extends TestCase
         ]);
 
         $recorder = new RecordingCommandRunner();
-        (new FileSync(new FakeRunnerFactory($recorder)))->sync($config, SyncMode::Receiver);
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, SyncMode::Receiver);
 
         self::assertTrue($recorder->ran('rsync'), 'transfers the entry via rsync');
         self::assertTrue($recorder->ran('--delete'), 'per-entry options are applied');
+        self::assertTrue($recorder->ran('deploy@o.example.com:/srv/app/fileadmin'));
+        self::assertTrue($recorder->ran('/var/www/fileadmin'));
+    }
+
+    #[Test]
+    public function syncAppliesGlobalFilesOptionsWhenEntryHasNone(): void
+    {
+        $config = SyncConfig::fromArray([
+            'files_options' => '--archive',
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'path' => '/srv/app', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+            'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin']],
+        ]);
+
+        $recorder = new RecordingCommandRunner();
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, SyncMode::Receiver);
+
+        self::assertTrue($recorder->ran('--archive'));
     }
 
     #[Test]
@@ -64,10 +92,10 @@ final class FileSyncTest extends TestCase
         ]);
 
         $recorder = new RecordingCommandRunner();
-        (new FileSync(new FakeRunnerFactory($recorder)))->sync($config, SyncMode::Proxy);
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, SyncMode::Proxy);
 
-        self::assertTrue($recorder->ran('db-sync-files-fileadmin'), 'pulls and pushes through a local temp dir');
-        self::assertTrue($recorder->ran('rm -rf'), 'cleans up the local temp dir');
+        self::assertTrue($recorder->ran('php-sync-tool-fileadmin'), 'pulls and pushes through a local temp path');
+        self::assertTrue($recorder->ran('rm -rf'), 'cleans up the local temp path');
     }
 
     #[Test]
@@ -81,7 +109,7 @@ final class FileSyncTest extends TestCase
         ]);
 
         $recorder = new RecordingCommandRunner();
-        (new FileSync(new FakeRunnerFactory($recorder)))->sync($config, SyncMode::SyncRemote);
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, SyncMode::SyncRemote);
 
         self::assertTrue($recorder->ran('rsync'), 'runs a plain rsync on the remote host');
         self::assertTrue($recorder->ran('/srv/app/fileadmin'));
@@ -89,69 +117,28 @@ final class FileSyncTest extends TestCase
     }
 
     #[Test]
-    public function fromArrayReturnsDefaultsForEmptyInput(): void
-    {
-        $entry = FileTransferConfig::fromArray(null);
-
-        self::assertSame('', $entry->origin);
-        self::assertSame([], $entry->exclude);
-    }
-
-    #[Test]
-    public function excludeArgumentsRenderPatterns(): void
-    {
-        self::assertSame('', FileSync::excludeArguments(new FileTransferConfig()));
-        self::assertSame(
-            "--exclude='*.log' --exclude='cache/'",
-            FileSync::excludeArguments(new FileTransferConfig(exclude: ['*.log', 'cache/'])),
-        );
-    }
-
-    #[Test]
-    public function directCommandPullsForReceiver(): void
+    public function syncLogsTransferringFilesAndTheActualCommandWhenLogGiven(): void
     {
         $config = SyncConfig::fromArray([
             'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'path' => '/srv/app', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
             'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
-            'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin', 'exclude' => ['*.log']]],
-        ]);
-
-        $cmd = (new FileSync())->directCommand($config, $config->files[0]);
-
-        self::assertStringContainsString('deploy@o.example.com:/srv/app/fileadmin', $cmd);
-        self::assertStringContainsString('/var/www/fileadmin', $cmd);
-        self::assertStringContainsString("--exclude='*.log'", $cmd);
-    }
-
-    #[Test]
-    public function directCommandPushesForSender(): void
-    {
-        $config = SyncConfig::fromArray([
-            'origin' => ['path' => '/var/www', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
-            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'path' => '/srv/app', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
             'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin']],
         ]);
 
-        $cmd = (new FileSync())->directCommand($config, $config->files[0]);
+        $logs = [];
+        $recorder = new RecordingCommandRunner();
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync(
+            $config,
+            SyncMode::Receiver,
+            static function (string $message) use (&$logs): void {
+                $logs[] = $message;
+            },
+        );
 
-        self::assertStringContainsString('/var/www/fileadmin', $cmd);
-        self::assertStringContainsString('deploy@t.example.com:/srv/app/fileadmin', $cmd);
-    }
-
-    #[Test]
-    public function proxyCommandsUseLocalTempBetweenHosts(): void
-    {
-        $config = SyncConfig::fromArray([
-            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'path' => '/srv/app', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
-            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'path' => '/srv/web', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
-            'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin']],
-        ]);
-
-        [$pull, $push] = (new FileSync())->proxyCommands($config, $config->files[0], '/tmp/ftmp');
-
-        self::assertStringContainsString('deploy@o.example.com:/srv/app/fileadmin', $pull);
-        self::assertStringContainsString('/tmp/ftmp', $pull);
-        self::assertStringContainsString('/tmp/ftmp', $push);
-        self::assertStringContainsString('deploy@t.example.com:/srv/web/fileadmin', $push);
+        self::assertContains('Transferring files', $logs);
+        self::assertNotEmpty(
+            array_filter($logs, static fn (string $line): bool => str_contains($line, 'rsync')),
+            'the actual rsync command is logged too, not just the generic status line',
+        );
     }
 }

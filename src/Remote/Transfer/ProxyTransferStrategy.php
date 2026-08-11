@@ -11,39 +11,53 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace KonradMichalik\SyncTool\Remote;
+namespace KonradMichalik\SyncTool\Remote\Transfer;
 
+use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
+use KonradMichalik\SyncTool\Security\LogSanitizer;
 
 use function basename;
+use function rtrim;
+use function sprintf;
 use function sys_get_temp_dir;
 
 /**
- * ProxyTransfer.
+ * ProxyTransferStrategy.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final readonly class ProxyTransfer
+final readonly class ProxyTransferStrategy implements TransferStrategy
 {
+    /** @var Closure(string): void */
+    private Closure $log;
+
     public function __construct(
         private RunnerFactory $runners = new RunnerFactory(),
         private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
-    ) {}
+        ?Closure $log = null,
+    ) {
+        $this->log = $log ?? static function (string $message): void {};
+    }
 
-    /**
-     * @return array{0: string, 1: string} pull (origin → local temp), push (local temp → target)
-     */
-    public function commands(SyncConfig $config, string $originGz, string $localTemp, string $targetGz): array
+    public function describe(): string
     {
-        $options = $this->rsync->options($config->useRsyncOptions);
+        return ' via proxy (origin → local → target)';
+    }
+
+    public function transfer(SyncConfig $config, TransferPayload $payload): void
+    {
+        $localTemp = sys_get_temp_dir().'/php-sync-tool-'.basename(rtrim($payload->targetPath, '/'));
+        $options = $this->rsync->options($payload->extraRsyncOptions, $payload->excludePatterns);
 
         $pull = $this->rsync->build(
             $this->rsync->passwordEnvironment($config->origin, $config->useSshpass),
             $options,
             $this->rsync->authorization($config->origin, $config->useSshpass, $config->origin->jumpHost),
             $this->rsync->userHost($config->origin),
-            $originGz,
+            $payload->originPath,
             '',
             $localTemp,
         );
@@ -55,26 +69,18 @@ final readonly class ProxyTransfer
             '',
             $localTemp,
             $this->rsync->userHost($config->target),
-            $targetGz,
+            $payload->targetPath,
         );
-
-        return [$pull, $push];
-    }
-
-    public function transfer(SyncConfig $config, string $originGz, string $targetGz): void
-    {
-        $localTemp = sys_get_temp_dir().'/'.basename($targetGz);
-        [$pull, $push] = $this->commands($config, $originGz, $localTemp, $targetGz);
 
         $local = $this->runners->local();
 
         try {
+            ($this->log)('  $ '.LogSanitizer::sanitize($pull));
             $local->run($pull);
+            ($this->log)('  $ '.LogSanitizer::sanitize($push));
             $local->run($push);
         } finally {
-            if (is_file($localTemp)) {
-                unlink($localTemp);
-            }
+            $local->run(sprintf('rm -rf %s', escapeshellarg($localTemp)), true);
         }
     }
 }

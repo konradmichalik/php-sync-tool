@@ -16,7 +16,8 @@ namespace KonradMichalik\SyncTool\Tests\Unit;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Exception\SyncException;
-use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, ProxyTransfer};
+use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync};
+use KonradMichalik\SyncTool\Remote\Transfer\TransferStrategyResolver;
 use KonradMichalik\SyncTool\Sync;
 use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
 use PHPUnit\Framework\Attributes\Test;
@@ -45,9 +46,9 @@ final class SyncTest extends TestCase
         $recorder = $this->runSync($this->localConfig(), SyncMode::SyncLocal);
 
         self::assertTrue($recorder->ran('mysqldump'), 'creates origin dump');
-        self::assertTrue($recorder->ran('cp '), 'copies dump locally');
+        self::assertTrue($recorder->ran('rsync'), 'transfers the dump via rsync, even for a local-to-local copy');
         self::assertTrue($recorder->ran('gunzip -c'), 'imports dump into target');
-        self::assertContains('Copying dump locally', $this->logs);
+        self::assertContains('Transferring dump', $this->logs);
     }
 
     #[Test]
@@ -62,6 +63,24 @@ final class SyncTest extends TestCase
 
         self::assertTrue($recorder->ran('rsync'), 'transfers dump via rsync');
         self::assertContains('Transferring dump', $this->logs);
+        self::assertNotEmpty(
+            array_filter($this->logs, static fn (string $line): bool => str_contains($line, 'rsync')),
+            'the actual rsync command is logged too, not just the generic status line',
+        );
+    }
+
+    #[Test]
+    public function useRsyncOptionsIsThreadedIntoTheDumpTransferCommand(): void
+    {
+        $config = SyncConfig::fromArray([
+            'use_rsync_options' => '--bwlimit=1000',
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::Receiver);
+
+        self::assertTrue($recorder->ran('--bwlimit=1000'), 'use_rsync_options flows into the dump transfer command');
     }
 
     #[Test]
@@ -87,8 +106,8 @@ final class SyncTest extends TestCase
 
         $recorder = $this->runSync($config, SyncMode::SyncRemote);
 
-        self::assertTrue($recorder->ran('cp '), 'copies dump on remote host');
-        self::assertContains('Copying dump on the remote host', $this->logs);
+        self::assertTrue($recorder->ran('rsync'), 'copies dump on remote host via rsync');
+        self::assertContains('Transferring dump on the remote host', $this->logs);
     }
 
     #[Test]
@@ -202,6 +221,11 @@ final class SyncTest extends TestCase
         self::assertFalse($recorder->ran('mysqldump'), 'files-only skips the database');
         self::assertTrue($recorder->ran('rsync'), 'transfers files');
         self::assertContains('Synchronizing files', $this->logs);
+        self::assertContains('Transferring files', $this->logs);
+        self::assertNotEmpty(
+            array_filter($this->logs, static fn (string $line): bool => str_contains($line, 'rsync')),
+            'the actual file-transfer command is logged too, not just the generic status line',
+        );
     }
 
     #[Test]
@@ -284,8 +308,8 @@ final class SyncTest extends TestCase
 
         return new Sync(
             runners: $factory,
-            proxy: new ProxyTransfer($factory),
-            fileSync: new FileSync($factory),
+            transferResolver: new TransferStrategyResolver($factory),
+            fileSync: new FileSync(new TransferStrategyResolver($factory)),
             log: function (string $message): void {
                 $this->logs[] = $message;
             },
