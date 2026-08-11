@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- File synchronization now supports the SFTP fallback (`--no-rsync`) for
+  directories, including recursive transfer and `exclude` patterns — not
+  just the database dump.
+
+### Changed
+
+- Local-to-local and same-host (`SYNC_REMOTE`) dump transfers now use
+  `rsync` instead of `cp`, unifying with how file synchronization already
+  handled these cases. The end result is identical.
+
+### Internal
+
+- Replaced the duplicated transfer-mechanism branching in `Sync` and
+  `FileSync` with a shared `TransferStrategy` interface and resolver
+  (`Remote\Transfer\*`), removing `SftpTransfer`, `ProxyTransfer` and
+  `SftpDirection`.
+
 ## [0.1.0] - 2026-07-01
 
 Initial release — a PHP port of the Python
