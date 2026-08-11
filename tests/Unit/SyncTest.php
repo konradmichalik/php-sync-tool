@@ -304,7 +304,7 @@ final class SyncTest extends TestCase
         return new Sync(
             runners: $factory,
             transferResolver: new TransferStrategyResolver($factory),
-            fileSync: new FileSync($factory),
+            fileSync: new FileSync(new TransferStrategyResolver($factory)),
             log: function (string $message): void {
                 $this->logs[] = $message;
             },
