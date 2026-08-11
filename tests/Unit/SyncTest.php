@@ -16,7 +16,8 @@ namespace KonradMichalik\SyncTool\Tests\Unit;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Exception\SyncException;
-use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, ProxyTransfer};
+use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync};
+use KonradMichalik\SyncTool\Remote\Transfer\TransferStrategyResolver;
 use KonradMichalik\SyncTool\Sync;
 use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
 use PHPUnit\Framework\Attributes\Test;
@@ -45,9 +46,9 @@ final class SyncTest extends TestCase
         $recorder = $this->runSync($this->localConfig(), SyncMode::SyncLocal);
 
         self::assertTrue($recorder->ran('mysqldump'), 'creates origin dump');
-        self::assertTrue($recorder->ran('cp '), 'copies dump locally');
+        self::assertTrue($recorder->ran('rsync'), 'transfers the dump via rsync, even for a local-to-local copy');
         self::assertTrue($recorder->ran('gunzip -c'), 'imports dump into target');
-        self::assertContains('Copying dump locally', $this->logs);
+        self::assertContains('Transferring dump', $this->logs);
     }
 
     #[Test]
@@ -87,8 +88,8 @@ final class SyncTest extends TestCase
 
         $recorder = $this->runSync($config, SyncMode::SyncRemote);
 
-        self::assertTrue($recorder->ran('cp '), 'copies dump on remote host');
-        self::assertContains('Copying dump on the remote host', $this->logs);
+        self::assertTrue($recorder->ran('rsync'), 'copies dump on remote host via rsync');
+        self::assertContains('Transferring dump on the remote host', $this->logs);
     }
 
     #[Test]
@@ -284,7 +285,7 @@ final class SyncTest extends TestCase
 
         return new Sync(
             runners: $factory,
-            proxy: new ProxyTransfer($factory),
+            transferResolver: new TransferStrategyResolver($factory),
             fileSync: new FileSync($factory),
             log: function (string $message): void {
                 $this->logs[] = $message;
