@@ -13,10 +13,13 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote\Transfer;
 
+use FilesystemIterator;
 use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Remote\SshClientFactory;
 use phpseclib3\Net\SFTP;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 
 use function basename;
 use function dirname;
@@ -133,9 +136,9 @@ final readonly class SftpTransferStrategy implements TransferStrategy
         $originDir = rtrim($originDir, '/');
         $targetDir = rtrim($targetDir, '/');
 
-        $iterator = new \RecursiveIteratorIterator(
-            new \RecursiveDirectoryIterator($originDir, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::SELF_FIRST,
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($originDir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST,
         );
 
         foreach ($iterator as $item) {
