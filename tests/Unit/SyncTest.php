@@ -221,6 +221,11 @@ final class SyncTest extends TestCase
         self::assertFalse($recorder->ran('mysqldump'), 'files-only skips the database');
         self::assertTrue($recorder->ran('rsync'), 'transfers files');
         self::assertContains('Synchronizing files', $this->logs);
+        self::assertContains('Transferring files', $this->logs);
+        self::assertNotEmpty(
+            array_filter($this->logs, static fn (string $line): bool => str_contains($line, 'rsync')),
+            'the actual file-transfer command is logged too, not just the generic status line',
+        );
     }
 
     #[Test]

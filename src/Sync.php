@@ -83,7 +83,7 @@ final readonly class Sync
 
             if ($config->filesOnly || $config->withFiles) {
                 ($this->log)('Synchronizing files');
-                $this->fileSync->sync($config, $mode);
+                $this->fileSync->sync($config, $mode, $this->log);
             }
 
             $this->scripts->run($local, $config, LifecyclePhase::After);

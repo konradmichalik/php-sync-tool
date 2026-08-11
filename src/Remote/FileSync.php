@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use Closure;
 use KonradMichalik\SyncTool\Config\{FileTransferConfig, SyncConfig};
 use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
@@ -32,10 +33,12 @@ final readonly class FileSync
         private TransferStrategyResolver $transferResolver = new TransferStrategyResolver(),
     ) {}
 
-    public function sync(SyncConfig $config, SyncMode $mode): void
+    public function sync(SyncConfig $config, SyncMode $mode, ?Closure $log = null): void
     {
+        $log ??= static function (string $message): void {};
+
         foreach ($config->files as $entry) {
-            $this->transferEntry($config, $mode, $entry);
+            $this->transferEntry($config, $mode, $entry, $log);
         }
     }
 
@@ -54,7 +57,7 @@ final readonly class FileSync
         return rtrim($base, '/').'/'.$path;
     }
 
-    private function transferEntry(SyncConfig $config, SyncMode $mode, FileTransferConfig $entry): void
+    private function transferEntry(SyncConfig $config, SyncMode $mode, FileTransferConfig $entry, Closure $log): void
     {
         $payload = new TransferPayload(
             self::resolvePath($entry->origin, $config->origin->path),
@@ -63,6 +66,8 @@ final readonly class FileSync
             $entry->options ?? $config->filesOptions,
         );
 
-        $this->transferResolver->resolve($config, $mode)->transfer($config, $payload);
+        $strategy = $this->transferResolver->resolve($config, $mode, $log);
+        $log('Transferring files'.$strategy->describe());
+        $strategy->transfer($config, $payload);
     }
 }

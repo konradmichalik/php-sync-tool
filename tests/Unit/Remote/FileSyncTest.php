@@ -115,4 +115,30 @@ final class FileSyncTest extends TestCase
         self::assertTrue($recorder->ran('/srv/app/fileadmin'));
         self::assertTrue($recorder->ran('--archive'), 'global files_options are applied');
     }
+
+    #[Test]
+    public function syncLogsTransferringFilesAndTheActualCommandWhenLogGiven(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'path' => '/srv/app', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+            'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin']],
+        ]);
+
+        $logs = [];
+        $recorder = new RecordingCommandRunner();
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync(
+            $config,
+            SyncMode::Receiver,
+            static function (string $message) use (&$logs): void {
+                $logs[] = $message;
+            },
+        );
+
+        self::assertContains('Transferring files', $logs);
+        self::assertNotEmpty(
+            array_filter($logs, static fn (string $line): bool => str_contains($line, 'rsync')),
+            'the actual rsync command is logged too, not just the generic status line',
+        );
+    }
 }
