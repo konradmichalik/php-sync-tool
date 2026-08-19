@@ -13,12 +13,12 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Output;
 
-use KonradMichalik\SyncTool\Enum\OutputMode;
+use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\{BufferedOutput, StreamOutput};
+use Symfony\Component\Console\Output\{BufferedOutput, OutputInterface, StreamOutput};
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
@@ -107,6 +107,73 @@ final class ConsoleReporterTest extends TestCase
         $progress->advance();
 
         self::assertSame('', $out->fetch());
+    }
+
+    #[Test]
+    public function interactiveStaysQuietAboutStepsUntilAskedForThem(): void
+    {
+        $out = new BufferedOutput();
+
+        $reporter = $this->reporter(OutputMode::Interactive, $out);
+        $reporter->step('Creating origin dump');
+        $reporter->step('  $ mysqldump ...', LogChannel::Command);
+
+        self::assertSame('', $out->fetch());
+    }
+
+    #[Test]
+    public function verboseShowsThePhasesButNotTheCommands(): void
+    {
+        $out = new BufferedOutput();
+        $out->setVerbosity(OutputInterface::VERBOSITY_VERBOSE);
+
+        $reporter = $this->reporter(OutputMode::Interactive, $out);
+        $reporter->step('Creating origin dump');
+        $reporter->step('  $ mysqldump ...', LogChannel::Command);
+
+        $text = $out->fetch();
+        self::assertStringContainsString('Creating origin dump', $text);
+        self::assertStringNotContainsString('mysqldump', $text);
+    }
+
+    #[Test]
+    public function veryVerboseAlsoShowsTheCommands(): void
+    {
+        $out = new BufferedOutput();
+        $out->setVerbosity(OutputInterface::VERBOSITY_VERY_VERBOSE);
+
+        $this->reporter(OutputMode::Interactive, $out)->step('  $ mysqldump ...', LogChannel::Command);
+
+        self::assertStringContainsString('mysqldump', $out->fetch());
+    }
+
+    #[Test]
+    public function ciKeepsEveryLineRegardlessOfVerbosity(): void
+    {
+        $out = new BufferedOutput();
+
+        $reporter = $this->reporter(OutputMode::Ci, $out);
+        $reporter->step('Creating origin dump');
+        $reporter->step('  $ mysqldump ...', LogChannel::Command);
+
+        $text = $out->fetch();
+        self::assertStringContainsString('Creating origin dump', $text);
+        self::assertStringContainsString('mysqldump', $text);
+    }
+
+    #[Test]
+    public function stepsGoThroughTheLiveLineOnceProgressIsRunning(): void
+    {
+        $stream = fopen('php://memory', 'w+');
+        self::assertIsResource($stream);
+        $out = new StreamOutput($stream, OutputInterface::VERBOSITY_VERBOSE);
+        $reporter = new ConsoleReporter(OutputMode::Interactive, new SymfonyStyle(new ArrayInput([]), $out), $out);
+
+        $reporter->progress(2);
+        $reporter->step('Creating origin dump');
+
+        rewind($stream);
+        self::assertStringContainsString('Creating origin dump', (string) stream_get_contents($stream));
     }
 
     private function reporter(OutputMode $mode, BufferedOutput $out): ConsoleReporter

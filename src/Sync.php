@@ -17,7 +17,7 @@ use Closure;
 use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
 use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\{MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, TableStatements};
-use KonradMichalik\SyncTool\Enum\{LifecyclePhase, SyncMode};
+use KonradMichalik\SyncTool\Enum\{LifecyclePhase, LogChannel, SyncMode};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
 use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
@@ -38,7 +38,7 @@ use function sprintf;
  */
 final readonly class Sync
 {
-    /** @var Closure(string): void */
+    /** @var Closure(string, LogChannel=): void */
     private Closure $log;
 
     public function __construct(
@@ -56,7 +56,7 @@ final readonly class Sync
         ?Closure $log = null,
         private SyncProgress $progress = new NullSyncProgress(),
     ) {
-        $this->log = $log ?? static function (string $message): void {};
+        $this->log = $log ?? static function (string $message, LogChannel $channel = LogChannel::Step): void {};
     }
 
     public function run(SyncConfig $config, SyncMode $mode): void
@@ -374,6 +374,6 @@ final readonly class Sync
 
     private function logCommand(string $command): void
     {
-        ($this->log)('  $ '.LogSanitizer::sanitize($command));
+        ($this->log)('  $ '.LogSanitizer::sanitize($command), LogChannel::Command);
     }
 }

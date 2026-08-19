@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Enum\LogChannel;
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 
@@ -31,7 +32,7 @@ use function sys_get_temp_dir;
  */
 final readonly class ProxyTransferStrategy implements TransferStrategy
 {
-    /** @var Closure(string): void */
+    /** @var Closure(string, LogChannel=): void */
     private Closure $log;
 
     public function __construct(
@@ -39,7 +40,7 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
         ?Closure $log = null,
     ) {
-        $this->log = $log ?? static function (string $message): void {};
+        $this->log = $log ?? static function (string $message, LogChannel $channel = LogChannel::Step): void {};
     }
 
     public function describe(): string
@@ -75,9 +76,9 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         $local = $this->runners->local();
 
         try {
-            ($this->log)('  $ '.LogSanitizer::sanitize($pull));
+            ($this->log)('  $ '.LogSanitizer::sanitize($pull), LogChannel::Command);
             $local->run($pull);
-            ($this->log)('  $ '.LogSanitizer::sanitize($push));
+            ($this->log)('  $ '.LogSanitizer::sanitize($push), LogChannel::Command);
             $local->run($push);
         } finally {
             $local->run(sprintf('rm -rf %s', escapeshellarg($localTemp)), true);

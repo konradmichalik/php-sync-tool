@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Enum\LogChannel;
 use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RsyncVersion, RunnerFactory};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
@@ -29,7 +30,7 @@ use function sprintf;
  */
 final readonly class RsyncTransferStrategy implements TransferStrategy
 {
-    /** @var Closure(string): void */
+    /** @var Closure(string, LogChannel=): void */
     private Closure $log;
 
     public function __construct(
@@ -39,7 +40,7 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
         private SyncProgress $progress = new NullSyncProgress(),
         private RsyncVersion $rsyncVersion = new RsyncVersion(),
     ) {
-        $this->log = $log ?? static function (string $message): void {};
+        $this->log = $log ?? static function (string $message, LogChannel $channel = LogChannel::Step): void {};
     }
 
     public function describe(): string
@@ -63,7 +64,7 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
             $payload->targetPath,
         );
 
-        ($this->log)('  $ '.LogSanitizer::sanitize($command));
+        ($this->log)('  $ '.LogSanitizer::sanitize($command), LogChannel::Command);
 
         try {
             $local->run($command, onOutput: $withPercentage ? $this->percentageReader() : null);

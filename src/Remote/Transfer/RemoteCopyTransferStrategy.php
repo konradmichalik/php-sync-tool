@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Enum\LogChannel;
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 
@@ -28,7 +29,7 @@ use function sprintf;
  */
 final readonly class RemoteCopyTransferStrategy implements TransferStrategy
 {
-    /** @var Closure(string): void */
+    /** @var Closure(string, LogChannel=): void */
     private Closure $log;
 
     public function __construct(
@@ -36,7 +37,7 @@ final readonly class RemoteCopyTransferStrategy implements TransferStrategy
         private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
         ?Closure $log = null,
     ) {
-        $this->log = $log ?? static function (string $message): void {};
+        $this->log = $log ?? static function (string $message, LogChannel $channel = LogChannel::Step): void {};
     }
 
     public function describe(): string
@@ -54,7 +55,7 @@ final readonly class RemoteCopyTransferStrategy implements TransferStrategy
             escapeshellarg($payload->targetPath),
         );
 
-        ($this->log)('  $ '.LogSanitizer::sanitize($command));
+        ($this->log)('  $ '.LogSanitizer::sanitize($command), LogChannel::Command);
 
         $this->runners->forClient(
             $config->origin,

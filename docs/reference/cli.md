@@ -49,6 +49,12 @@ rsync (macOS still ships 2.6.9) the transfer runs without it, and the SFTP fallb
 The line clears itself when the run ends. `--output ci`, `--output json`, `--quiet` and
 `--mute` switch it off entirely, and without a TTY it degrades to plain log lines.
 
+Interactive runs stay compact: apart from the header, the line and the result, nothing
+is printed. Add `-v` for what the tool is doing and `-vv` for the commands it runs. Both
+are printed above the live line. The verbosity threshold applies to `interactive` only:
+`--output ci` and `--output json` have no live line and keep emitting every message, and
+the `--log-file` always records everything.
+
 ## Execution Options
 
 | Option | Short | Description |

@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Command;
 
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, SyncConfig};
-use KonradMichalik\SyncTool\Enum\{OutputMode, SyncMode};
+use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode, SyncMode};
 use KonradMichalik\SyncTool\Exception\SyncToolException;
 use KonradMichalik\SyncTool\Logging\LogWriter;
 use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncSteps};
@@ -138,10 +138,8 @@ final class SyncCommand extends Command
             $progress = $reporter->progress($this->steps->count($syncConfig, $syncMode));
 
             $sync = new Sync(
-                log: static function (string $m) use ($reporter, $fileLog, $progress): void {
-                    // While a live line is on screen, log lines have to go through it
-                    // instead of writing over it.
-                    $progress->enabled() ? $progress->log($m) : $reporter->step($m);
+                log: static function (string $m, LogChannel $channel = LogChannel::Step) use ($reporter, $fileLog): void {
+                    $reporter->step($m, $channel);
                     $fileLog->log($m);
                 },
                 progress: $progress,

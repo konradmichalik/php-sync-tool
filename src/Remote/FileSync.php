@@ -15,7 +15,7 @@ namespace KonradMichalik\SyncTool\Remote;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\{FileTransferConfig, SyncConfig};
-use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Enum\{LogChannel, SyncMode};
 use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
 
@@ -40,7 +40,7 @@ final readonly class FileSync
         ?Closure $log = null,
         SyncProgress $progress = new NullSyncProgress(),
     ): void {
-        $log ??= static function (string $message): void {};
+        $log ??= static function (string $message, LogChannel $channel = LogChannel::Step): void {};
 
         foreach ($config->files as $entry) {
             $this->transferEntry($config, $mode, $entry, $log, $progress);

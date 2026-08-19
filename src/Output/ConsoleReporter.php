@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Output;
 
 use Closure;
-use KonradMichalik\SyncTool\Enum\OutputMode;
+use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode};
 use KonradMichalik\SyncTool\Output\Progress\{LiveSyncProgress, NullSyncProgress, SyncProgress};
 use Symfony\Component\Console\Output\{ConsoleOutputInterface, OutputInterface, StreamOutput};
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -33,18 +33,20 @@ use const JSON_UNESCAPED_SLASHES;
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final readonly class ConsoleReporter
+final class ConsoleReporter
 {
     /** @var Closure(): string */
-    private Closure $clock;
+    private readonly Closure $clock;
+
+    private ?SyncProgress $progress = null;
 
     /**
      * @param Closure(): string|null $clock
      */
     public function __construct(
-        private OutputMode $mode,
-        private SymfonyStyle $io,
-        private OutputInterface $output,
+        private readonly OutputMode $mode,
+        private readonly SymfonyStyle $io,
+        private readonly OutputInterface $output,
         ?Closure $clock = null,
     ) {
         $this->clock = $clock ?? static fn (): string => date(DATE_ATOM);
@@ -71,25 +73,13 @@ final readonly class ConsoleReporter
      */
     public function progress(int $totalSteps): SyncProgress
     {
-        if (OutputMode::Interactive !== $this->mode) {
-            return new NullSyncProgress();
-        }
-
-        $target = $this->output instanceof ConsoleOutputInterface
-            ? $this->output->getErrorOutput()
-            : $this->output;
-
-        if (!$target instanceof StreamOutput) {
-            return new NullSyncProgress();
-        }
-
-        return new LiveSyncProgress($totalSteps, $target->getStream());
+        return $this->progress = $this->createProgress($totalSteps);
     }
 
-    public function step(string $message): void
+    public function step(string $message, LogChannel $channel = LogChannel::Step): void
     {
         match ($this->mode) {
-            OutputMode::Interactive => $this->io->text($message),
+            OutputMode::Interactive => $this->interactiveStep($message, $channel),
             OutputMode::Ci => $this->output->writeln($message),
             OutputMode::Json => $this->output->writeln($this->jsonLine('step', $message)),
             OutputMode::Quiet => null,
@@ -114,6 +104,48 @@ final readonly class ConsoleReporter
             OutputMode::Json => $this->output->writeln($this->jsonLine('error', $message)),
             OutputMode::Quiet => $this->output->writeln($message, OutputInterface::VERBOSITY_QUIET),
         };
+    }
+
+    private function createProgress(int $totalSteps): SyncProgress
+    {
+        if (OutputMode::Interactive !== $this->mode) {
+            return new NullSyncProgress();
+        }
+
+        $target = $this->output instanceof ConsoleOutputInterface
+            ? $this->output->getErrorOutput()
+            : $this->output;
+
+        if (!$target instanceof StreamOutput) {
+            return new NullSyncProgress();
+        }
+
+        return new LiveSyncProgress($totalSteps, $target->getStream());
+    }
+
+    /**
+     * The progress line carries the phase, so interactive runs stay compact:
+     * -v adds what the tool is doing, -vv the commands it runs. A running live
+     * line prints them above itself instead of being overwritten.
+     */
+    private function interactiveStep(string $message, LogChannel $channel): void
+    {
+        $wanted = match ($channel) {
+            LogChannel::Step => $this->output->isVerbose(),
+            LogChannel::Command => $this->output->isVeryVerbose(),
+        };
+
+        if (!$wanted) {
+            return;
+        }
+
+        if (null !== $this->progress && $this->progress->enabled()) {
+            $this->progress->log($message);
+
+            return;
+        }
+
+        $this->io->text($message);
     }
 
     private function interactiveSummary(string $mode, string $origin, string $target): void
