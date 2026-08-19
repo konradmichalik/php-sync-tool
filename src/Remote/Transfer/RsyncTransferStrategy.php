@@ -15,10 +15,9 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory, ProgressHandle};
+use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory, ProgressHandle, ProgressScope};
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RsyncVersion, RunnerFactory};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
-use Throwable;
 
 use function basename;
 use function sprintf;
@@ -70,15 +69,11 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
         $label = sprintf('Transferring %s', basename($payload->originPath));
         $handle = $withPercentage ? $this->progress->bar($label) : $this->progress->spinner($label);
 
-        try {
-            $local->run($command, onOutput: $withPercentage ? $this->percentageReader($handle) : null);
-        } catch (Throwable $error) {
-            $handle->fail(sprintf('%s failed', $label));
+        $reader = $withPercentage ? $this->percentageReader($handle) : null;
 
-            throw $error;
-        }
-
-        $handle->succeed($label);
+        ProgressScope::run($handle, $label, static function () use ($local, $command, $reader): void {
+            $local->run($command, onOutput: $reader);
+        });
     }
 
     /**

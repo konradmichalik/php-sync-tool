@@ -133,10 +133,13 @@ final class SyncCommand extends Command
 
             $fileLog = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, static function (string $l): void {});
 
-            $sync = new Sync(log: static function (string $m) use ($reporter, $fileLog): void {
-                $reporter->step($m);
-                $fileLog->log($m);
-            });
+            $sync = new Sync(
+                log: static function (string $m) use ($reporter, $fileLog): void {
+                    $reporter->step($m);
+                    $fileLog->log($m);
+                },
+                progress: $reporter->progress(),
+            );
             $sync->run($syncConfig, $syncMode);
 
             $reporter->success('Synchronization complete.');

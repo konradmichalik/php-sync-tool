@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
+use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory, ProgressScope};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 
 use function sprintf;
@@ -35,6 +36,7 @@ final readonly class RemoteCopyTransferStrategy implements TransferStrategy
         private RunnerFactory $runners = new RunnerFactory(),
         private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
         ?Closure $log = null,
+        private ProgressFactory $progress = new NullProgress(),
     ) {
         $this->log = $log ?? static function (string $message): void {};
     }
@@ -56,11 +58,16 @@ final readonly class RemoteCopyTransferStrategy implements TransferStrategy
 
         ($this->log)('  $ '.LogSanitizer::sanitize($command));
 
-        $this->runners->forClient(
+        $runner = $this->runners->forClient(
             $config->origin,
             $config->sshAgent,
             $config->forcePassword,
             $config->strictHostKeyChecking,
-        )->run($command);
+        );
+
+        $label = sprintf('Transferring %s', basename($payload->originPath));
+        ProgressScope::run($this->progress->spinner($label), $label, static function () use ($runner, $command): void {
+            $runner->run($command);
+        });
     }
 }

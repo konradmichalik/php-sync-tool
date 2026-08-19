@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory};
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory, SshClientFactory};
 
 /**
@@ -32,27 +33,34 @@ final readonly class TransferStrategyResolver
         private SshClientFactory $sshClientFactory = new SshClientFactory(),
     ) {}
 
-    public function resolve(SyncConfig $config, SyncMode $mode, ?Closure $log = null): TransferStrategy
+    public function resolve(
+        SyncConfig $config,
+        SyncMode $mode,
+        ?Closure $log = null,
+        ProgressFactory $progress = new NullProgress(),
+    ): TransferStrategy
     {
         $originRemote = $config->origin->isRemote();
         $targetRemote = $config->target->isRemote();
 
         if (!$originRemote && !$targetRemote) {
-            return new RsyncTransferStrategy($this->runners, $this->rsync, $log);
+            return new RsyncTransferStrategy($this->runners, $this->rsync, $log, $progress);
         }
 
         if (!$config->useRsync) {
+            // The SFTP fallback has no progress line: phpseclib transfers block without
+            // a byte callback, and its client factory cannot be faked in a unit test.
             return new SftpTransferStrategy($this->sshClientFactory);
         }
 
         if (SyncMode::Proxy === $mode) {
-            return new ProxyTransferStrategy($this->runners, $this->rsync, $log);
+            return new ProxyTransferStrategy($this->runners, $this->rsync, $log, $progress);
         }
 
         if (SyncMode::SyncRemote === $mode) {
-            return new RemoteCopyTransferStrategy($this->runners, $this->rsync, $log);
+            return new RemoteCopyTransferStrategy($this->runners, $this->rsync, $log, $progress);
         }
 
-        return new RsyncTransferStrategy($this->runners, $this->rsync, $log);
+        return new RsyncTransferStrategy($this->runners, $this->rsync, $log, $progress);
     }
 }

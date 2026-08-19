@@ -16,10 +16,11 @@ namespace KonradMichalik\SyncTool\Tests\Unit;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Output\Progress\NullProgress;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync};
 use KonradMichalik\SyncTool\Remote\Transfer\TransferStrategyResolver;
 use KonradMichalik\SyncTool\Sync;
-use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner, RecordingProgress};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -282,6 +283,36 @@ final class SyncTest extends TestCase
         }
     }
 
+    #[Test]
+    public function reportsTheDumpAndImportPhasesAsProgress(): void
+    {
+        $progress = new RecordingProgress();
+
+        $this->syncWith(new RecordingCommandRunner(self::DEFAULT_RESPONSES), $progress)
+            ->run($this->localConfig(), SyncMode::SyncLocal);
+
+        self::assertContains('Creating origin dump', $progress->spinners);
+        self::assertContains('Importing dump', $progress->spinners);
+        self::assertContains('Creating origin dump', $progress->succeeded);
+        self::assertContains('Importing dump', $progress->succeeded);
+        self::assertSame([], $progress->failed);
+    }
+
+    #[Test]
+    public function marksTheRunningPhaseAsFailedWhenItsCommandFails(): void
+    {
+        $progress = new RecordingProgress();
+        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: 'mysqldump');
+
+        try {
+            $this->syncWith($recorder, $progress)->run($this->localConfig(), SyncMode::SyncLocal);
+            self::fail('Expected the failing dump to bubble up.');
+        } catch (SyncException) {
+            self::assertSame(['Creating origin dump failed'], $progress->failed);
+            self::assertSame([], $progress->succeeded);
+        }
+    }
+
     /**
      * @param array<string, mixed> $overrides
      */
@@ -301,7 +332,7 @@ final class SyncTest extends TestCase
         return $recorder;
     }
 
-    private function syncWith(CommandRunner $recorder): Sync
+    private function syncWith(CommandRunner $recorder, ?RecordingProgress $progress = null): Sync
     {
         $factory = new FakeRunnerFactory($recorder);
         $this->logs = [];
@@ -313,6 +344,7 @@ final class SyncTest extends TestCase
             log: function (string $message): void {
                 $this->logs[] = $message;
             },
+            progress: $progress ?? new NullProgress(),
         );
     }
 }

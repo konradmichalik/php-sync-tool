@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
+use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory, ProgressScope};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 
 use function basename;
@@ -38,6 +39,7 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         private RunnerFactory $runners = new RunnerFactory(),
         private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
         ?Closure $log = null,
+        private ProgressFactory $progress = new NullProgress(),
     ) {
         $this->log = $log ?? static function (string $message): void {};
     }
@@ -73,12 +75,15 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         );
 
         $local = $this->runners->local();
+        $label = sprintf('Transferring %s', basename($payload->originPath));
 
         try {
-            ($this->log)('  $ '.LogSanitizer::sanitize($pull));
-            $local->run($pull);
-            ($this->log)('  $ '.LogSanitizer::sanitize($push));
-            $local->run($push);
+            ProgressScope::run($this->progress->spinner($label), $label, function () use ($local, $pull, $push): void {
+                ($this->log)('  $ '.LogSanitizer::sanitize($pull));
+                $local->run($pull);
+                ($this->log)('  $ '.LogSanitizer::sanitize($push));
+                $local->run($push);
+            });
         } finally {
             $local->run(sprintf('rm -rf %s', escapeshellarg($localTemp)), true);
         }

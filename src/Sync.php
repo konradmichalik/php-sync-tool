@@ -20,6 +20,7 @@ use KonradMichalik\SyncTool\Database\{MysqlCommandBuilder, MysqlCredentials, Mys
 use KonradMichalik\SyncTool\Enum\{LifecyclePhase, SyncMode};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
+use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory, ProgressScope};
 use KonradMichalik\SyncTool\Recipe\CredentialResolver;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, RunnerFactory};
 use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
@@ -53,6 +54,7 @@ final readonly class Sync
         private DumpManager $dumps = new DumpManager(),
         private CredentialResolver $credentialResolver = new CredentialResolver(),
         ?Closure $log = null,
+        private ProgressFactory $progress = new NullProgress(),
     ) {
         $this->log = $log ?? static function (string $message): void {};
     }
@@ -146,7 +148,9 @@ final readonly class Sync
 
             ($this->log)('Creating origin dump '.$dumpName);
             $this->logCommand($command);
-            $runner->run($command);
+            $this->withSpinner('Creating origin dump', static function () use ($runner, $command): void {
+                $runner->run($command);
+            });
 
             $this->pruneDumps($client, $runner);
         } finally {
@@ -166,7 +170,7 @@ final readonly class Sync
             extraRsyncOptions: $config->useRsyncOptions,
         );
 
-        $strategy = $this->transferResolver->resolve($config, $mode, $this->log);
+        $strategy = $this->transferResolver->resolve($config, $mode, $this->log, $this->progress);
         ($this->log)('Transferring dump'.$strategy->describe());
         $strategy->transfer($config, $payload);
     }
@@ -198,7 +202,9 @@ final readonly class Sync
 
             ($this->log)('Importing dump into target');
             $this->logCommand($command);
-            $runner->run($command);
+            $this->withSpinner('Importing dump', static function () use ($runner, $command): void {
+                $runner->run($command);
+            });
 
             $this->importAfterDump($client, $runner, $credentialsArg);
             $this->runPostSql($client, $runner, $credentialsArg);
@@ -224,7 +230,10 @@ final readonly class Sync
         }
 
         ($this->log)('Importing additional dump '.$client->afterDump);
-        $runner->run($this->commands->importCommand('mysql', $credentialsArg, $client->db->name, 'gunzip', $client->afterDump));
+        $command = $this->commands->importCommand('mysql', $credentialsArg, $client->db->name, 'gunzip', $client->afterDump);
+        $this->withSpinner('Importing additional dump', static function () use ($runner, $command): void {
+            $runner->run($command);
+        });
     }
 
     private function runPostSql(ClientConfig $client, CommandRunner $runner, string $credentialsArg): void
@@ -235,8 +244,19 @@ final readonly class Sync
             }
 
             ($this->log)('Running post-import SQL');
-            $runner->run($this->commands->execCommand('mysql', $credentialsArg, $client->db->name, $sql));
+            $command = $this->commands->execCommand('mysql', $credentialsArg, $client->db->name, $sql);
+            $this->withSpinner('Running post-import SQL', static function () use ($runner, $command): void {
+                $runner->run($command);
+            });
         }
+    }
+
+    /**
+     * @param Closure(): void $work
+     */
+    private function withSpinner(string $label, Closure $work): void
+    {
+        ProgressScope::run($this->progress->spinner($label), $label, $work);
     }
 
     private function pruneDumps(ClientConfig $client, CommandRunner $runner): void
