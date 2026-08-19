@@ -44,4 +44,19 @@ final class TransferPayloadTest extends TestCase
         self::assertSame(['*.log'], $payload->excludePatterns);
         self::assertSame('--archive', $payload->extraRsyncOptions);
     }
+
+    #[Test]
+    public function labelNamesWhatIsBeingTransferred(): void
+    {
+        self::assertSame('Transferring dump.gz', (new TransferPayload('/o/dump.gz', '/t/dump.gz'))->label());
+    }
+
+    #[Test]
+    public function labelUsesTheDirectoryNameForDirectoryTransfers(): void
+    {
+        self::assertSame(
+            'Transferring fileadmin',
+            (new TransferPayload('/srv/app/fileadmin/', '/var/www/fileadmin'))->label(),
+        );
+    }
 }

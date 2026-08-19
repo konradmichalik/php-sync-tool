@@ -19,9 +19,6 @@ use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory, Prog
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RsyncVersion, RunnerFactory};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 
-use function basename;
-use function sprintf;
-
 /**
  * RsyncTransferStrategy.
  *
@@ -66,7 +63,7 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
 
         ($this->log)('  $ '.LogSanitizer::sanitize($command));
 
-        $label = sprintf('Transferring %s', basename($payload->originPath));
+        $label = $payload->label();
         $handle = $withPercentage ? $this->progress->bar($label) : $this->progress->spinner($label);
 
         $reader = $withPercentage ? $this->percentageReader($handle) : null;

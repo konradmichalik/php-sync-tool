@@ -22,10 +22,8 @@ use function version_compare;
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final class RsyncVersion
+final readonly class RsyncVersion
 {
-    private ?bool $supportsProgress2 = null;
-
     /**
      * `--info=progress2` arrived in rsync 3.1.0. Older builds abort on the unknown
      * option, and macOS still ships 2.6.9, so the version decides whether a
@@ -33,16 +31,12 @@ final class RsyncVersion
      */
     public function supportsProgress2(CommandRunner $local): bool
     {
-        if (null !== $this->supportsProgress2) {
-            return $this->supportsProgress2;
-        }
-
         $output = $local->run('rsync --version', true);
 
         if (1 !== preg_match('/version\s+(\d+(?:\.\d+)+)/', $output, $matches)) {
-            return $this->supportsProgress2 = false;
+            return false;
         }
 
-        return $this->supportsProgress2 = version_compare($matches[1], '3.1.0', '>=');
+        return version_compare($matches[1], '3.1.0', '>=');
     }
 }

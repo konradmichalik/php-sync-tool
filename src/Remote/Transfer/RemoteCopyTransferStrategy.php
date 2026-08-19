@@ -65,7 +65,7 @@ final readonly class RemoteCopyTransferStrategy implements TransferStrategy
             $config->strictHostKeyChecking,
         );
 
-        $label = sprintf('Transferring %s', basename($payload->originPath));
+        $label = $payload->label();
         ProgressScope::run($this->progress->spinner($label), $label, static function () use ($runner, $command): void {
             $runner->run($command);
         });

@@ -13,6 +13,10 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote\Transfer;
 
+use function basename;
+use function rtrim;
+use function sprintf;
+
 /**
  * TransferPayload.
  *
@@ -30,4 +34,9 @@ final readonly class TransferPayload
         public array $excludePatterns = [],
         public ?string $extraRsyncOptions = null,
     ) {}
+
+    public function label(): string
+    {
+        return sprintf('Transferring %s', basename(rtrim($this->originPath, '/')));
+    }
 }

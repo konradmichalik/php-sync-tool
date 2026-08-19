@@ -75,7 +75,7 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         );
 
         $local = $this->runners->local();
-        $label = sprintf('Transferring %s', basename($payload->originPath));
+        $label = $payload->label();
 
         try {
             ProgressScope::run($this->progress->spinner($label), $label, function () use ($local, $pull, $push): void {

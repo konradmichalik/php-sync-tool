@@ -33,9 +33,6 @@ final class RecordingCommandRunner implements CommandRunner
     /** @var list<bool> */
     public array $allowFail = [];
 
-    /** @var list<bool> */
-    public array $streamed = [];
-
     /**
      * @param array<string, string> $responses substring => canned stdout
      * @param array<string, string> $streams   substring => chunk handed to the output callback
@@ -50,7 +47,6 @@ final class RecordingCommandRunner implements CommandRunner
     {
         $this->commands[] = $command;
         $this->allowFail[] = $allowFail;
-        $this->streamed[] = null !== $onOutput;
 
         if (null !== $onOutput) {
             foreach ($this->streams as $needle => $chunk) {

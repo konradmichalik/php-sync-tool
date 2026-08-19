@@ -52,18 +52,4 @@ final class RsyncVersionTest extends TestCase
     {
         self::assertFalse((new RsyncVersion())->supportsProgress2(new RecordingCommandRunner()));
     }
-
-    #[Test]
-    public function asksTheRunnerOnlyOnce(): void
-    {
-        $runner = new RecordingCommandRunner([
-            'rsync --version' => 'rsync  version 3.4.1  protocol version 32',
-        ]);
-        $version = new RsyncVersion();
-
-        $version->supportsProgress2($runner);
-        $version->supportsProgress2($runner);
-
-        self::assertSame(['rsync --version'], $runner->commands);
-    }
 }
