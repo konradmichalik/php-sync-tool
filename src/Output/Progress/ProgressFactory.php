@@ -21,6 +21,12 @@ namespace KonradMichalik\SyncTool\Output\Progress;
  */
 interface ProgressFactory
 {
+    /**
+     * Whether anything is rendered at all. Callers use this to skip work that
+     * only exists to feed a progress display.
+     */
+    public function enabled(): bool;
+
     public function spinner(string $label): ProgressHandle;
 
     public function bar(string $label): ProgressHandle;

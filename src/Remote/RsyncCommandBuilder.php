@@ -75,9 +75,13 @@ final class RsyncCommandBuilder
     /**
      * @param list<string> $excludePatterns
      */
-    public function options(?string $additionalOptions, array $excludePatterns = []): string
+    public function options(?string $additionalOptions, array $excludePatterns = [], bool $withProgress = false): string
     {
         $options = implode(' ', self::DEFAULT_OPTIONS);
+
+        if ($withProgress) {
+            $options .= ' --info=progress2 --no-i-r';
+        }
 
         foreach ($excludePatterns as $pattern) {
             $options .= sprintf(" --exclude='%s'", str_replace("'", "'\\''", $pattern));

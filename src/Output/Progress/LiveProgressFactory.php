@@ -37,6 +37,11 @@ final readonly class LiveProgressFactory implements ProgressFactory
         $this->stream = $stream;
     }
 
+    public function enabled(): bool
+    {
+        return true;
+    }
+
     public function spinner(string $label): ProgressHandle
     {
         return $this->handle(Live::spinner($label));

@@ -38,14 +38,27 @@ final class RecordingCommandRunner implements CommandRunner
 
     /**
      * @param array<string, string> $responses substring => canned stdout
+     * @param array<string, string> $streams   substring => chunk handed to the output callback
      */
-    public function __construct(private readonly array $responses = [], private readonly ?string $throwOn = null) {}
+    public function __construct(
+        private readonly array $responses = [],
+        private readonly ?string $throwOn = null,
+        private readonly array $streams = [],
+    ) {}
 
     public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {
         $this->commands[] = $command;
         $this->allowFail[] = $allowFail;
         $this->streamed[] = null !== $onOutput;
+
+        if (null !== $onOutput) {
+            foreach ($this->streams as $needle => $chunk) {
+                if (str_contains($command, $needle)) {
+                    $onOutput($chunk);
+                }
+            }
+        }
 
         if (null !== $this->throwOn && str_contains($command, $this->throwOn)) {
             throw new SyncException('command failed: '.$command);

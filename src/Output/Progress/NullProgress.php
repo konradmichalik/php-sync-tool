@@ -21,6 +21,11 @@ namespace KonradMichalik\SyncTool\Output\Progress;
  */
 final readonly class NullProgress implements ProgressFactory, ProgressHandle
 {
+    public function enabled(): bool
+    {
+        return false;
+    }
+
     public function spinner(string $label): ProgressHandle
     {
         return $this;

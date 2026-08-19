@@ -92,6 +92,15 @@ final class RsyncCommandBuilderTest extends TestCase
     }
 
     #[Test]
+    public function optionsRequestMachineReadableProgressWhenAskedFor(): void
+    {
+        self::assertSame(
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --info=progress2 --no-i-r',
+            $this->builder->options(null, withProgress: true),
+        );
+    }
+
+    #[Test]
     public function optionsInsertsASeparatingSpaceEvenWithoutOne(): void
     {
         self::assertSame(

@@ -67,6 +67,12 @@ final class LiveProgressFactoryTest extends TestCase
         self::assertStringContainsString('[fail] Import failed', $output);
     }
 
+    #[Test]
+    public function reportsItselfAsEnabled(): void
+    {
+        self::assertTrue($this->factory()->enabled());
+    }
+
     private function factory(): LiveProgressFactory
     {
         return new LiveProgressFactory(
