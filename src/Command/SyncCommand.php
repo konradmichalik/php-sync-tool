@@ -17,7 +17,7 @@ use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidato
 use KonradMichalik\SyncTool\Enum\{OutputMode, SyncMode};
 use KonradMichalik\SyncTool\Exception\SyncToolException;
 use KonradMichalik\SyncTool\Logging\LogWriter;
-use KonradMichalik\SyncTool\Mode\SyncModeResolver;
+use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncSteps};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
 use KonradMichalik\SyncTool\Sync;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -25,6 +25,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption};
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Throwable;
 
 use function is_array;
 use function is_string;
@@ -44,6 +45,7 @@ final class SyncCommand extends Command
         private readonly ConfigLoader $loader = new ConfigLoader(),
         private readonly ConfigValidator $validator = new ConfigValidator(),
         private readonly SyncModeResolver $modeResolver = new SyncModeResolver(),
+        private readonly SyncSteps $steps = new SyncSteps(),
     ) {
         parent::__construct();
     }
@@ -133,15 +135,27 @@ final class SyncCommand extends Command
 
             $fileLog = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, static function (string $l): void {});
 
+            $progress = $reporter->progress($this->steps->count($syncConfig, $syncMode));
+
             $sync = new Sync(
-                log: static function (string $m) use ($reporter, $fileLog): void {
-                    $reporter->step($m);
+                log: static function (string $m) use ($reporter, $fileLog, $progress): void {
+                    // While a live line is on screen, log lines have to go through it
+                    // instead of writing over it.
+                    $progress->enabled() ? $progress->log($m) : $reporter->step($m);
                     $fileLog->log($m);
                 },
-                progress: $reporter->progress(),
+                progress: $progress,
             );
-            $sync->run($syncConfig, $syncMode);
 
+            try {
+                $sync->run($syncConfig, $syncMode);
+            } catch (Throwable $error) {
+                $progress->fail('Synchronization failed');
+
+                throw $error;
+            }
+
+            $progress->succeed('Synchronization complete');
             $reporter->success('Synchronization complete.');
 
             return Command::SUCCESS;

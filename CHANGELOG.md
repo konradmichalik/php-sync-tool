@@ -11,13 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Live progress output in `interactive` mode, built on
   [`konradmichalik/php-progress`](https://github.com/konradmichalik/php-progress):
-  rsync transfers render a real percentage, every other long-running phase
-  (dump, import, additional dump, post-import SQL) renders a spinner. The line
-  is written to stderr, so piped stdout stays clean, and `--output ci|json`,
-  `--quiet` and `--mute` switch it off. The percentage requires rsync 3.1
-  (`--info=progress2`); older rsync builds and the SFTP fallback fall back to a
-  spinner or no line at all.
-
+  one bar tracks the whole run and counts every planned step (dump, dump
+  transfer, import, `after_dump`, each `post_sql` statement, each `files`
+  entry), with the running phase and the rsync percentage as fields on the same
+  line. The line is written to stderr, so piped stdout stays clean, and
+  `--output ci|json`, `--quiet` and `--mute` switch it off. The percentage
+  requires rsync 3.1 (`--info=progress2`); older rsync builds and the SFTP
+  fallback advance the step count without one.
 - File synchronization now supports the SFTP fallback (`--no-rsync`) for
   directories, including recursive transfer and `exclude` patterns — not
   just the database dump.

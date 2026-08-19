@@ -15,7 +15,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Remote\Transfer;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Remote\Transfer\{RemoteCopyTransferStrategy, TransferPayload};
-use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner, RecordingProgress};
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -71,23 +71,5 @@ final class RemoteCopyTransferStrategyTest extends TestCase
         self::assertNotEmpty($logs);
         self::assertStringContainsString('rsync', $logs[0]);
         self::assertStringContainsString('/srv/app/fileadmin', $logs[0]);
-    }
-
-    #[Test]
-    public function reportsTheRemoteCopyAsASpinner(): void
-    {
-        $config = SyncConfig::fromArray([
-            'origin' => ['host' => 'h.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
-            'target' => ['host' => 'h.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
-        ]);
-        $progress = new RecordingProgress();
-
-        (new RemoteCopyTransferStrategy(new FakeRunnerFactory(new RecordingCommandRunner()), progress: $progress))->transfer(
-            $config,
-            new TransferPayload('/srv/app/dump.gz', '/srv/web/dump.gz'),
-        );
-
-        self::assertSame(['Transferring dump.gz'], $progress->spinners);
-        self::assertSame(['Transferring dump.gz'], $progress->succeeded);
     }
 }

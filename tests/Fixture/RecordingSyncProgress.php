@@ -13,24 +13,26 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Fixture;
 
-use KonradMichalik\SyncTool\Output\Progress\{ProgressFactory, ProgressHandle};
+use KonradMichalik\SyncTool\Output\Progress\SyncProgress;
 
 /**
- * RecordingProgress.
+ * RecordingSyncProgress.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final class RecordingProgress implements ProgressFactory, ProgressHandle
+final class RecordingSyncProgress implements SyncProgress
 {
     /** @var list<string> */
-    public array $bars = [];
+    public array $phases = [];
+
+    /** @var list<array{string, string|null}> */
+    public array $details = [];
+
+    public int $advances = 0;
 
     /** @var list<string> */
-    public array $spinners = [];
-
-    /** @var list<float> */
-    public array $percents = [];
+    public array $logs = [];
 
     /** @var list<string> */
     public array $succeeded = [];
@@ -45,23 +47,24 @@ final class RecordingProgress implements ProgressFactory, ProgressHandle
         return $this->enabled;
     }
 
-    public function spinner(string $label): ProgressHandle
+    public function phase(string $label): void
     {
-        $this->spinners[] = $label;
-
-        return $this;
+        $this->phases[] = $label;
     }
 
-    public function bar(string $label): ProgressHandle
+    public function detail(string $key, ?string $value): void
     {
-        $this->bars[] = $label;
-
-        return $this;
+        $this->details[] = [$key, $value];
     }
 
-    public function progress(float $percent): void
+    public function advance(): void
     {
-        $this->percents[] = $percent;
+        ++$this->advances;
+    }
+
+    public function log(string $line): void
+    {
+        $this->logs[] = $line;
     }
 
     public function succeed(string $text): void

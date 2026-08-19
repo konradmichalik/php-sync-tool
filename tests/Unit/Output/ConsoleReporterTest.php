@@ -81,7 +81,7 @@ final class ConsoleReporterTest extends TestCase
         $out = new StreamOutput($stream);
         $reporter = new ConsoleReporter(OutputMode::Interactive, new SymfonyStyle(new ArrayInput([]), $out), $out);
 
-        $reporter->progress()->spinner('Dumping database')->succeed('Dump written');
+        $reporter->progress(2)->succeed('Dump written');
 
         rewind($stream);
         self::assertStringContainsString('Dump written', (string) stream_get_contents($stream));
@@ -92,7 +92,7 @@ final class ConsoleReporterTest extends TestCase
     {
         $out = new BufferedOutput();
 
-        $this->reporter(OutputMode::Ci, $out)->progress()->bar('Transferring dump')->succeed('Transfer complete');
+        $this->reporter(OutputMode::Ci, $out)->progress(2)->succeed('Transfer complete');
 
         self::assertSame('', $out->fetch());
     }
@@ -102,7 +102,9 @@ final class ConsoleReporterTest extends TestCase
     {
         $out = new BufferedOutput();
 
-        $this->reporter(OutputMode::Json, $out)->progress()->bar('Transferring dump')->progress(50.0);
+        $progress = $this->reporter(OutputMode::Json, $out)->progress(2);
+        $progress->phase('Transferring dump');
+        $progress->advance();
 
         self::assertSame('', $out->fetch());
     }

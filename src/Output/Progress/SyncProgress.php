@@ -14,20 +14,34 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Output\Progress;
 
 /**
- * ProgressFactory.
+ * SyncProgress.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-interface ProgressFactory
+interface SyncProgress
 {
     /**
      * Whether anything is rendered at all. Callers use this to skip work that
-     * only exists to feed a progress display.
+     * only exists to feed the display.
      */
     public function enabled(): bool;
 
-    public function spinner(string $label): ProgressHandle;
+    public function phase(string $label): void;
 
-    public function bar(string $label): ProgressHandle;
+    /**
+     * Adds extra information to the line, or removes it again with a null value.
+     */
+    public function detail(string $key, ?string $value): void;
+
+    public function advance(): void;
+
+    /**
+     * Writes a log line above the live line instead of overwriting it.
+     */
+    public function log(string $line): void;
+
+    public function succeed(string $text): void;
+
+    public function fail(string $text): void;
 }

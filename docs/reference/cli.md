@@ -36,16 +36,18 @@ Both are optional. When omitted, configuration comes from `-f` or discovery.
 
 ### Progress Display
 
-In `interactive` mode every long-running phase (dump, transfer, import, additional dump,
-post-import SQL) renders a live line on **stderr**, so piped stdout stays clean. rsync
-transfers show a real percentage; every other phase shows a spinner.
+In `interactive` mode a single live line on **stderr** tracks the whole run, so piped
+stdout stays clean. The bar counts the planned steps: the dump, the dump transfer, the
+import, an `after_dump` import, each `post_sql` statement and each `files` entry. The
+running phase and the rsync percentage appear as fields on the same line, and log lines
+are printed above it.
 
-The percentage needs `--info=progress2`, which rsync added in 3.1. On an older rsync
-(macOS still ships 2.6.9) the transfer falls back to a spinner. The SFTP fallback
-(`--no-rsync`) has no live line at all.
+The rsync percentage needs `--info=progress2`, which rsync added in 3.1. On an older
+rsync (macOS still ships 2.6.9) the transfer runs without it, and the SFTP fallback
+(`--no-rsync`) reports no percentage either. In both cases the step count still advances.
 
-`--output ci`, `--output json`, `--quiet` and `--mute` switch the display off entirely.
-Without a TTY the line degrades to plain log lines.
+The line clears itself when the run ends. `--output ci`, `--output json`, `--quiet` and
+`--mute` switch it off entirely, and without a TTY it degrades to plain log lines.
 
 ## Execution Options
 

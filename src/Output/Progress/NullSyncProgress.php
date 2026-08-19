@@ -14,29 +14,25 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Output\Progress;
 
 /**
- * NullProgress.
+ * NullSyncProgress.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final readonly class NullProgress implements ProgressFactory, ProgressHandle
+final readonly class NullSyncProgress implements SyncProgress
 {
     public function enabled(): bool
     {
         return false;
     }
 
-    public function spinner(string $label): ProgressHandle
-    {
-        return $this;
-    }
+    public function phase(string $label): void {}
 
-    public function bar(string $label): ProgressHandle
-    {
-        return $this;
-    }
+    public function detail(string $key, ?string $value): void {}
 
-    public function progress(float $percent): void {}
+    public function advance(): void {}
+
+    public function log(string $line): void {}
 
     public function succeed(string $text): void {}
 

@@ -15,7 +15,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Remote\Transfer;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Remote\Transfer\{ProxyTransferStrategy, TransferPayload};
-use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner, RecordingProgress};
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -88,23 +88,5 @@ final class ProxyTransferStrategyTest extends TestCase
         self::assertCount(2, $logs, 'logs once per leg (pull, push)');
         self::assertStringContainsString('deploy@o.example.com:/o/dump.gz', $logs[0]);
         self::assertStringContainsString('deploy@t.example.com:/t/dump.gz', $logs[1]);
-    }
-
-    #[Test]
-    public function reportsBothLegsAsOneSpinner(): void
-    {
-        $config = SyncConfig::fromArray([
-            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
-            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
-        ]);
-        $progress = new RecordingProgress();
-
-        (new ProxyTransferStrategy(new FakeRunnerFactory(new RecordingCommandRunner()), progress: $progress))->transfer(
-            $config,
-            new TransferPayload('/o/dump.gz', '/t/dump.gz'),
-        );
-
-        self::assertSame(['Transferring dump.gz'], $progress->spinners);
-        self::assertSame(['Transferring dump.gz'], $progress->succeeded);
     }
 }

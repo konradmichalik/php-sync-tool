@@ -14,9 +14,8 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Remote\Transfer;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Remote\Transfer\{RsyncTransferStrategy, TransferPayload};
-use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner, RecordingProgress};
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner, RecordingSyncProgress};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -91,13 +90,13 @@ final class RsyncTransferStrategyTest extends TestCase
     }
 
     #[Test]
-    public function rendersABarFedByTheRsyncPercentageWhenRsyncSupportsIt(): void
+    public function reportsTheRsyncPercentageAsADetailAndClearsItAfterwards(): void
     {
         $recorder = new RecordingCommandRunner(
             ['rsync --version' => 'rsync  version 3.2.7  protocol version 31'],
             streams: ['--info=progress2' => "  1,000  10%  1MB/s\r  4,500  45%  2MB/s\r"],
         );
-        $progress = new RecordingProgress();
+        $progress = new RecordingSyncProgress();
 
         (new RsyncTransferStrategy(new FakeRunnerFactory($recorder), progress: $progress))->transfer(
             $this->config(),
@@ -105,16 +104,14 @@ final class RsyncTransferStrategyTest extends TestCase
         );
 
         self::assertTrue($recorder->ran('--info=progress2'));
-        self::assertSame([45.0], $progress->percents);
-        self::assertCount(1, $progress->bars);
-        self::assertCount(1, $progress->succeeded);
+        self::assertSame([['rsync', '45%'], ['rsync', null]], $progress->details);
     }
 
     #[Test]
-    public function fallsBackToASpinnerWhenRsyncIsTooOldForProgressOutput(): void
+    public function asksAnOldRsyncForNoProgressOutputAtAll(): void
     {
         $recorder = new RecordingCommandRunner(['rsync --version' => 'rsync  version 2.6.9  protocol version 29']);
-        $progress = new RecordingProgress();
+        $progress = new RecordingSyncProgress();
 
         (new RsyncTransferStrategy(new FakeRunnerFactory($recorder), progress: $progress))->transfer(
             $this->config(),
@@ -122,30 +119,7 @@ final class RsyncTransferStrategyTest extends TestCase
         );
 
         self::assertFalse($recorder->ran('--info=progress2'));
-        self::assertSame([], $progress->bars);
-        self::assertCount(1, $progress->spinners);
-        self::assertCount(1, $progress->succeeded);
-    }
-
-    #[Test]
-    public function marksTheProgressAsFailedWhenRsyncFails(): void
-    {
-        $recorder = new RecordingCommandRunner(
-            ['rsync --version' => 'rsync  version 3.2.7  protocol version 31'],
-            throwOn: '--info=progress2',
-        );
-        $progress = new RecordingProgress();
-
-        try {
-            (new RsyncTransferStrategy(new FakeRunnerFactory($recorder), progress: $progress))->transfer(
-                $this->config(),
-                new TransferPayload('/tmp/o.gz', '/tmp/t.gz'),
-            );
-            self::fail('Expected the failing rsync run to bubble up.');
-        } catch (SyncException) {
-            self::assertCount(1, $progress->failed);
-            self::assertSame([], $progress->succeeded);
-        }
+        self::assertSame([], $progress->details);
     }
 
     #[Test]

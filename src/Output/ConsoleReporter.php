@@ -15,7 +15,7 @@ namespace KonradMichalik\SyncTool\Output;
 
 use Closure;
 use KonradMichalik\SyncTool\Enum\OutputMode;
-use KonradMichalik\SyncTool\Output\Progress\{LiveProgressFactory, NullProgress, ProgressFactory};
+use KonradMichalik\SyncTool\Output\Progress\{LiveSyncProgress, NullSyncProgress, SyncProgress};
 use Symfony\Component\Console\Output\{ConsoleOutputInterface, OutputInterface, StreamOutput};
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -69,10 +69,10 @@ final readonly class ConsoleReporter
      * lines, and Quiet asked for silence. Progress renders on the error stream
      * so that piped stdout stays clean.
      */
-    public function progress(): ProgressFactory
+    public function progress(int $totalSteps): SyncProgress
     {
         if (OutputMode::Interactive !== $this->mode) {
-            return new NullProgress();
+            return new NullSyncProgress();
         }
 
         $target = $this->output instanceof ConsoleOutputInterface
@@ -80,10 +80,10 @@ final readonly class ConsoleReporter
             : $this->output;
 
         if (!$target instanceof StreamOutput) {
-            return new NullProgress();
+            return new NullSyncProgress();
         }
 
-        return new LiveProgressFactory($target->getStream());
+        return new LiveSyncProgress($totalSteps, $target->getStream());
     }
 
     public function step(string $message): void

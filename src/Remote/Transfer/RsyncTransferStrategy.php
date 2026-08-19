@@ -15,9 +15,11 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory, ProgressHandle, ProgressScope};
+use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RsyncVersion, RunnerFactory};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
+
+use function sprintf;
 
 /**
  * RsyncTransferStrategy.
@@ -34,7 +36,7 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
         private RunnerFactory $runners = new RunnerFactory(),
         private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
         ?Closure $log = null,
-        private ProgressFactory $progress = new NullProgress(),
+        private SyncProgress $progress = new NullSyncProgress(),
         private RsyncVersion $rsyncVersion = new RsyncVersion(),
     ) {
         $this->log = $log ?? static function (string $message): void {};
@@ -63,28 +65,28 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
 
         ($this->log)('  $ '.LogSanitizer::sanitize($command));
 
-        $label = $payload->label();
-        $handle = $withPercentage ? $this->progress->bar($label) : $this->progress->spinner($label);
-
-        $reader = $withPercentage ? $this->percentageReader($handle) : null;
-
-        ProgressScope::run($handle, $label, static function () use ($local, $command, $reader): void {
-            $local->run($command, onOutput: $reader);
-        });
+        try {
+            $local->run($command, onOutput: $withPercentage ? $this->percentageReader() : null);
+        } finally {
+            if ($withPercentage) {
+                $this->progress->detail('rsync', null);
+            }
+        }
     }
 
     /**
      * @return Closure(string): void
      */
-    private function percentageReader(ProgressHandle $handle): Closure
+    private function percentageReader(): Closure
     {
         $parser = new RsyncProgressParser();
+        $progress = $this->progress;
 
-        return static function (string $chunk) use ($parser, $handle): void {
+        return static function (string $chunk) use ($parser, $progress): void {
             $percent = $parser->feed($chunk);
 
             if (null !== $percent) {
-                $handle->progress($percent);
+                $progress->detail('rsync', sprintf('%d%%', (int) $percent));
             }
         };
     }

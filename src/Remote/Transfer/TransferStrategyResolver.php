@@ -16,7 +16,7 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\SyncMode;
-use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory};
+use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory, SshClientFactory};
 
 /**
@@ -37,7 +37,7 @@ final readonly class TransferStrategyResolver
         SyncConfig $config,
         SyncMode $mode,
         ?Closure $log = null,
-        ProgressFactory $progress = new NullProgress(),
+        SyncProgress $progress = new NullSyncProgress(),
     ): TransferStrategy {
         $originRemote = $config->origin->isRemote();
         $targetRemote = $config->target->isRemote();
@@ -53,11 +53,11 @@ final readonly class TransferStrategyResolver
         }
 
         if (SyncMode::Proxy === $mode) {
-            return new ProxyTransferStrategy($this->runners, $this->rsync, $log, $progress);
+            return new ProxyTransferStrategy($this->runners, $this->rsync, $log);
         }
 
         if (SyncMode::SyncRemote === $mode) {
-            return new RemoteCopyTransferStrategy($this->runners, $this->rsync, $log, $progress);
+            return new RemoteCopyTransferStrategy($this->runners, $this->rsync, $log);
         }
 
         return new RsyncTransferStrategy($this->runners, $this->rsync, $log, $progress);

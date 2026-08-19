@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Remote;
 use Closure;
 use KonradMichalik\SyncTool\Config\{FileTransferConfig, SyncConfig};
 use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
 
 use function rtrim;
@@ -33,12 +34,16 @@ final readonly class FileSync
         private TransferStrategyResolver $transferResolver = new TransferStrategyResolver(),
     ) {}
 
-    public function sync(SyncConfig $config, SyncMode $mode, ?Closure $log = null): void
-    {
+    public function sync(
+        SyncConfig $config,
+        SyncMode $mode,
+        ?Closure $log = null,
+        SyncProgress $progress = new NullSyncProgress(),
+    ): void {
         $log ??= static function (string $message): void {};
 
         foreach ($config->files as $entry) {
-            $this->transferEntry($config, $mode, $entry, $log);
+            $this->transferEntry($config, $mode, $entry, $log, $progress);
         }
     }
 
@@ -57,8 +62,13 @@ final readonly class FileSync
         return rtrim($base, '/').'/'.$path;
     }
 
-    private function transferEntry(SyncConfig $config, SyncMode $mode, FileTransferConfig $entry, Closure $log): void
-    {
+    private function transferEntry(
+        SyncConfig $config,
+        SyncMode $mode,
+        FileTransferConfig $entry,
+        Closure $log,
+        SyncProgress $progress,
+    ): void {
         $payload = new TransferPayload(
             self::resolvePath($entry->origin, $config->origin->path),
             self::resolvePath($entry->target, $config->target->path),
@@ -66,8 +76,10 @@ final readonly class FileSync
             $entry->options ?? $config->filesOptions,
         );
 
-        $strategy = $this->transferResolver->resolve($config, $mode, $log);
+        $strategy = $this->transferResolver->resolve($config, $mode, $log, $progress);
         $log('Transferring files'.$strategy->describe());
+        $progress->phase($payload->label());
         $strategy->transfer($config, $payload);
+        $progress->advance();
     }
 }
