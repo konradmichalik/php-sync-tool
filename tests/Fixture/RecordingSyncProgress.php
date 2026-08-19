@@ -26,8 +26,8 @@ final class RecordingSyncProgress implements SyncProgress
     /** @var list<string> */
     public array $phases = [];
 
-    /** @var list<array{string, string|null}> */
-    public array $details = [];
+    /** @var list<int|null> */
+    public array $percentages = [];
 
     public int $advances = 0;
 
@@ -52,9 +52,9 @@ final class RecordingSyncProgress implements SyncProgress
         $this->phases[] = $label;
     }
 
-    public function detail(string $key, ?string $value): void
+    public function transferPercentage(?int $percent): void
     {
-        $this->details[] = [$key, $value];
+        $this->percentages[] = $percent;
     }
 
     public function advance(): void

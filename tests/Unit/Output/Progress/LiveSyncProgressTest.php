@@ -60,14 +60,14 @@ final class LiveSyncProgressTest extends TestCase
     }
 
     #[Test]
-    public function showsAndClearsDetailsSuchAsTheRsyncPercentage(): void
+    public function showsAndClearsTheTransferPercentage(): void
     {
         $progress = $this->progress(2);
 
         $progress->phase('Transferring dump.gz');
-        $progress->detail('rsync', '45%');
+        $progress->transferPercentage(45);
         $progress->advance();
-        $progress->detail('rsync', null);
+        $progress->transferPercentage(null);
         $progress->phase('Importing dump');
         $progress->advance();
 

@@ -19,13 +19,13 @@ use KonradMichalik\SyncTool\Exception\SyncToolException;
 use KonradMichalik\SyncTool\Logging\LogWriter;
 use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncSteps};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
+use KonradMichalik\SyncTool\Output\Progress\NullSyncProgress;
 use KonradMichalik\SyncTool\Sync;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption};
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Throwable;
 
 use function is_array;
 use function is_string;
@@ -95,6 +95,7 @@ final class SyncCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        $progress = new NullSyncProgress();
 
         try {
             /** @var string|null $outputOption */
@@ -145,19 +146,16 @@ final class SyncCommand extends Command
                 progress: $progress,
             );
 
-            try {
-                $sync->run($syncConfig, $syncMode);
-            } catch (Throwable $error) {
-                $progress->fail('Synchronization failed');
-
-                throw $error;
-            }
+            $sync->run($syncConfig, $syncMode);
 
             $progress->succeed('Synchronization complete');
             $reporter->success('Synchronization complete.');
 
             return Command::SUCCESS;
         } catch (SyncToolException $e) {
+            // Anything outside our own hierarchy is left to Symfony; php-progress
+            // stops the line from its destructor either way.
+            $progress->fail('Synchronization failed');
             $reporter ??= new ConsoleReporter(OutputMode::Interactive, $io, $output);
             $reporter->error($e->getMessage());
 

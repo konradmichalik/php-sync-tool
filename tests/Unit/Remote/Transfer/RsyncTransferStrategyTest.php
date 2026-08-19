@@ -90,7 +90,7 @@ final class RsyncTransferStrategyTest extends TestCase
     }
 
     #[Test]
-    public function reportsTheRsyncPercentageAsADetailAndClearsItAfterwards(): void
+    public function reportsTheRsyncPercentageAndClearsItAfterwards(): void
     {
         $recorder = new RecordingCommandRunner(
             ['rsync --version' => 'rsync  version 3.2.7  protocol version 31'],
@@ -104,7 +104,7 @@ final class RsyncTransferStrategyTest extends TestCase
         );
 
         self::assertTrue($recorder->ran('--info=progress2'));
-        self::assertSame([['rsync', '45%'], ['rsync', null]], $progress->details);
+        self::assertSame([45, null], $progress->percentages);
     }
 
     #[Test]
@@ -119,7 +119,7 @@ final class RsyncTransferStrategyTest extends TestCase
         );
 
         self::assertFalse($recorder->ran('--info=progress2'));
-        self::assertSame([], $progress->details);
+        self::assertSame([null], $progress->percentages, 'clearing an unset percentage is harmless');
     }
 
     #[Test]

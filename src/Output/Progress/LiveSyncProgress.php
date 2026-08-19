@@ -16,6 +16,8 @@ namespace KonradMichalik\SyncTool\Output\Progress;
 use KonradMichalik\PhpProgress\Live;
 use KonradMichalik\PhpProgress\Terminal\Capabilities;
 
+use function sprintf;
+
 /**
  * LiveSyncProgress.
  *
@@ -53,9 +55,9 @@ final readonly class LiveSyncProgress implements SyncProgress
         $this->live->set('phase', $label, sticky: true);
     }
 
-    public function detail(string $key, ?string $value): void
+    public function transferPercentage(?int $percent): void
     {
-        $this->live->set($key, $value);
+        $this->live->set('rsync', null === $percent ? null : sprintf('%d%%', $percent));
     }
 
     public function advance(): void

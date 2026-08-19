@@ -20,8 +20,6 @@ use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RsyncVersion, RunnerFactory};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 
-use function sprintf;
-
 /**
  * RsyncTransferStrategy.
  *
@@ -69,9 +67,7 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
         try {
             $local->run($command, onOutput: $withPercentage ? $this->percentageReader() : null);
         } finally {
-            if ($withPercentage) {
-                $this->progress->detail('rsync', null);
-            }
+            $this->progress->transferPercentage(null);
         }
     }
 
@@ -87,7 +83,7 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
             $percent = $parser->feed($chunk);
 
             if (null !== $percent) {
-                $progress->detail('rsync', sprintf('%d%%', (int) $percent));
+                $progress->transferPercentage((int) $percent);
             }
         };
     }

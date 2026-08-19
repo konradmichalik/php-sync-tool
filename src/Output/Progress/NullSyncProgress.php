@@ -28,7 +28,7 @@ final readonly class NullSyncProgress implements SyncProgress
 
     public function phase(string $label): void {}
 
-    public function detail(string $key, ?string $value): void {}
+    public function transferPercentage(?int $percent): void {}
 
     public function advance(): void {}
 

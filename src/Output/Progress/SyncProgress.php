@@ -30,9 +30,9 @@ interface SyncProgress
     public function phase(string $label): void;
 
     /**
-     * Adds extra information to the line, or removes it again with a null value.
+     * Shows how far the running transfer got, or removes the figure again with null.
      */
-    public function detail(string $key, ?string $value): void;
+    public function transferPercentage(?int $percent): void;
 
     public function advance(): void;
 
