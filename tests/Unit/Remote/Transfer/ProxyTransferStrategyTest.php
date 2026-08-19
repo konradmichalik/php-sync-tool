@@ -89,6 +89,7 @@ final class ProxyTransferStrategyTest extends TestCase
         self::assertStringContainsString('deploy@o.example.com:/o/dump.gz', $logs[0]);
         self::assertStringContainsString('deploy@t.example.com:/t/dump.gz', $logs[1]);
     }
+
     #[Test]
     public function reportsBothLegsAsOneSpinner(): void
     {

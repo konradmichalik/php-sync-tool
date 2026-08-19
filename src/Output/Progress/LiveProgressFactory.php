@@ -24,18 +24,10 @@ use KonradMichalik\PhpProgress\Terminal\Capabilities;
  */
 final readonly class LiveProgressFactory implements ProgressFactory
 {
-    /** @var resource */
-    private mixed $stream;
-
     /**
      * @param resource $stream
      */
-    public function __construct(
-        mixed $stream,
-        private ?Capabilities $capabilities = null,
-    ) {
-        $this->stream = $stream;
-    }
+    public function __construct(private mixed $stream, private ?Capabilities $capabilities = null) {}
 
     public function enabled(): bool
     {

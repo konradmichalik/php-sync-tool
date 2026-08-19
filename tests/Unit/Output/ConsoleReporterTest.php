@@ -18,8 +18,7 @@ use KonradMichalik\SyncTool\Output\ConsoleReporter;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\Console\Output\StreamOutput;
+use Symfony\Component\Console\Output\{BufferedOutput, StreamOutput};
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**

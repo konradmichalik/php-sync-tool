@@ -34,6 +34,19 @@ Both are optional. When omitted, configuration comes from `-f` or discovery.
 | `--log-file` | `-l` | Write log output to a file |
 | `--json-log` | | Format log output as JSON lines |
 
+### Progress Display
+
+In `interactive` mode every long-running phase (dump, transfer, import, additional dump,
+post-import SQL) renders a live line on **stderr**, so piped stdout stays clean. rsync
+transfers show a real percentage; every other phase shows a spinner.
+
+The percentage needs `--info=progress2`, which rsync added in 3.1. On an older rsync
+(macOS still ships 2.6.9) the transfer falls back to a spinner. The SFTP fallback
+(`--no-rsync`) has no live line at all.
+
+`--output ci`, `--output json`, `--quiet` and `--mute` switch the display off entirely.
+Without a TTY the line degrades to plain log lines.
+
 ## Execution Options
 
 | Option | Short | Description |

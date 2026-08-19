@@ -15,8 +15,8 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
 use KonradMichalik\SyncTool\Output\Progress\{NullProgress, ProgressFactory, ProgressScope};
+use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 
 use function basename;

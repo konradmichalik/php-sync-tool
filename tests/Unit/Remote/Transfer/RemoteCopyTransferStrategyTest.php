@@ -72,6 +72,7 @@ final class RemoteCopyTransferStrategyTest extends TestCase
         self::assertStringContainsString('rsync', $logs[0]);
         self::assertStringContainsString('/srv/app/fileadmin', $logs[0]);
     }
+
     #[Test]
     public function reportsTheRemoteCopyAsASpinner(): void
     {

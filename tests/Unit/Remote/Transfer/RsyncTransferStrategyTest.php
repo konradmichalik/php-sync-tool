@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Remote\Transfer;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Remote\Transfer\{RsyncTransferStrategy, TransferPayload};
 use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Remote\Transfer\{RsyncTransferStrategy, TransferPayload};
 use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner, RecordingProgress};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -89,6 +89,7 @@ final class RsyncTransferStrategyTest extends TestCase
         self::assertStringContainsString('rsync', $logs[0]);
         self::assertStringContainsString('/tmp/o.gz', $logs[0]);
     }
+
     #[Test]
     public function rendersABarFedByTheRsyncPercentageWhenRsyncSupportsIt(): void
     {

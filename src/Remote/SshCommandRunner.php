@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Remote;
 
 use Closure;
-
 use KonradMichalik\SyncTool\Exception\SyncException;
 use phpseclib3\Net\SSH2;
 

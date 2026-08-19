@@ -38,8 +38,7 @@ final readonly class TransferStrategyResolver
         SyncMode $mode,
         ?Closure $log = null,
         ProgressFactory $progress = new NullProgress(),
-    ): TransferStrategy
-    {
+    ): TransferStrategy {
         $originRemote = $config->origin->isRemote();
         $targetRemote = $config->target->isRemote();
 
