@@ -19,6 +19,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\Console\Output\StreamOutput;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 /**
@@ -71,6 +72,40 @@ final class ConsoleReporterTest extends TestCase
         self::assertSame('', $out->fetch());
         $r->error('boom');
         self::assertStringContainsString('boom', $out->fetch());
+    }
+
+    #[Test]
+    public function interactiveRendersProgressOnTheCommandStream(): void
+    {
+        $stream = fopen('php://memory', 'w+');
+        self::assertIsResource($stream);
+        $out = new StreamOutput($stream);
+        $reporter = new ConsoleReporter(OutputMode::Interactive, new SymfonyStyle(new ArrayInput([]), $out), $out);
+
+        $reporter->progress()->spinner('Dumping database')->succeed('Dump written');
+
+        rewind($stream);
+        self::assertStringContainsString('Dump written', (string) stream_get_contents($stream));
+    }
+
+    #[Test]
+    public function ciSuppressesProgressOutput(): void
+    {
+        $out = new BufferedOutput();
+
+        $this->reporter(OutputMode::Ci, $out)->progress()->bar('Transferring dump')->succeed('Transfer complete');
+
+        self::assertSame('', $out->fetch());
+    }
+
+    #[Test]
+    public function jsonSuppressesProgressOutput(): void
+    {
+        $out = new BufferedOutput();
+
+        $this->reporter(OutputMode::Json, $out)->progress()->bar('Transferring dump')->progress(50.0);
+
+        self::assertSame('', $out->fetch());
     }
 
     private function reporter(OutputMode $mode, BufferedOutput $out): ConsoleReporter

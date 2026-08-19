@@ -15,7 +15,8 @@ namespace KonradMichalik\SyncTool\Output;
 
 use Closure;
 use KonradMichalik\SyncTool\Enum\OutputMode;
-use Symfony\Component\Console\Output\OutputInterface;
+use KonradMichalik\SyncTool\Output\Progress\{LiveProgressFactory, NullProgress, ProgressFactory};
+use Symfony\Component\Console\Output\{ConsoleOutputInterface, OutputInterface, StreamOutput};
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 use function date;
@@ -61,6 +62,28 @@ final readonly class ConsoleReporter
             ])),
             OutputMode::Quiet => null,
         };
+    }
+
+    /**
+     * Live progress is an interactive-only concern: CI and JSON consumers parse
+     * lines, and Quiet asked for silence. Progress renders on the error stream
+     * so that piped stdout stays clean.
+     */
+    public function progress(): ProgressFactory
+    {
+        if (OutputMode::Interactive !== $this->mode) {
+            return new NullProgress();
+        }
+
+        $target = $this->output instanceof ConsoleOutputInterface
+            ? $this->output->getErrorOutput()
+            : $this->output;
+
+        if (!$target instanceof StreamOutput) {
+            return new NullProgress();
+        }
+
+        return new LiveProgressFactory($target->getStream());
     }
 
     public function step(string $message): void
