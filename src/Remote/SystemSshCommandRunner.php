@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use Closure;
+
 use KonradMichalik\SyncTool\Config\{ClientConfig, JumpHostConfig};
 
 /**
@@ -30,8 +32,8 @@ final readonly class SystemSshCommandRunner implements CommandRunner
         private LocalCommandRunner $local = new LocalCommandRunner(),
     ) {}
 
-    public function run(string $command, bool $allowFail = false): string
+    public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {
-        return $this->local->run($this->builder->build($this->client, $this->jump, $command), $allowFail);
+        return $this->local->run($this->builder->build($this->client, $this->jump, $command), $allowFail, $onOutput);
     }
 }

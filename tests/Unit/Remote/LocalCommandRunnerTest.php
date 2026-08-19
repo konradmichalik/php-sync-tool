@@ -45,4 +45,19 @@ final class LocalCommandRunnerTest extends TestCase
     {
         self::assertSame('', (new LocalCommandRunner())->run('echo boom >&2; exit 1', true));
     }
+
+    #[Test]
+    public function streamsOutputToTheCallbackWhileTheCommandRuns(): void
+    {
+        $chunks = [];
+
+        (new LocalCommandRunner())->run(
+            "printf 'one'; printf 'two'",
+            onOutput: static function (string $chunk) use (&$chunks): void {
+                $chunks[] = $chunk;
+            },
+        );
+
+        self::assertSame('onetwo', implode('', $chunks));
+    }
 }

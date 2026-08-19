@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Fixture;
 
+use Closure;
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Remote\CommandRunner;
 
@@ -32,15 +33,19 @@ final class RecordingCommandRunner implements CommandRunner
     /** @var list<bool> */
     public array $allowFail = [];
 
+    /** @var list<bool> */
+    public array $streamed = [];
+
     /**
      * @param array<string, string> $responses substring => canned stdout
      */
     public function __construct(private readonly array $responses = [], private readonly ?string $throwOn = null) {}
 
-    public function run(string $command, bool $allowFail = false): string
+    public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {
         $this->commands[] = $command;
         $this->allowFail[] = $allowFail;
+        $this->streamed[] = null !== $onOutput;
 
         if (null !== $this->throwOn && str_contains($command, $this->throwOn)) {
             throw new SyncException('command failed: '.$command);

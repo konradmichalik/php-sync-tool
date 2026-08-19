@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use Closure;
+
 use KonradMichalik\SyncTool\Exception\SyncException;
 use phpseclib3\Net\SSH2;
 
@@ -31,7 +33,10 @@ final readonly class SshCommandRunner implements CommandRunner
         private SSH2 $ssh,
     ) {}
 
-    public function run(string $command, bool $allowFail = false): string
+    /**
+     * phpseclib buffers the whole response, so $onOutput has nothing to stream and is ignored.
+     */
+    public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {
         $output = $this->ssh->exec($command);
 

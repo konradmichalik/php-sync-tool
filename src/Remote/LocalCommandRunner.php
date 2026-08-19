@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use Closure;
 use KonradMichalik\SyncTool\Exception\SyncException;
 use Symfony\Component\Process\Process;
 
@@ -28,11 +29,15 @@ final readonly class LocalCommandRunner implements CommandRunner
         private int $timeout = 600,
     ) {}
 
-    public function run(string $command, bool $allowFail = false): string
+    public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {
         $process = Process::fromShellCommandline($command);
         $process->setTimeout((float) $this->timeout);
-        $process->run();
+        $process->run(null === $onOutput ? null : static function (string $type, string $buffer) use ($onOutput): void {
+            if (Process::OUT === $type) {
+                $onOutput($buffer);
+            }
+        });
 
         if (!$process->isSuccessful() && '' !== trim($process->getErrorOutput()) && !$allowFail) {
             throw new SyncException($process->getErrorOutput());

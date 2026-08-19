@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use Closure;
+
 /**
  * CommandRunner.
  *
@@ -22,7 +24,10 @@ namespace KonradMichalik\SyncTool\Remote;
 interface CommandRunner
 {
     /**
+     * @param Closure(string): void|null $onOutput receives raw stdout chunks while the command
+     *                                             runs; runners that cannot stream ignore it
+     *
      * @throws \KonradMichalik\SyncTool\Exception\SyncException on failure unless $allowFail
      */
-    public function run(string $command, bool $allowFail = false): string;
+    public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string;
 }

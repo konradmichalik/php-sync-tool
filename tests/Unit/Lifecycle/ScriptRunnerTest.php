@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Lifecycle;
 
+use Closure;
 use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
 use KonradMichalik\SyncTool\Enum\LifecyclePhase;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
@@ -59,7 +60,7 @@ final class ScriptRunnerTest extends TestCase
             /** @var list<string> */
             public array $commands = [];
 
-            public function run(string $command, bool $allowFail = false): string
+            public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
             {
                 $this->commands[] = $command;
 
