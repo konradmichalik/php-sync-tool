@@ -143,4 +143,25 @@ final class LogSanitizerTest extends TestCase
         self::assertStringContainsString('dbname', $result);
         self::assertStringContainsString('--defaults-file=***', $result);
     }
+
+    #[Test]
+    public function keepsLongOptionsThatMerelyContainMinusP(): void
+    {
+        self::assertSame(
+            'pg_dump --no-owner --no-privileges -d app',
+            LogSanitizer::sanitize('pg_dump --no-owner --no-privileges -d app'),
+        );
+    }
+
+    #[Test]
+    public function stillMasksAnAttachedMysqlPassword(): void
+    {
+        self::assertSame('mysql -u root -p***', LogSanitizer::sanitize('mysql -u root -psecret'));
+    }
+
+    #[Test]
+    public function leavesASpaceSeparatedPortAlone(): void
+    {
+        self::assertSame('psql -h db -p 5432 -d app', LogSanitizer::sanitize('psql -h db -p 5432 -d app'));
+    }
 }
