@@ -4,3 +4,13 @@ CREATE TABLE IF NOT EXISTS person (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL
 );
+
+-- Second table for the anonymization scenario: plaintext values that masking
+-- must have replaced after a sync.
+CREATE TABLE IF NOT EXISTS account (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    display_name VARCHAR(255) NOT NULL,
+    notes VARCHAR(255) NULL
+);

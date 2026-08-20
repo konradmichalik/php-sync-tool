@@ -1,0 +1,37 @@
+# Anonymization scenario, driven from inside www2: a plain RECEIVER sync whose
+# target masks the `account` table with all four strategies.
+#
+# Run: docker compose exec www2 php /app/bin/sync-tool \
+#        -f /app/docker/configs/anonymize.yaml -y
+use_sshpass: true
+ssh_strict_host_key_checking: false
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db1
+    user: db
+    password: db
+    port: 3306
+
+target:
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db2
+    user: db
+    password: db
+    port: 3306
+  anonymize:
+    account:
+      email: email
+      password: hash
+      display_name:
+        strategy: static
+        value: Redacted
+      notes: 'null'

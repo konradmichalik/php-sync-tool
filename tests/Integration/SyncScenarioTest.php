@@ -266,6 +266,23 @@ final class SyncScenarioTest extends TestCase
         self::assertSame(3, $this->postgresRowCount('pgdb2', 'person'));
     }
 
+    #[Test]
+    public function anonymizationReplacesEveryConfiguredColumnAfterTheImport(): void
+    {
+        $result = $this->runSyncTool('www2', 'anonymize.yaml');
+        self::assertTrue($result->isSuccessful(), $result->getOutput().$result->getErrorOutput());
+
+        $row = $this->mysqlRow('db2', "SELECT email, password, display_name, notes FROM account WHERE email LIKE '%@example.invalid' LIMIT 1");
+
+        self::assertMatchesRegularExpression('#^[0-9a-f]{32}@example\\.invalid$#', $row[0], 'email is hashed into the reserved domain');
+        self::assertMatchesRegularExpression('#^[0-9a-f]{32}$#', $row[1], 'password is hashed');
+        self::assertSame('Redacted', $row[2], 'display name is the configured static value');
+        self::assertSame('NULL', $row[3], 'notes are nulled');
+
+        $plaintext = $this->compose(['exec', '-T', 'db2', 'mariadb', '-udb', '-pdb', 'db', '-N', '-e', "SELECT COUNT(*) FROM account WHERE email = 'alice@example.com'"])->getOutput();
+        self::assertSame(0, (int) trim($plaintext), 'no plaintext address survives');
+    }
+
     private function resetDatabases(): void
     {
         $this->mysql('db1', 'DROP TABLE IF EXISTS person, cache_a, cache_b; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');
@@ -287,6 +304,16 @@ final class SyncScenarioTest extends TestCase
     private function mysql(string $dbService, string $sql): void
     {
         $this->compose(['exec', '-T', $dbService, 'mariadb', '-udb', '-pdb', 'db', '-e', $sql]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function mysqlRow(string $dbService, string $sql): array
+    {
+        $output = $this->compose(['exec', '-T', $dbService, 'mariadb', '-udb', '-pdb', 'db', '-N', '-e', $sql])->getOutput();
+
+        return array_map(trim(...), explode("\t", trim($output)));
     }
 
     private function postgresRowCount(string $dbService, string $table): int

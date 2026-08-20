@@ -4,7 +4,7 @@ This stack simulates synchronizing a database between two hosts.
 
 | Service | Role | SSH | Database |
 |---------|------|-----|----------|
-| `db1`   | origin DB (seeded: `person` = 3 rows) | — | `127.0.0.1:33861` |
+| `db1`   | origin DB (seeded: `person` = 3 rows, `account` = 2 rows) | — | `127.0.0.1:33861` |
 | `db2`   | target DB (empty: `person` = 0 rows)  | — | `127.0.0.1:33862` |
 | `www1`  | origin host (reaches `db1`) | `localhost:2211` | — |
 | `www2`  | target host (reaches `db2`), drives the sync | `localhost:2212` | — |
@@ -37,8 +37,9 @@ composer docker:down      # stop and remove the stack
 `composer test:scenarios` brings the stack up and exercises all configs in
 `docker/configs/`: RECEIVER, SENDER, PROXY, SFTP fallback (dump and
 recursive directory transfer with excludes), clear-database, post_sql,
-where-clause, keep-dump, with-files, import-file, PostgreSQL, and framework
-credential auto-detection for TYPO3, Symfony, Drupal, WordPress and Laravel.
+where-clause, keep-dump, with-files, import-file, PostgreSQL, anonymization, and
+framework credential auto-detection for TYPO3, Symfony, Drupal, WordPress and
+Laravel.
 
 ## Run a sync (RECEIVER: www1 → www2)
 
