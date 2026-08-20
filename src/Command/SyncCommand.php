@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Command;
 
-use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, SyncConfig};
+use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, EnvironmentAssembler, SyncConfig};
 use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode};
 use KonradMichalik\SyncTool\Exception\SyncToolException;
 use KonradMichalik\SyncTool\Logging\LogWriter;
@@ -27,6 +27,7 @@ use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption}
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
+use function array_keys;
 use function is_array;
 use function is_string;
 use function sprintf;
@@ -49,13 +50,17 @@ use function sprintf;
  */
 class SyncCommand extends Command
 {
+    protected readonly EnvironmentAssembler $environments;
+
     public function __construct(
         protected readonly ConfigResolver $resolver = new ConfigResolver(),
         private readonly ConfigLoader $loader = new ConfigLoader(),
         private readonly ConfigValidator $validator = new ConfigValidator(),
         private readonly SyncModeResolver $modeResolver = new SyncModeResolver(),
         private readonly SyncSteps $steps = new SyncSteps(),
+        ?EnvironmentAssembler $environments = null,
     ) {
+        $this->environments = $environments ?? new EnvironmentAssembler($resolver);
         parent::__construct();
     }
 
@@ -199,21 +204,44 @@ class SyncCommand extends Command
         /** @var string|null $hostFile */
         $hostFile = $input->getOption('host-file');
 
-        $resolved = $this->resolver->resolve($configFile, $origin, $target, $hostFile);
+        $nothingRequested = (null === $configFile || '' === $configFile) && (null === $origin || '' === $origin);
 
-        if (str_starts_with($resolved->source, 'explicit file') && null !== $resolved->configFile) {
-            $base = $this->loader->load($resolved->configFile);
-        } else {
-            $base = $resolved->mergedConfig;
-            if ([] !== $resolved->originConfig) {
-                $base['origin'] = array_merge($this->asArray($base['origin'] ?? null), $resolved->originConfig);
-            }
-            if ([] !== $resolved->targetConfig) {
-                $base['target'] = array_merge($this->asArray($base['target'] ?? null), $resolved->targetConfig);
+        if ($nothingRequested && $input->isInteractive()) {
+            $picked = $this->askWhatToSync($input, $output);
+
+            if (null !== $picked) {
+                return $this->finishConfig($picked, $input, $output);
             }
         }
 
-        return $this->finishConfig($base, $input, $output);
+        return $this->finishConfig($this->baseFromResolution($configFile, $origin, $target, $hostFile), $input, $output);
+    }
+
+    /**
+     * The configuration behind an explicit file, a project config name or a pair
+     * of host names.
+     *
+     * @return array<string, mixed>
+     */
+    protected function baseFromResolution(?string $configFile, ?string $origin, ?string $target, ?string $hostFile): array
+    {
+        $resolved = $this->resolver->resolve($configFile, $origin, $target, $hostFile);
+
+        if (str_starts_with($resolved->source, 'explicit file') && null !== $resolved->configFile) {
+            return $this->loader->load($resolved->configFile);
+        }
+
+        $base = $resolved->mergedConfig;
+
+        if ([] !== $resolved->originConfig) {
+            $base['origin'] = array_merge($this->asArray($base['origin'] ?? null), $resolved->originConfig);
+        }
+
+        if ([] !== $resolved->targetConfig) {
+            $base['target'] = array_merge($this->asArray($base['target'] ?? null), $resolved->targetConfig);
+        }
+
+        return $base;
     }
 
     /**
@@ -366,6 +394,58 @@ class SyncCommand extends Command
     protected function asArray(mixed $value): array
     {
         return is_array($value) ? $value : [];
+    }
+
+    /**
+     * Called without any hint of what to sync, on a terminal: offer what has been
+     * discovered instead of failing. Returns null when there is nothing to offer,
+     * which leaves the usual "configuration is missing" path intact.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function askWhatToSync(InputInterface $input, OutputInterface $output): ?array
+    {
+        $choices = $this->syncChoices();
+
+        if ([] === $choices) {
+            return null;
+        }
+
+        $io = new SymfonyStyle($input, $output);
+        /** @var string $chosen */
+        $chosen = $io->choice('How should this be synchronized?', array_keys($choices));
+
+        [$kind, $name] = $choices[$chosen];
+
+        return match ($kind) {
+            'pull' => $this->environments->assemble($name, true),
+            'push' => $this->environments->assemble($name, false),
+            default => $this->baseFromResolution(null, $name, null, null),
+        };
+    }
+
+    /**
+     * Every sync the discovered configuration allows, keyed by what the user reads.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    private function syncChoices(): array
+    {
+        $choices = [];
+
+        foreach (array_keys($this->resolver->getProjectConfigs()) as $name) {
+            $choices[sprintf('%s (project config)', $name)] = ['project', (string) $name];
+        }
+
+        // A direction needs a local endpoint to point at.
+        if ($this->environments->hasLocalEndpoint()) {
+            foreach (array_keys($this->resolver->getGlobalHosts()) as $name) {
+                $choices[sprintf('pull from %s', $name)] = ['pull', (string) $name];
+                $choices[sprintf('push to %s', $name)] = ['push', (string) $name];
+            }
+        }
+
+        return $choices;
     }
 
     /**
