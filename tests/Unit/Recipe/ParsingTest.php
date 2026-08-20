@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Recipe;
 
+use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use KonradMichalik\SyncTool\Exception\ParsingException;
 use KonradMichalik\SyncTool\Recipe\Parsing;
 use OutOfBoundsException;
@@ -34,7 +35,13 @@ final class ParsingTest extends TestCase
     #[DataProvider('symfonyUrlProvider')]
     public function parseSymfonyDatabaseUrl(string $url, array $expected): void
     {
-        self::assertSame($expected, Parsing::parseSymfonyDatabaseUrl($url));
+        $db = Parsing::parseSymfonyDatabaseUrl($url);
+        self::assertSame(DatabaseSystem::fromConfigValue($expected['db_type']), $db->type);
+        self::assertSame($expected['user'], $db->user);
+        self::assertSame($expected['password'], $db->password);
+        self::assertSame($expected['host'], $db->host);
+        self::assertSame((int) $expected['port'], $db->port);
+        self::assertSame($expected['name'], $db->name);
     }
 
     /**
@@ -112,6 +119,24 @@ final class ParsingTest extends TestCase
         yield 'missing port' => ['mysql://user:pass@host/db'];
         yield 'missing password' => ['mysql://user@host:3306/db'];
         yield 'empty database name' => ['mysql://user:pass@host:3306/'];
+    }
+
+    #[Test]
+    public function keepsTheDatabaseSystemFromTheUrlScheme(): void
+    {
+        $db = Parsing::parseSymfonyDatabaseUrl('postgresql://app:secret@db.example.com:5432/appdb');
+
+        self::assertSame(DatabaseSystem::PostgreSQL, $db->type);
+        self::assertSame('appdb', $db->name);
+        self::assertSame(5432, $db->port);
+    }
+
+    #[Test]
+    public function keepsMysqlAsTheSystemForAMysqlUrl(): void
+    {
+        $db = Parsing::parseSymfonyDatabaseUrl('mysql://app:secret@127.0.0.1:3306/appdb');
+
+        self::assertSame(DatabaseSystem::MySQL, $db->type);
     }
 
     #[Test]

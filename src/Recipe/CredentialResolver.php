@@ -146,7 +146,15 @@ final readonly class CredentialResolver
             return Extractors::symfonyFromParameters($content);
         }
 
-        return Parsing::parseSymfonyDatabaseUrl(Extractors::symfonyDatabaseUrlLine($content));
+        $db = Parsing::parseSymfonyDatabaseUrl(Extractors::symfonyDatabaseUrlLine($content));
+
+        return [
+            'name' => $db->name,
+            'host' => $db->host,
+            'user' => $db->user,
+            'password' => $db->password,
+            'port' => (string) $db->port,
+        ];
     }
 
     /**

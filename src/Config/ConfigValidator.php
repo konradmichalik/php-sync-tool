@@ -62,7 +62,8 @@ final class ConfigValidator
                     "user": {"type": "string"},
                     "password": {"type": "string"},
                     "port": {"type": "number"},
-                    "ssl_disabled": {"type": "boolean"}
+                    "ssl_disabled": {"type": "boolean"},
+                    "type": {"enum": ["mysql", "MySQL", "mariadb", "MariaDB", "postgres", "postgresql", "PostgreSQL", "pgsql"]}
                 }
             },
             "script": {

@@ -116,4 +116,26 @@ final class ConfigValidatorTest extends TestCase
         $this->expectException(ValidationException::class);
         (new ConfigValidator())->validate(['ssh_strict_host_key_checking' => 'yes']);
     }
+
+    #[Test]
+    public function acceptsAKnownDatabaseType(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'type' => 'postgres']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app']],
+        ]);
+    }
+
+    #[Test]
+    public function rejectsAnUnknownDatabaseType(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'type' => 'oracle']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app']],
+        ]);
+    }
 }
