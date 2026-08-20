@@ -36,7 +36,7 @@ final class MysqlCommandBuilder
         $options = self::BASE_DUMP_OPTIONS;
 
         if ('' !== $where) {
-            $options .= "--where='".$where."' ";
+            $options .= '--where='.Shell::quote($where).' ';
         }
 
         if ('' !== $additional) {
@@ -93,15 +93,18 @@ final class MysqlCommandBuilder
     }
 
     /**
-     * mysql … [db] -e "…" with the SQL escaped for a double-quoted shell argument
-     * (\\ → \\\\, " → \\", ` → \\`).
+     * mysql … [db] -e '…'.
+     *
+     * The SQL is passed as a single-quoted shell argument, so nothing in it is
+     * expanded. Double quotes would leave `$(…)` and `$VAR` live, which turned
+     * every SQL-carrying config key (`post_sql`, `anonymize.value`, `where`) into
+     * a command-execution path.
      */
     public function execCommand(string $mysqlBin, string $credentialsArg, ?string $dbName, string $sql): string
     {
         $databaseName = null !== $dbName ? ' '.Shell::quote($dbName) : '';
-        $safeSql = str_replace(['\\', '"', '`'], ['\\\\', '\\"', '\\`'], $sql);
 
-        return $mysqlBin.' '.$credentialsArg.$databaseName.' -e "'.$safeSql.'"';
+        return $mysqlBin.' '.$credentialsArg.$databaseName.' -e '.Shell::quote($sql);
     }
 
     public function showTablesLikeSql(string $dbName, string $pattern): string

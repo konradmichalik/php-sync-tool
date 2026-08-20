@@ -109,7 +109,7 @@ final class MysqlDriverTest extends TestCase
     public function executesSqlWithTheDatabaseSelected(): void
     {
         self::assertSame(
-            'mysql --defaults-extra-file=/tmp/.my_ab12.cnf app -e "SELECT 1"',
+            'mysql --defaults-extra-file=/tmp/.my_ab12.cnf app -e \'SELECT 1\'',
             $this->driver->execCommand(new DatabaseConfig(name: 'app'), '/tmp/.my_ab12.cnf', 'SELECT 1'),
         );
     }
