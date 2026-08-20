@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Database\Driver;
 
 use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
-use KonradMichalik\SyncTool\Database\{DumpRequest, PgpassFile};
+use KonradMichalik\SyncTool\Database\{ClientBinaries, DumpRequest, PgpassFile};
 use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
 use KonradMichalik\SyncTool\Security\{Shell, SqlLiteral, TableName};
 
@@ -38,6 +38,7 @@ final readonly class PostgresDriver implements DatabaseDriver
 {
     public function __construct(
         private PgpassFile $pgpass = new PgpassFile(),
+        private ClientBinaries $binaries = new ClientBinaries('psql', 'pg_dump'),
     ) {}
 
     public function system(): DatabaseSystem
@@ -70,7 +71,7 @@ final readonly class PostgresDriver implements DatabaseDriver
         }
 
         return $this->environment($request->credentialsPath)
-            .'pg_dump --no-owner --no-privileges --clean --if-exists'
+            .$this->binaries->dump.' --no-owner --no-privileges --clean --if-exists'
             .$this->connection($request->db)
             .$tables
             .' | gzip > '.Shell::quote($request->dumpFilePath.'.gz');
@@ -78,7 +79,7 @@ final readonly class PostgresDriver implements DatabaseDriver
 
     public function importCommand(DatabaseConfig $db, string $credentialsPath, string $filepath): string
     {
-        $psql = $this->environment($credentialsPath).'psql -v ON_ERROR_STOP=1 -q'.$this->connection($db);
+        $psql = $this->environment($credentialsPath).$this->binaries->client.' -v ON_ERROR_STOP=1 -q'.$this->connection($db);
         $safeFilepath = Shell::quote($filepath);
 
         if (str_ends_with($filepath, '.gz')) {
@@ -91,7 +92,7 @@ final readonly class PostgresDriver implements DatabaseDriver
     public function execCommand(DatabaseConfig $db, string $credentialsPath, string $sql): string
     {
         return $this->environment($credentialsPath)
-            .'psql -v ON_ERROR_STOP=1 -t -A'
+            .$this->binaries->client.' -v ON_ERROR_STOP=1 -t -A'
             .$this->connection($db)
             .' -c '.Shell::quote($sql);
     }

@@ -35,15 +35,15 @@ composer docker:down      # stop and remove the stack
 ```
 
 `composer test:scenarios` brings the stack up and exercises all configs in
-`docker/configs/`: RECEIVER, SENDER, PROXY, SFTP fallback (dump and
-recursive directory transfer with excludes), clear-database, post_sql,
-where-clause, keep-dump, with-files, import-file, PostgreSQL, anonymization, and
-framework credential auto-detection for TYPO3, Symfony, Drupal, WordPress and
-Laravel.
+`docker/configs/`: RECEIVER, SENDER, PROXY, SFTP fallback (dump and recursive
+directory transfer with excludes), clear-database, post_sql, where-clause,
+keep-dump, with-files, import-file, PostgreSQL, MariaDB binaries, anonymization,
+and framework credential auto-detection for TYPO3, Symfony, Drupal, WordPress
+and Laravel.
 
-`autodetect-anonymize.yaml` is the crossing of the last two: auto-detection on
-both endpoints combined with target-side masking. Features that pass on their own
-can still fail together, and this pair did.
+`autodetect-anonymize.yaml` crosses two of them: auto-detection on both endpoints
+combined with target-side masking. Features that pass on their own can still fail
+together, and this pair did.
 
 ## Run a sync (RECEIVER: www1 → www2)
 

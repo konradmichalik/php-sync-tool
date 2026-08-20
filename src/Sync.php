@@ -127,7 +127,7 @@ final readonly class Sync
     {
         $client = $config->origin;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
-        $driver = $this->drivers->forDatabase($client->db);
+        $driver = $this->drivers->forDatabase($client->db, $client->console);
         $this->assertSupported($driver, $config);
 
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
@@ -179,7 +179,7 @@ final readonly class Sync
     {
         $client = $config->target;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
-        $driver = $this->drivers->forDatabase($client->db);
+        $driver = $this->drivers->forDatabase($client->db, $client->console);
         $this->assertSupported($driver, $config);
 
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);

@@ -266,6 +266,24 @@ final class SyncScenarioTest extends TestCase
         self::assertSame(3, $this->postgresRowCount('pgdb2', 'person'));
     }
 
+    /**
+     * MariaDB 11 deprecated the `mysqldump` and `mysql` symlinks. `db.type:
+     * mariadb` has to reach for `mariadb-dump` and `mariadb` instead, and the
+     * result has to be the same sync.
+     */
+    #[Test]
+    public function aMariadbEndpointSyncsThroughTheMariadbBinaries(): void
+    {
+        $result = $this->runSyncTool('www2', 'mariadb.yaml', ['-vv']);
+
+        self::assertTrue($result->isSuccessful(), $result->getOutput().$result->getErrorOutput());
+
+        $log = $result->getOutput().$result->getErrorOutput();
+        self::assertStringContainsString('mariadb-dump ', $log);
+        self::assertStringNotContainsString('mysqldump ', $log);
+        self::assertSame(3, $this->rowCount('db2'));
+    }
+
     #[Test]
     public function anonymizationReplacesEveryConfiguredColumnAfterTheImport(): void
     {

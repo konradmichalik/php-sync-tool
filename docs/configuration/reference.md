@@ -36,7 +36,7 @@ Both `origin` and `target` accept the same structure:
 | `after_dump` | string | Additional SQL file to import after the main import. |
 | `post_sql` | array | SQL statements to execute after import, in one batch. |
 | `protect` | boolean | Refuse to use this endpoint as an import target without confirmation. |
-| `console` | object | Custom command paths (`php`, `mysql`, `mysqldump`). |
+| `console` | object | Custom binary paths, keyed by the binary they replace (`php`, `mysql`, `mysqldump`, `mariadb`, `mariadb-dump`, `psql`, `pg_dump`). |
 | `script` | object | Lifecycle commands: `before`, `after`, `error`. |
 | `db` | object | Manual database credentials (see [Database Object](#database-object)). |
 | `jump_host` | object | SSH jump host (see [Jump Host Object](#jump-host-object)). |

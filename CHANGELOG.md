@@ -53,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Database client binaries follow the endpoint's `db.type`. A `mariadb` endpoint
+  is addressed through `mariadb-dump` and `mariadb` rather than the `mysqldump`
+  and `mysql` symlinks that MariaDB 11 deprecated, and a `postgres` endpoint
+  through `pg_dump` and `psql`. The default `mysql` type is unchanged, so
+  existing configurations keep their commands.
+
+
 - The sync mode is derived from three axes (direction, operation, whether both
   endpoints share a host) instead of nine overlapping cases. The nine mode names
   in the output are unchanged.
@@ -92,6 +99,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   from `known_hosts` now fail rather than proceeding unauthenticated.
 
 ### Fixed
+
+- The `console` block now actually overrides the database client binaries. Only
+  its `php` entry was ever read; `mysql` and `mysqldump` were documented but
+  ignored.
 
 - Anonymization no longer skipped when credentials come from framework
   auto-detection. Resolving credentials rebuilds the endpoint, and that copy

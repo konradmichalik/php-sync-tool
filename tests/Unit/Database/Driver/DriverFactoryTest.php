@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Database\Driver;
 
 use KonradMichalik\SyncTool\Config\DatabaseConfig;
 use KonradMichalik\SyncTool\Database\Driver\{DriverFactory, MysqlDriver, PostgresDriver};
+use KonradMichalik\SyncTool\Database\DumpRequest;
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -45,6 +46,35 @@ final class DriverFactoryTest extends TestCase
         self::assertInstanceOf(
             PostgresDriver::class,
             (new DriverFactory())->forDatabase(new DatabaseConfig(name: 'app', type: DatabaseSystem::PostgreSQL)),
+        );
+    }
+
+    #[Test]
+    public function aMariadbEndpointGetsTheMariadbBinaries(): void
+    {
+        $driver = (new DriverFactory())->forDatabase(new DatabaseConfig(name: 'app', type: DatabaseSystem::MariaDB));
+
+        self::assertStringContainsString(
+            'mariadb-dump',
+            $driver->dumpCommand(new DumpRequest(db: new DatabaseConfig(name: 'app'), credentialsPath: '/tmp/c', dumpFilePath: '/tmp/d.sql')),
+        );
+        self::assertStringContainsString(
+            'mariadb ',
+            $driver->importCommand(new DatabaseConfig(name: 'app'), '/tmp/c', '/tmp/d.sql'),
+        );
+    }
+
+    #[Test]
+    public function consoleOverridesReachTheGeneratedCommands(): void
+    {
+        $driver = (new DriverFactory())->forDatabase(
+            new DatabaseConfig(name: 'app'),
+            ['mysqldump' => '/opt/bin/mysqldump'],
+        );
+
+        self::assertStringStartsWith(
+            '/opt/bin/mysqldump',
+            $driver->dumpCommand(new DumpRequest(db: new DatabaseConfig(name: 'app'), credentialsPath: '/tmp/c', dumpFilePath: '/tmp/d.sql')),
         );
     }
 }

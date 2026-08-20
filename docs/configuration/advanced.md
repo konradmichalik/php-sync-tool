@@ -213,7 +213,8 @@ origin:
 
 ## Console Commands
 
-Override the paths to required binaries per endpoint:
+Override the paths to required binaries per endpoint. The key is the binary it
+replaces, so it depends on the endpoint's `db.type`:
 
 ```yaml
 origin:
@@ -222,6 +223,19 @@ origin:
     mysql: /usr/local/mysql/bin/mysql
     mysqldump: /usr/local/mysql/bin/mysqldump
 ```
+
+Which names apply follows the database system, because MariaDB 11 deprecated the
+`mysql` and `mysqldump` symlinks:
+
+| `db.type` | client | dump |
+|-----------|--------|------|
+| `mysql` | `mysql` | `mysqldump` |
+| `mariadb` | `mariadb` | `mariadb-dump` |
+| `postgres` | `psql` | `pg_dump` |
+
+An endpoint left at the default `mysql` type keeps using the `mysql` names, so
+existing configurations are unaffected. Set `db.type: mariadb` to address a
+MariaDB server by its own binaries.
 
 ## SSH Port
 

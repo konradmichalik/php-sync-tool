@@ -1,0 +1,33 @@
+# MariaDB scenario, driven from inside www2: the same RECEIVER sync as
+# receiver.yaml, but with `db.type: mariadb` on both endpoints, so the commands
+# are built with `mariadb-dump` and `mariadb` instead of the `mysqldump` and
+# `mysql` symlinks that MariaDB 11 deprecated.
+#
+# Run: docker compose exec www2 php /app/bin/sync-tool \
+#        -f /app/docker/configs/mariadb.yaml -y
+use_sshpass: true
+ssh_strict_host_key_checking: false
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db1
+    user: db
+    password: db
+    port: 3306
+    type: mariadb
+
+target:
+  dump_dir: /tmp/
+  db:
+    name: db
+    host: db2
+    user: db
+    password: db
+    port: 3306
+    type: mariadb

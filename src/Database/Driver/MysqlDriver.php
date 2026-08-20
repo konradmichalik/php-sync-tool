@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Database\Driver;
 
 use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
-use KonradMichalik\SyncTool\Database\{DumpRequest, MysqlCommandBuilder, MysqlDefaultsFile, TableStatements};
+use KonradMichalik\SyncTool\Database\{ClientBinaries, DumpRequest, MysqlCommandBuilder, MysqlDefaultsFile, TableStatements};
 use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
 use KonradMichalik\SyncTool\Security\{SqlLiteral, TableName};
 
@@ -39,6 +39,7 @@ final readonly class MysqlDriver implements DatabaseDriver
         private MysqlCommandBuilder $commands = new MysqlCommandBuilder(),
         private MysqlDefaultsFile $defaultsFile = new MysqlDefaultsFile(),
         private TableStatements $tables = new TableStatements(),
+        private ClientBinaries $binaries = new ClientBinaries(),
     ) {}
 
     public function system(): DatabaseSystem
@@ -64,7 +65,7 @@ final readonly class MysqlDriver implements DatabaseDriver
         ));
 
         return $this->commands->dumpCommand(
-            'mysqldump',
+            $this->binaries->dump,
             $this->argument($request->credentialsPath),
             $this->commands->dumpOptions($request->where, $request->additionalOptions),
             $request->db->name,
@@ -77,12 +78,12 @@ final readonly class MysqlDriver implements DatabaseDriver
 
     public function importCommand(DatabaseConfig $db, string $credentialsPath, string $filepath): string
     {
-        return $this->commands->importCommand('mysql', $this->argument($credentialsPath), $db->name, 'gunzip', $filepath);
+        return $this->commands->importCommand($this->binaries->client, $this->argument($credentialsPath), $db->name, 'gunzip', $filepath);
     }
 
     public function execCommand(DatabaseConfig $db, string $credentialsPath, string $sql): string
     {
-        return $this->commands->execCommand('mysql', $this->argument($credentialsPath), $db->name, $sql);
+        return $this->commands->execCommand($this->binaries->client, $this->argument($credentialsPath), $db->name, $sql);
     }
 
     /**

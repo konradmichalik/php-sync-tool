@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Database\Driver;
 
 use KonradMichalik\SyncTool\Config\DatabaseConfig;
+use KonradMichalik\SyncTool\Database\ClientBinaries;
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 
 /**
@@ -24,11 +25,16 @@ use KonradMichalik\SyncTool\Enum\DatabaseSystem;
  */
 final readonly class DriverFactory
 {
-    public function forDatabase(DatabaseConfig $db): DatabaseDriver
+    /**
+     * @param array<string, string> $console per-endpoint binary path overrides
+     */
+    public function forDatabase(DatabaseConfig $db, array $console = []): DatabaseDriver
     {
+        $binaries = ClientBinaries::resolve($db->type, $console);
+
         return match ($db->type) {
-            DatabaseSystem::MySQL, DatabaseSystem::MariaDB => new MysqlDriver(),
-            DatabaseSystem::PostgreSQL => new PostgresDriver(),
+            DatabaseSystem::MySQL, DatabaseSystem::MariaDB => new MysqlDriver(binaries: $binaries),
+            DatabaseSystem::PostgreSQL => new PostgresDriver(binaries: $binaries),
         };
     }
 }
