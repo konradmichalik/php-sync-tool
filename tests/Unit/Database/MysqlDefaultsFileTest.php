@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Database;
 
 use KonradMichalik\SyncTool\Config\DatabaseConfig;
-use KonradMichalik\SyncTool\Database\{MysqlCredentials, MysqlDefaultsFile};
+use KonradMichalik\SyncTool\Database\MysqlDefaultsFile;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -75,25 +75,5 @@ final class MysqlDefaultsFileTest extends TestCase
         );
 
         self::assertStringNotContainsString('ssl', $content);
-    }
-
-    #[Test]
-    public function credentialsDefaultsExtraFileArgument(): void
-    {
-        self::assertSame(
-            '--defaults-extra-file=/tmp/.my_x.cnf',
-            (new MysqlCredentials())->defaultsExtraFileArgument('/tmp/.my_x.cnf'),
-        );
-    }
-
-    #[Test]
-    public function legacyCredentialsIncludeAllSetFields(): void
-    {
-        self::assertSame(
-            "-u'admin' -p'secret' -h'localhost' -P'3307'",
-            (new MysqlCredentials())->legacyArguments(
-                new DatabaseConfig(host: 'localhost', user: 'admin', password: 'secret', port: 3307),
-            ),
-        );
     }
 }

@@ -14,9 +14,9 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Database\Driver;
 
 use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
-use KonradMichalik\SyncTool\Database\{DumpRequest, MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, TableStatements};
+use KonradMichalik\SyncTool\Database\{DumpRequest, MysqlCommandBuilder, MysqlDefaultsFile, TableStatements};
 use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
-use KonradMichalik\SyncTool\Security\TableName;
+use KonradMichalik\SyncTool\Security\{SqlLiteral, TableName};
 
 use function array_filter;
 use function array_map;
@@ -25,7 +25,6 @@ use function array_values;
 use function explode;
 use function implode;
 use function sprintf;
-use function str_replace;
 use function trim;
 
 /**
@@ -36,11 +35,8 @@ use function trim;
  */
 final readonly class MysqlDriver implements DatabaseDriver
 {
-    private const MASKED_MAIL_DOMAIN = '@example.invalid';
-
     public function __construct(
         private MysqlCommandBuilder $commands = new MysqlCommandBuilder(),
-        private MysqlCredentials $credentials = new MysqlCredentials(),
         private MysqlDefaultsFile $defaultsFile = new MysqlDefaultsFile(),
         private TableStatements $tables = new TableStatements(),
     ) {}
@@ -130,9 +126,9 @@ final readonly class MysqlDriver implements DatabaseDriver
 
             $statements[] = sprintf('UPDATE %s SET %s = %s;', $table, $column, match ($rule->strategy) {
                 AnonymizationStrategy::Nullify => 'NULL',
-                AnonymizationStrategy::StaticValue => $this->literal((string) $rule->value),
+                AnonymizationStrategy::StaticValue => SqlLiteral::quote((string) $rule->value),
                 AnonymizationStrategy::Hash => sprintf('MD5(%s)', $column),
-                AnonymizationStrategy::Email => sprintf('CONCAT(MD5(%s), %s)', $column, $this->literal(self::MASKED_MAIL_DOMAIN)),
+                AnonymizationStrategy::Email => sprintf('CONCAT(MD5(%s), %s)', $column, SqlLiteral::quote(AnonymizationStrategy::MASKED_MAIL_DOMAIN)),
             });
         }
 
@@ -144,16 +140,8 @@ final readonly class MysqlDriver implements DatabaseDriver
         return [];
     }
 
-    /**
-     * A SQL string literal: single quotes doubled, the way both systems expect.
-     */
-    private function literal(string $value): string
-    {
-        return "'".str_replace("'", "''", $value)."'";
-    }
-
     private function argument(string $credentialsPath): string
     {
-        return $this->credentials->defaultsExtraFileArgument($credentialsPath);
+        return '--defaults-extra-file='.$credentialsPath;
     }
 }

@@ -29,6 +29,12 @@ enum AnonymizationStrategy: string
     case Hash = 'hash';
     case Email = 'email';
 
+    /**
+     * Domain for addresses produced by the Email strategy. RFC 2606 reserves
+     * `.invalid`, so nothing sent to a masked address can leave the machine.
+     */
+    public const MASKED_MAIL_DOMAIN = '@example.invalid';
+
     public static function fromConfigValue(string $value): ?self
     {
         return self::tryFrom(strtolower(trim($value)));

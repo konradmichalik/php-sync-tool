@@ -16,7 +16,7 @@ namespace KonradMichalik\SyncTool\Database\Driver;
 use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\{DumpRequest, PgpassFile};
 use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
-use KonradMichalik\SyncTool\Security\{Shell, TableName};
+use KonradMichalik\SyncTool\Security\{Shell, SqlLiteral, TableName};
 
 use function array_filter;
 use function array_map;
@@ -36,8 +36,6 @@ use function trim;
  */
 final readonly class PostgresDriver implements DatabaseDriver
 {
-    private const MASKED_MAIL_DOMAIN = '@example.invalid';
-
     public function __construct(
         private PgpassFile $pgpass = new PgpassFile(),
     ) {}
@@ -145,9 +143,9 @@ final readonly class PostgresDriver implements DatabaseDriver
 
             $statements[] = sprintf('UPDATE %s SET %s = %s;', $table, $column, match ($rule->strategy) {
                 AnonymizationStrategy::Nullify => 'NULL',
-                AnonymizationStrategy::StaticValue => $this->literal((string) $rule->value),
+                AnonymizationStrategy::StaticValue => SqlLiteral::quote((string) $rule->value),
                 AnonymizationStrategy::Hash => sprintf('md5(%s)', $column),
-                AnonymizationStrategy::Email => sprintf('md5(%s) || %s', $column, $this->literal(self::MASKED_MAIL_DOMAIN)),
+                AnonymizationStrategy::Email => sprintf('md5(%s) || %s', $column, SqlLiteral::quote(AnonymizationStrategy::MASKED_MAIL_DOMAIN)),
             });
         }
 
@@ -167,14 +165,6 @@ final readonly class PostgresDriver implements DatabaseDriver
         }
 
         return $unsupported;
-    }
-
-    /**
-     * A SQL string literal: single quotes doubled, the way both systems expect.
-     */
-    private function literal(string $value): string
-    {
-        return "'".str_replace("'", "''", $value)."'";
     }
 
     /**
