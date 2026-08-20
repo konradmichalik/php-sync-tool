@@ -24,6 +24,8 @@ use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRu
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function sprintf;
+
 /**
  * SyncTest.
  *
@@ -363,6 +365,68 @@ final class SyncTest extends TestCase
             self::assertStringContainsString('PostgreSQL does not support: where', $exception->getMessage());
             self::assertFalse($recorder->ran('pg_dump'), 'aborts before dumping anything');
         }
+    }
+
+    #[Test]
+    public function masksConfiguredColumnsAfterTheImportAndBeforePostSql(): void
+    {
+        $config = $this->localConfig([
+            'target' => [
+                'path' => '/t',
+                'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p'],
+                'anonymize' => ['fe_users' => ['email' => 'email']],
+                'post_sql' => ['UPDATE marker SET done = 1'],
+            ],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+
+        $importIndex = $this->indexOfCommand($recorder, 'gunzip -c');
+        $maskIndex = $this->indexOfCommand($recorder, 'CONCAT(MD5(');
+        $postSqlIndex = $this->indexOfCommand($recorder, 'UPDATE marker SET done = 1');
+
+        self::assertGreaterThan($importIndex, $maskIndex, 'masking runs after the import');
+        self::assertLessThan($postSqlIndex, $maskIndex, 'masking runs before post_sql');
+    }
+
+    #[Test]
+    public function aFailedMaskingStatementAbortsTheSyncBeforePostSql(): void
+    {
+        $config = $this->localConfig([
+            'target' => [
+                'path' => '/t',
+                'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p'],
+                'anonymize' => ['fe_users' => ['email' => 'email']],
+                'post_sql' => ['UPDATE marker SET done = 1'],
+            ],
+        ]);
+        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: 'CONCAT(MD5(');
+
+        try {
+            $this->syncWith($recorder)->run($config, SyncMode::SyncLocal);
+            self::fail('Expected the failing masking statement to abort the sync.');
+        } catch (SyncException) {
+            self::assertFalse($recorder->ran('UPDATE marker SET done = 1'), 'post_sql never runs');
+        }
+    }
+
+    #[Test]
+    public function runsNoMaskingWithoutRules(): void
+    {
+        $recorder = $this->runSync($this->localConfig(), SyncMode::SyncLocal);
+
+        self::assertFalse($recorder->ran('CONCAT(MD5('));
+    }
+
+    private function indexOfCommand(RecordingCommandRunner $recorder, string $needle): int
+    {
+        foreach ($recorder->commands as $index => $command) {
+            if (str_contains($command, $needle)) {
+                return $index;
+            }
+        }
+
+        self::fail(sprintf('No command containing "%s" was run', $needle));
     }
 
     /**

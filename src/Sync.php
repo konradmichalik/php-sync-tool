@@ -206,6 +206,7 @@ final readonly class Sync
             $this->progress->advance();
 
             $this->importAfterDump($client, $runner, $driver, $credentialsPath);
+            $this->anonymizeData($client, $runner, $driver, $credentialsPath);
             $this->runPostSql($client, $runner, $driver, $credentialsPath);
             $this->pruneDumps($client, $runner);
         } finally {
@@ -231,6 +232,32 @@ final readonly class Sync
         ($this->log)('Importing additional dump '.$client->afterDump);
         $this->progress->phase('Importing additional dump');
         $runner->run($driver->importCommand($client->db, $credentialsPath, $client->afterDump));
+        $this->progress->advance();
+    }
+
+    /**
+     * Masks the imported copy. Runs after every import step, so rows brought in by
+     * `after_dump` are covered too, and before `post_sql`, so custom SQL sees
+     * already-masked data. A failing statement aborts the sync rather than leaving
+     * a copy with plaintext data behind.
+     */
+    private function anonymizeData(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
+    {
+        $statements = $driver->anonymizeStatements($client->anonymize);
+
+        if ([] === $statements) {
+            return;
+        }
+
+        ($this->log)('Anonymizing data');
+        $this->progress->phase('Anonymizing data');
+
+        foreach ($statements as $statement) {
+            $command = $driver->execCommand($client->db, $credentialsPath, $statement);
+            $this->logCommand($command);
+            $runner->run($command);
+        }
+
         $this->progress->advance();
     }
 

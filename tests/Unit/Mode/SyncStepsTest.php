@@ -94,6 +94,20 @@ final class SyncStepsTest extends TestCase
         self::assertSame(1, (new SyncSteps())->count($this->config(['files_only' => true]), SyncMode::Receiver));
     }
 
+    #[Test]
+    public function maskingCountsAsOneStepRegardlessOfRuleCount(): void
+    {
+        $config = $this->config([
+            'target' => [
+                'path' => '/t',
+                'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p'],
+                'anonymize' => ['fe_users' => ['email' => 'email', 'password' => 'hash']],
+            ],
+        ]);
+
+        self::assertSame(4, (new SyncSteps())->count($config, SyncMode::Receiver));
+    }
+
     /**
      * @param array<string, mixed> $overrides
      */

@@ -63,6 +63,10 @@ final readonly class SyncSteps
         $target = $config->target;
         $steps = null !== $target->afterDump && '' !== $target->afterDump ? 1 : 0;
 
+        if ([] !== $target->anonymize) {
+            ++$steps;
+        }
+
         return $steps + count(array_filter($target->postSql, static fn (string $sql): bool => '' !== $sql));
     }
 }
