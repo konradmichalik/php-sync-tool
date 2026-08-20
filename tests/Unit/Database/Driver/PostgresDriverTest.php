@@ -13,10 +13,10 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Database\Driver;
 
-use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
+use KonradMichalik\SyncTool\Config\{AnonymizationRule, DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\Driver\PostgresDriver;
 use KonradMichalik\SyncTool\Database\DumpRequest;
-use KonradMichalik\SyncTool\Enum\DatabaseSystem;
+use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -162,6 +162,41 @@ final class PostgresDriverTest extends TestCase
     {
         self::assertSame("db:5432:app:u:p\n", $this->driver->credentialsContent($this->db()));
         self::assertMatchesRegularExpression('#^/tmp/\.pgpass_[0-9a-f]{16}$#', $this->driver->credentialsPath());
+    }
+
+    #[Test]
+    public function buildsAnUpdateStatementPerAnonymizationRule(): void
+    {
+        $statements = $this->driver->anonymizeStatements([
+            new AnonymizationRule('fe_users', 'email', AnonymizationStrategy::Email),
+            new AnonymizationRule('fe_users', 'password', AnonymizationStrategy::Hash),
+            new AnonymizationRule('fe_users', 'name', AnonymizationStrategy::StaticValue, 'Redacted'),
+            new AnonymizationRule('sys_log', 'details', AnonymizationStrategy::Nullify),
+        ]);
+
+        self::assertSame([
+            "UPDATE fe_users SET email = md5(email) || '@example.invalid';",
+            'UPDATE fe_users SET password = md5(password);',
+            "UPDATE fe_users SET name = 'Redacted';",
+            'UPDATE sys_log SET details = NULL;',
+        ], $statements);
+    }
+
+    #[Test]
+    public function escapesASingleQuoteInAStaticValue(): void
+    {
+        self::assertSame(
+            ["UPDATE fe_users SET name = 'O''Brien';"],
+            $this->driver->anonymizeStatements([
+                new AnonymizationRule('fe_users', 'name', AnonymizationStrategy::StaticValue, "O'Brien"),
+            ]),
+        );
+    }
+
+    #[Test]
+    public function hasNothingToRunWithoutRules(): void
+    {
+        self::assertSame([], $this->driver->anonymizeStatements([]));
     }
 
     private function db(): DatabaseConfig

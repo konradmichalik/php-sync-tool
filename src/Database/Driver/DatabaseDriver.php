@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Database\Driver;
 
-use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
+use KonradMichalik\SyncTool\Config\{AnonymizationRule, DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\DumpRequest;
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 
@@ -68,6 +68,15 @@ interface DatabaseDriver
      * @param list<string> $tables
      */
     public function truncateTablesStatement(array $tables): ?string;
+
+    /**
+     * One UPDATE statement per masking rule, in the dialect of this system.
+     *
+     * @param list<AnonymizationRule> $rules
+     *
+     * @return list<string>
+     */
+    public function anonymizeStatements(array $rules): array;
 
     /**
      * Configured features this driver cannot express, named as their config keys.

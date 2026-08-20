@@ -15,7 +15,8 @@ namespace KonradMichalik\SyncTool\Database\Driver;
 
 use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\{DumpRequest, MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, TableStatements};
-use KonradMichalik\SyncTool\Enum\DatabaseSystem;
+use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
+use KonradMichalik\SyncTool\Security\TableName;
 
 use function array_filter;
 use function array_map;
@@ -23,6 +24,8 @@ use function array_slice;
 use function array_values;
 use function explode;
 use function implode;
+use function sprintf;
+use function str_replace;
 use function trim;
 
 /**
@@ -33,6 +36,8 @@ use function trim;
  */
 final readonly class MysqlDriver implements DatabaseDriver
 {
+    private const MASKED_MAIL_DOMAIN = '@example.invalid';
+
     public function __construct(
         private MysqlCommandBuilder $commands = new MysqlCommandBuilder(),
         private MysqlCredentials $credentials = new MysqlCredentials(),
@@ -115,9 +120,36 @@ final readonly class MysqlDriver implements DatabaseDriver
         return $this->tables->foreignKeyDisabledBatch(array_map($this->tables->truncateStatement(...), $tables));
     }
 
+    public function anonymizeStatements(array $rules): array
+    {
+        $statements = [];
+
+        foreach ($rules as $rule) {
+            $table = TableName::sanitize($rule->table);
+            $column = TableName::sanitize($rule->column);
+
+            $statements[] = sprintf('UPDATE %s SET %s = %s;', $table, $column, match ($rule->strategy) {
+                AnonymizationStrategy::Nullify => 'NULL',
+                AnonymizationStrategy::StaticValue => $this->literal((string) $rule->value),
+                AnonymizationStrategy::Hash => sprintf('MD5(%s)', $column),
+                AnonymizationStrategy::Email => sprintf('CONCAT(MD5(%s), %s)', $column, $this->literal(self::MASKED_MAIL_DOMAIN)),
+            });
+        }
+
+        return $statements;
+    }
+
     public function unsupportedFeatures(SyncConfig $config): array
     {
         return [];
+    }
+
+    /**
+     * A SQL string literal: single quotes doubled, the way both systems expect.
+     */
+    private function literal(string $value): string
+    {
+        return "'".str_replace("'", "''", $value)."'";
     }
 
     private function argument(string $credentialsPath): string
