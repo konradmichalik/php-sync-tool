@@ -16,6 +16,8 @@ namespace KonradMichalik\SyncTool;
 use KonradMichalik\SyncTool\Command\SyncCommand;
 use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
+use Symfony\Component\Console\Input\{InputInterface, StringInput};
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Application.
@@ -34,6 +36,20 @@ final class Application extends BaseApplication
         $this->setCommandLoader(new FactoryCommandLoader([
             'sync' => static fn (): SyncCommand => new SyncCommand(),
         ]));
-        $this->setDefaultCommand('sync', true);
+        $this->setDefaultCommand('sync');
+    }
+
+    public function doRun(InputInterface $input, OutputInterface $output): int
+    {
+        $first = $input->getFirstArgument();
+
+        // `sync-tool prod` and `sync-tool production local` name a project config or
+        // two hosts, not a command. They predate the subcommands, so anything that
+        // is not a known command name goes to `sync`, as it always did.
+        if (null !== $first && !$this->has($first)) {
+            $input = new StringInput('sync '.$input);
+        }
+
+        return parent::doRun($input, $output);
     }
 }
