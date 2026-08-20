@@ -81,4 +81,27 @@ final class TableNameTest extends TestCase
         yield 'unicode cyrillic' => ['tаble'];
         yield 'whitespace' => ['user table'];
     }
+
+    #[Test]
+    public function validateReturnsTheNameWithoutAnyQuoting(): void
+    {
+        self::assertSame('cache_pages', TableName::validate('cache_pages'));
+        self::assertSame('public.person', TableName::validate('public.person'));
+    }
+
+    #[Test]
+    public function validateRejectsTheSameNamesSanitizeRejects(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        TableName::validate('users; DROP TABLE x');
+    }
+
+    #[Test]
+    public function validateRejectsAnEmptyName(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        TableName::validate('');
+    }
 }

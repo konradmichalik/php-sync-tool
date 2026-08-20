@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Config;
 
+use KonradMichalik\SyncTool\Enum\DatabaseSystem;
+
 /**
  * DatabaseConfig.
  *
@@ -28,6 +30,7 @@ final readonly class DatabaseConfig
         public string $password = '',
         public int $port = 0,
         public bool $sslDisabled = false,
+        public DatabaseSystem $type = DatabaseSystem::MySQL,
     ) {}
 
     /**
@@ -46,6 +49,7 @@ final readonly class DatabaseConfig
             password: ConfigAccessor::getString($data, 'password', ''),
             port: ConfigAccessor::getInt($data, 'port', 0),
             sslDisabled: ConfigAccessor::getBool($data, 'ssl_disabled', false),
+            type: DatabaseSystem::fromConfigValue(ConfigAccessor::getString($data, 'type', '')) ?? DatabaseSystem::MySQL,
         );
     }
 }

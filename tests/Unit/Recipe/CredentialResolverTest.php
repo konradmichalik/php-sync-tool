@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Recipe;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Enum\Framework;
+use KonradMichalik\SyncTool\Enum\{DatabaseSystem, Framework};
 use KonradMichalik\SyncTool\Recipe\CredentialResolver;
 use KonradMichalik\SyncTool\Tests\Fixture\RecordingCommandRunner;
 use PHPUnit\Framework\Attributes\Test;
@@ -245,5 +245,46 @@ final class CredentialResolverTest extends TestCase
 
         self::assertSame('drupal_drush', $result['name']);
         self::assertSame('drush_user', $result['user']);
+    }
+
+    #[Test]
+    public function resolveSymfonyDatabaseUrlWithPostgresql(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'symfony', 'origin' => ['path' => '/app/.env']]);
+        $runner = new RecordingCommandRunner(['.env' => 'DATABASE_URL=postgresql://pguser:pgpass@db.example.com:5432/pgdb']);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame(DatabaseSystem::PostgreSQL, $db->type);
+        self::assertSame('pgdb', $db->name);
+        self::assertSame('pguser', $db->user);
+    }
+
+    #[Test]
+    public function resolveSymfonyDatabaseUrlWithMysql(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'symfony', 'origin' => ['path' => '/app/.env']]);
+        $runner = new RecordingCommandRunner(['.env' => 'DATABASE_URL=mysql://user:pass@host:3306/mydb']);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame(DatabaseSystem::MySQL, $db->type);
+    }
+
+    #[Test]
+    public function resolveTypo3StillDefaultsToMysql(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'typo3', 'origin' => ['path' => '/app/LocalConfiguration.php']]);
+        $json = json_encode(['DB' => ['Connections' => ['Default' => [
+            'dbname' => 'typo3_db', 'host' => 'db', 'user' => 'u', 'password' => 'p', 'port' => 3306,
+        ]]]], \JSON_THROW_ON_ERROR);
+        $runner = new RecordingCommandRunner(['LocalConfiguration.php' => $json]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame(DatabaseSystem::MySQL, $db->type);
     }
 }

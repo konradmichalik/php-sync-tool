@@ -62,7 +62,8 @@ export default defineConfig({
             { text: 'Config File Reference', link: '/configuration/reference' },
             { text: 'Authentication', link: '/configuration/authentication' },
             { text: 'Advanced Options', link: '/configuration/advanced' },
-            { text: 'File Synchronization', link: '/configuration/file-sync' }
+            { text: 'File Synchronization', link: '/configuration/file-sync' },
+            { text: 'PostgreSQL', link: '/configuration/postgresql' }
           ]
         }
       ],

@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Enum;
 
+use function strtolower;
+use function trim;
+
 /**
  * DatabaseSystem.
  *
@@ -23,4 +26,19 @@ enum DatabaseSystem: string
 {
     case MySQL = 'MySQL';
     case MariaDB = 'MariaDB';
+    case PostgreSQL = 'PostgreSQL';
+
+    /**
+     * Accepts what users write in `db.type` and what a database URL carries as
+     * its scheme, both in any casing.
+     */
+    public static function fromConfigValue(string $value): ?self
+    {
+        return match (strtolower(trim($value))) {
+            'mysql', 'pdo_mysql' => self::MySQL,
+            'mariadb' => self::MariaDB,
+            'postgres', 'postgresql', 'pgsql', 'pdo_pgsql' => self::PostgreSQL,
+            default => null,
+        };
+    }
 }

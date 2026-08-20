@@ -24,14 +24,16 @@ final class LogSanitizer
     /**
      * Ordered (pattern, replacement) pairs masking credentials in commands
      * before they reach logs or verbose output. Order is significant and
-     * mirrors Python's sanitize_command_for_logging() exactly.
+     * mirrors Python's sanitize_command_for_logging(), with one deviation: the
+     * `-p` patterns require a word boundary, so a long option that merely
+     * contains it (`--no-privileges`) survives intact.
      *
      * @var list<array{0: string, 1: string}>
      */
     private const PATTERNS = [
-        ["~-p'[^']*'~", "-p'***'"],
-        ['~-p"[^"]*"~', '-p"***"'],
-        ['~-p[^\s\'"]+~', '-p***'],
+        ["~(?<![\\w-])-p'[^']*'~", "-p'***'"],
+        ['~(?<![\\w-])-p"[^"]*"~', '-p"***"'],
+        ['~(?<![\\w-])-p[^\s\'"]+~', '-p***'],
         ["~SSHPASS='[^']*'~", "SSHPASS='***'"],
         ['~SSHPASS="[^"]*"~', 'SSHPASS="***"'],
         ['~SSHPASS=[^\s]+~', 'SSHPASS=***'],

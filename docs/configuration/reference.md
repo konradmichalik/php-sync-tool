@@ -51,8 +51,9 @@ Under `origin.db` / `target.db`:
 | `host` | string | Database host. |
 | `user` | string | Database user. |
 | `password` | string | Database password. |
-| `port` | number | Database port (default: 3306). |
+| `port` | number | Database port (default: 3306, PostgreSQL: 5432). |
 | `ssl_disabled` | boolean | Disable TLS for the MySQL connection (useful for DDEV). |
+| `type` | enum | Database system: `mysql`, `mariadb`, `postgres` (default: `mysql`). See [PostgreSQL](/configuration/postgresql). |
 
 ### Jump Host Object
 

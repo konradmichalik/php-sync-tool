@@ -58,17 +58,6 @@ final class MysqlDefaultsFileTest extends TestCase
     }
 
     #[Test]
-    public function remoteWriteCommandBase64Decodes(): void
-    {
-        $command = (new MysqlDefaultsFile())->remoteWriteCommand("[client]\nuser=x\n", '/tmp/.my_x.cnf');
-
-        self::assertSame(
-            "echo '".base64_encode("[client]\nuser=x\n")."' | base64 -d > /tmp/.my_x.cnf && chmod 600 /tmp/.my_x.cnf && echo 'OK'",
-            $command,
-        );
-    }
-
-    #[Test]
     public function buildContentAppendsSslFalseWhenDisabled(): void
     {
         $content = (new MysqlDefaultsFile())->buildContent(

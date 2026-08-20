@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Recipe;
 
 use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
-use KonradMichalik\SyncTool\Enum\Framework;
+use KonradMichalik\SyncTool\Enum\{DatabaseSystem, Framework};
 use KonradMichalik\SyncTool\Remote\CommandRunner;
 
 use function basename;
@@ -68,6 +68,8 @@ final readonly class CredentialResolver
             user: (string) ($creds['user'] ?? ''),
             password: (string) ($creds['password'] ?? ''),
             port: (int) ($creds['port'] ?? 0),
+            sslDisabled: false,
+            type: DatabaseSystem::fromConfigValue((string) ($creds['db_type'] ?? '')) ?? DatabaseSystem::MySQL,
         );
     }
 

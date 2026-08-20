@@ -27,12 +27,12 @@ final class TableName
 {
     /**
      * Validate a table name against an allowlist to prevent SQL injection,
-     * returning it backtick-quoted. Mirrors Python's sanitize_table_name():
+     * returning it unquoted. Mirrors Python's sanitize_table_name():
      * only [a-zA-Z0-9_$.-] are permitted.
      *
      * @throws ValidationException if the name is empty or contains invalid characters
      */
-    public static function sanitize(string $table): string
+    public static function validate(string $table): string
     {
         if ('' === $table) {
             throw new ValidationException('Table name cannot be empty');
@@ -42,6 +42,16 @@ final class TableName
             throw new ValidationException(sprintf('Invalid table name: %s', $table));
         }
 
-        return '`'.$table.'`';
+        return $table;
+    }
+
+    /**
+     * The same validation, backtick-quoted for MySQL.
+     *
+     * @throws ValidationException if the name is empty or contains invalid characters
+     */
+    public static function sanitize(string $table): string
+    {
+        return '`'.self::validate($table).'`';
     }
 }

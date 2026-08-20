@@ -1,0 +1,32 @@
+# PostgreSQL RECEIVER scenario, driven from inside www2:
+#   origin = www1 (remote over SSH), its database lives on pgdb1
+#   target = www2 itself (local), its database lives on pgdb2
+#
+# Run: docker compose exec www2 php /app/bin/sync-tool \
+#        -f /app/docker/configs/postgres.yaml -y
+use_sshpass: true
+ssh_strict_host_key_checking: false
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  dump_dir: /tmp/
+  db:
+    type: postgres
+    name: db
+    host: pgdb1
+    user: db
+    password: db
+    port: 5432
+
+target:
+  dump_dir: /tmp/
+  db:
+    type: postgres
+    name: db
+    host: pgdb2
+    user: db
+    password: db
+    port: 5432

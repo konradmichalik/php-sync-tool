@@ -13,9 +13,10 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Config;
 
-use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
+use KonradMichalik\SyncTool\Config\{ClientConfig, FileTransferConfig, SyncConfig};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use ReflectionClass;
 use ReflectionObject;
 
 use function sprintf;
@@ -175,6 +176,80 @@ final class SyncConfigTest extends TestCase
                 $property->getValue($next),
                 sprintf('withClients() must preserve property "%s"', $name),
             );
+        }
+    }
+
+    #[Test]
+    public function withClientsCarriesEverySettingExceptTheClients(): void
+    {
+        $original = new SyncConfig(
+            verbose: true,
+            mute: true,
+            dryRun: true,
+            yes: true,
+            reverse: true,
+            keepDump: true,
+            dumpName: 'fixture.sql',
+            checkDump: false,
+            clearDatabase: true,
+            importFile: '/tmp/fixture.sql.gz',
+            tables: 'users,orders',
+            where: 'id > 1',
+            additionalMysqldumpOptions: '--skip-lock-tables',
+            ignoreTables: ['cache_pages'],
+            truncateTables: ['sys_log'],
+            useRsync: false,
+            useRsyncOptions: '--archive',
+            useSshpass: true,
+            files: [new FileTransferConfig('fileadmin', 'fileadmin')],
+            filesOptions: '--delete',
+            withFiles: true,
+            filesOnly: true,
+            sshAgent: true,
+            forcePassword: true,
+            strictHostKeyChecking: false,
+            sshPasswordOrigin: 'origin-secret',
+            sshPasswordTarget: 'target-secret',
+            configFilePath: '/tmp/config.yaml',
+            logFile: '/tmp/sync.log',
+            jsonLog: true,
+            type: 'TYPO3',
+            scripts: ['before' => 'echo one'],
+            origin: new ClientConfig(host: 'old-origin'),
+            target: new ClientConfig(host: 'old-target'),
+        );
+
+        $copy = $original->withClients(
+            new ClientConfig(host: 'new-origin'),
+            new ClientConfig(host: 'new-target'),
+        );
+
+        self::assertSame('new-origin', $copy->origin->host);
+        self::assertSame('new-target', $copy->target->host);
+
+        $constructor = (new ReflectionClass(SyncConfig::class))->getConstructor();
+        self::assertNotNull($constructor);
+
+        foreach ($constructor->getParameters() as $parameter) {
+            $name = $parameter->getName();
+
+            if ('origin' === $name || 'target' === $name) {
+                continue;
+            }
+
+            self::assertEquals(
+                $original->{$name},
+                $copy->{$name},
+                sprintf('withClients() dropped "%s"', $name),
+            );
+
+            if ($parameter->isDefaultValueAvailable()) {
+                self::assertNotEquals(
+                    $parameter->getDefaultValue(),
+                    $original->{$name},
+                    sprintf('the fixture value for "%s" equals its default, so this test cannot detect a drop', $name),
+                );
+            }
         }
     }
 }

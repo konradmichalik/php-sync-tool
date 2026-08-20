@@ -13,6 +13,7 @@ credential auto-detection for **TYPO3, Symfony, Drupal, WordPress and Laravel**.
 ## ✨ Features
 
 * Synchronize databases between local and remote systems
+* MySQL, MariaDB and PostgreSQL
 * Optional file synchronization over SSH/rsync/SFTP
 * Framework credential auto-detection for TYPO3, Symfony, Drupal, WordPress and Laravel
 
@@ -27,7 +28,9 @@ Or use the standalone PHAR build (`sync-tool.phar`).
 ### Requirements
 
 - PHP **8.2+**
-- `mysql` / `mysqldump`, `gzip`/`gunzip` on the executing host(s)
+- the client for your database system on the executing host(s): `mysql` / `mysqldump`,
+  or `psql` / `pg_dump` for PostgreSQL
+- `gzip`/`gunzip` on the executing host(s)
 - `rsync` (default transfer) and optionally `sshpass` for password-based rsync
 
 ## 📊 Usage

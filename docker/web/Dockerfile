@@ -1,6 +1,10 @@
-# Web node image: an SSH-reachable host with the PHP CLI, MySQL client,
-# rsync, gzip and sshpass — everything php-sync-tool needs to dump, transfer
-# and import between containers.
+# Web node image: an SSH-reachable host with the PHP CLI, the MySQL and
+# PostgreSQL clients, rsync, gzip and sshpass — everything php-sync-tool needs
+# to dump, transfer and import between containers.
+#
+# The PostgreSQL client version matters: pg_dump refuses a server newer than
+# itself, so the postgres services in docker-compose.yml stay on the same major
+# version this image's client ships (17 on the current base image).
 FROM php:8.4-cli
 
 RUN apt-get update \
@@ -8,6 +12,7 @@ RUN apt-get update \
         openssh-server \
         openssh-client \
         default-mysql-client \
+        postgresql-client \
         rsync \
         gzip \
         sshpass \

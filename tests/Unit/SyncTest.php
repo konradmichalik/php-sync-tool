@@ -331,6 +331,40 @@ final class SyncTest extends TestCase
         self::assertSame(2, $progress->advances);
     }
 
+    #[Test]
+    public function drivesAPostgresClientWithPostgresBinaries(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+
+        self::assertTrue($recorder->ran('pg_dump'), 'dumps with pg_dump');
+        self::assertTrue($recorder->ran('psql'), 'imports with psql');
+        self::assertFalse($recorder->ran('mysqldump'));
+    }
+
+    #[Test]
+    public function refusesAPostgresSyncThatAsksForMysqlOnlyFeatures(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres']],
+            'where' => 'id > 1',
+        ]);
+        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES);
+
+        try {
+            $this->syncWith($recorder)->run($config, SyncMode::SyncLocal);
+            self::fail('Expected the unsupported where clause to abort the sync.');
+        } catch (SyncException $exception) {
+            self::assertStringContainsString('PostgreSQL does not support: where', $exception->getMessage());
+            self::assertFalse($recorder->ran('pg_dump'), 'aborts before dumping anything');
+        }
+    }
+
     /**
      * @param array<string, mixed> $overrides
      */

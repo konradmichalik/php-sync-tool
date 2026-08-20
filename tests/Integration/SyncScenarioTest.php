@@ -254,6 +254,18 @@ final class SyncScenarioTest extends TestCase
         self::assertSame(0, $this->tableCount('db2', 'cache_b'), 'cache_* tables are excluded from the dump');
     }
 
+    #[Test]
+    public function postgresReceiverSyncCopiesAllRowsFromOriginToTarget(): void
+    {
+        $this->compose(['exec', '-T', 'pgdb2', 'psql', '-U', 'db', '-d', 'db', '-c', 'TRUNCATE TABLE person;']);
+        self::assertSame(0, $this->postgresRowCount('pgdb2', 'person'), 'target starts empty');
+
+        $result = $this->runSyncTool('www2', 'postgres.yaml');
+
+        self::assertTrue($result->isSuccessful(), $result->getOutput().$result->getErrorOutput());
+        self::assertSame(3, $this->postgresRowCount('pgdb2', 'person'));
+    }
+
     private function resetDatabases(): void
     {
         $this->mysql('db1', 'DROP TABLE IF EXISTS person, cache_a, cache_b; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');
@@ -275,6 +287,16 @@ final class SyncScenarioTest extends TestCase
     private function mysql(string $dbService, string $sql): void
     {
         $this->compose(['exec', '-T', $dbService, 'mariadb', '-udb', '-pdb', 'db', '-e', $sql]);
+    }
+
+    private function postgresRowCount(string $dbService, string $table): int
+    {
+        $output = $this->compose([
+            'exec', '-T', $dbService,
+            'psql', '-U', 'db', '-d', 'db', '-t', '-A', '-c', sprintf('SELECT COUNT(*) FROM %s;', $table),
+        ])->getOutput();
+
+        return (int) trim($output);
     }
 
     private function tableCount(string $dbService, string $table): int

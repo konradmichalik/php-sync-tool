@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- PostgreSQL support. `db.type` selects the database system (`mysql`, `mariadb`,
+  `postgres`), and it is also read from the scheme of a framework database URL,
+  so a Symfony `DATABASE_URL=postgresql://…` needs no extra configuration.
+  Dumps run through `pg_dump` and imports through `psql`; the password is passed
+  in a `.pgpass` file with mode 0600 that is removed after the run. `where` and
+  `additional_mysqldump_options` are MySQL-only and now abort a PostgreSQL run
+  with a clear message instead of being ignored. See the
+  [PostgreSQL documentation](https://konradmichalik.github.io/php-sync-tool/configuration/postgresql).
+
 - Live progress output in `interactive` mode, built on
   [`konradmichalik/php-progress`](https://github.com/konradmichalik/php-progress):
   one bar tracks the whole run and counts every planned step (dump, dump
@@ -24,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Every database command now goes through a `DatabaseDriver`. The commands
+  emitted for MySQL and MariaDB are unchanged.
+
 - Interactive output is compact by default. Progress phases and executed commands
   are no longer printed unless `-v` (phases) or `-vv` (commands) is passed. The
   `ci` and `json` output modes and the log file are unaffected.
@@ -33,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   handled these cases. The copied data is the same, but this now requires
   the `rsync` binary to be present, and file permissions on the copy follow
   rsync's `--chmod` defaults rather than a plain `cp`.
+
+### Fixed
+
+- Log output no longer masks long options that merely contain `-p`, so
+  `pg_dump --no-privileges` stays readable in `-vv` output. Attached passwords
+  such as `-psecret` are still masked.
 
 ### Internal
 
