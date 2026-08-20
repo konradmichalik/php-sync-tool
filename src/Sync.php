@@ -16,7 +16,8 @@ namespace KonradMichalik\SyncTool;
 use Closure;
 use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
 use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
-use KonradMichalik\SyncTool\Database\{MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, RemoteFileWriter, TableStatements};
+use KonradMichalik\SyncTool\Database\Driver\{DatabaseDriver, DriverFactory};
+use KonradMichalik\SyncTool\Database\{DumpRequest, RemoteFileWriter, TableStatements};
 use KonradMichalik\SyncTool\Enum\{LifecyclePhase, LogChannel, SyncMode};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
@@ -27,8 +28,10 @@ use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyRe
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 use Throwable;
 
-use function array_slice;
+use function implode;
 use function sprintf;
+use function str_contains;
+use function str_replace;
 
 /**
  * Sync.
@@ -43,9 +46,7 @@ final readonly class Sync
 
     public function __construct(
         private RunnerFactory $runners = new RunnerFactory(),
-        private MysqlCommandBuilder $commands = new MysqlCommandBuilder(),
-        private MysqlCredentials $credentials = new MysqlCredentials(),
-        private MysqlDefaultsFile $defaultsFile = new MysqlDefaultsFile(),
+        private DriverFactory $drivers = new DriverFactory(),
         private RemoteFileWriter $remoteFileWriter = new RemoteFileWriter(),
         private TableStatements $tables = new TableStatements(),
         private TransferStrategyResolver $transferResolver = new TransferStrategyResolver(),
@@ -125,27 +126,21 @@ final readonly class Sync
     {
         $client = $config->origin;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+        $driver = $this->drivers->forDatabase($client->db);
+        $this->assertSupported($driver, $config);
 
-        $credentialsPath = $this->prepareCredentials($client, $runner);
-        $credentialsArg = $this->credentials->defaultsExtraFileArgument($credentialsPath);
+        $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
 
         try {
-            $dumpPath = $this->dumpDir($client).$dumpName;
-
-            $ignoreOptions = $this->ignoreOptions($config, $runner, $credentialsArg);
-            $exportTables = $this->tables->exportTables($config->tables);
-            $options = $this->commands->dumpOptions(null, null, $config->where, $config->additionalMysqldumpOptions);
-
-            $command = $this->commands->dumpCommand(
-                'mysqldump',
-                $credentialsArg,
-                $options,
-                $client->db->name,
-                $ignoreOptions,
-                $exportTables,
-                'gzip',
-                $dumpPath,
-            );
+            $command = $driver->dumpCommand(new DumpRequest(
+                db: $client->db,
+                credentialsPath: $credentialsPath,
+                dumpFilePath: $this->dumpDir($client).$dumpName,
+                exportTables: $this->tables->exportTables($config->tables),
+                ignoreTables: $this->resolveIgnoreTables($config, $runner, $driver, $credentialsPath),
+                where: $config->where,
+                additionalOptions: $config->additionalMysqldumpOptions,
+            ));
 
             ($this->log)('Creating origin dump '.$dumpName);
             $this->logCommand($command);
@@ -182,9 +177,10 @@ final readonly class Sync
     {
         $client = $config->target;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+        $driver = $this->drivers->forDatabase($client->db);
+        $this->assertSupported($driver, $config);
 
-        $credentialsPath = $this->prepareCredentials($client, $runner);
-        $credentialsArg = $this->credentials->defaultsExtraFileArgument($credentialsPath);
+        $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
 
         try {
             $dumpPath = $mode->isImport() && '' !== $config->importFile
@@ -196,12 +192,12 @@ final readonly class Sync
             }
 
             if ($config->clearDatabase) {
-                $this->clearDatabase($config, $runner, $credentialsArg);
+                $this->clearDatabase($config, $runner, $driver, $credentialsPath);
             }
 
-            $this->truncateTables($config, $runner, $credentialsArg);
+            $this->truncateTables($config, $runner, $driver, $credentialsPath);
 
-            $command = $this->commands->importCommand('mysql', $credentialsArg, $client->db->name, 'gunzip', $dumpPath);
+            $command = $driver->importCommand($client->db, $credentialsPath, $dumpPath);
 
             ($this->log)('Importing dump into target');
             $this->logCommand($command);
@@ -209,8 +205,8 @@ final readonly class Sync
             $runner->run($command);
             $this->progress->advance();
 
-            $this->importAfterDump($client, $runner, $credentialsArg);
-            $this->runPostSql($client, $runner, $credentialsArg);
+            $this->importAfterDump($client, $runner, $driver, $credentialsPath);
+            $this->runPostSql($client, $runner, $driver, $credentialsPath);
             $this->pruneDumps($client, $runner);
         } finally {
             $this->cleanupCredentials($client, $runner, $credentialsPath);
@@ -226,7 +222,7 @@ final readonly class Sync
         }
     }
 
-    private function importAfterDump(ClientConfig $client, CommandRunner $runner, string $credentialsArg): void
+    private function importAfterDump(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
     {
         if (null === $client->afterDump || '' === $client->afterDump) {
             return;
@@ -234,11 +230,11 @@ final readonly class Sync
 
         ($this->log)('Importing additional dump '.$client->afterDump);
         $this->progress->phase('Importing additional dump');
-        $runner->run($this->commands->importCommand('mysql', $credentialsArg, $client->db->name, 'gunzip', $client->afterDump));
+        $runner->run($driver->importCommand($client->db, $credentialsPath, $client->afterDump));
         $this->progress->advance();
     }
 
-    private function runPostSql(ClientConfig $client, CommandRunner $runner, string $credentialsArg): void
+    private function runPostSql(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
     {
         foreach ($client->postSql as $sql) {
             if ('' === $sql) {
@@ -247,7 +243,7 @@ final readonly class Sync
 
             ($this->log)('Running post-import SQL');
             $this->progress->phase('Running post-import SQL');
-            $runner->run($this->commands->execCommand('mysql', $credentialsArg, $client->db->name, $sql));
+            $runner->run($driver->execCommand($client->db, $credentialsPath, $sql));
             $this->progress->advance();
         }
     }
@@ -273,77 +269,74 @@ final readonly class Sync
         }
     }
 
-    private function clearDatabase(SyncConfig $config, CommandRunner $runner, string $credentialsArg): void
+    private function clearDatabase(SyncConfig $config, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
     {
-        $result = $runner->run($this->commands->execCommand('mysql', $credentialsArg, $config->target->db->name, 'SHOW TABLES;'));
-        $lines = array_slice(array_filter(array_map(trim(...), explode("\n", $result))), 1);
-        $statements = array_map($this->tables->dropStatement(...), $lines);
+        $db = $config->target->db;
+        $output = $runner->run($driver->execCommand($db, $credentialsPath, $driver->listTablesSql($db->name)));
+        $statement = $driver->dropTablesStatement($driver->parseTableList($output));
 
-        $batch = $this->tables->foreignKeyDisabledBatch($statements);
-        if (null !== $batch) {
+        if (null !== $statement) {
             ($this->log)('Clearing target database');
-            $runner->run($this->commands->execCommand('mysql', $credentialsArg, $config->target->db->name, $batch));
+            $runner->run($driver->execCommand($db, $credentialsPath, $statement));
         }
     }
 
-    private function truncateTables(SyncConfig $config, CommandRunner $runner, string $credentialsArg): void
+    private function truncateTables(SyncConfig $config, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
     {
-        if ([] === $config->truncateTables) {
-            return;
-        }
+        $statement = $driver->truncateTablesStatement($config->truncateTables);
 
-        $statements = array_map(
-            $this->tables->truncateStatement(...),
-            $config->truncateTables,
-        );
-
-        $batch = $this->tables->foreignKeyDisabledBatch($statements);
-        if (null !== $batch) {
+        if (null !== $statement) {
             ($this->log)('Truncating tables');
-            $runner->run($this->commands->execCommand('mysql', $credentialsArg, $config->target->db->name, $batch));
+            $runner->run($driver->execCommand($config->target->db, $credentialsPath, $statement));
         }
     }
 
-    private function ignoreOptions(SyncConfig $config, CommandRunner $runner, string $credentialsArg): string
+    /**
+     * Table names to skip, with every `table*` wildcard expanded through a live
+     * query on the origin. Rendering them as command options is the driver's job.
+     *
+     * @return list<string>
+     */
+    private function resolveIgnoreTables(SyncConfig $config, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): array
     {
-        $dbName = $config->origin->db->name;
-        $options = [];
+        $db = $config->origin->db;
+        $tables = [];
 
         foreach ($config->ignoreTables as $table) {
-            if (str_contains($table, '*')) {
-                foreach ($this->expandWildcardTables($dbName, $runner, $credentialsArg, $table) as $match) {
-                    $options[] = $this->tables->ignoreTableOption($dbName, $match);
-                }
+            if (!str_contains($table, '*')) {
+                $tables[] = $table;
 
                 continue;
             }
 
-            $options[] = $this->tables->ignoreTableOption($dbName, $table);
+            $sql = $driver->listTablesLikeSql($db->name, str_replace('*', '%', $table));
+            $output = $runner->run($driver->execCommand($db, $credentialsPath, $sql), true);
+
+            foreach ($driver->parseTableList($output) as $match) {
+                $tables[] = $match;
+            }
         }
 
-        return implode(' ', $options);
+        return $tables;
     }
 
     /**
-     * Expand a `table*` wildcard to the matching table names via a live
-     * `SHOW TABLES … LIKE 'table%'` query on the origin.
-     *
-     * @return list<string>
+     * Refuse a run that asks for something this database system cannot express,
+     * before anything is dumped, transferred or imported.
      */
-    private function expandWildcardTables(string $dbName, CommandRunner $runner, string $credentialsArg, string $pattern): array
+    private function assertSupported(DatabaseDriver $driver, SyncConfig $config): void
     {
-        $sql = $this->commands->showTablesLikeSql($dbName, str_replace('*', '%', $pattern));
-        $result = $runner->run($this->commands->execCommand('mysql', $credentialsArg, $dbName, $sql), true);
+        $unsupported = $driver->unsupportedFeatures($config);
 
-        $lines = array_values(array_filter(array_map(trim(...), explode("\n", $result))));
-
-        return array_slice($lines, 1);
+        if ([] !== $unsupported) {
+            throw new SyncException(sprintf('%s does not support: %s', $driver->system()->value, implode(', ', $unsupported)));
+        }
     }
 
-    private function prepareCredentials(ClientConfig $client, CommandRunner $runner): string
+    private function prepareCredentials(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver): string
     {
-        $content = $this->defaultsFile->buildContent($client->db);
-        $path = $this->defaultsFile->generatePath();
+        $content = $driver->credentialsContent($client->db);
+        $path = $driver->credentialsPath();
 
         if ($client->isRemote()) {
             $runner->run($this->remoteFileWriter->remoteWriteCommand($content, $path));
