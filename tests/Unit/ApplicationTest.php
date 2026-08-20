@@ -37,9 +37,20 @@ final class ApplicationTest extends TestCase
     }
 
     #[Test]
-    public function registersTheSyncCommand(): void
+    public function registersTheSyncCommandAndItsVerbs(): void
     {
         self::assertTrue($this->application->has('sync'));
+        self::assertTrue($this->application->has('pull'));
+        self::assertTrue($this->application->has('push'));
+    }
+
+    #[Test]
+    public function aVerbIsTreatedAsACommandNotAsAHostName(): void
+    {
+        $output = $this->execute('pull --help');
+
+        self::assertStringContainsString('pull', $output);
+        self::assertStringContainsString('environment', $output, 'the pull help mentions its argument');
     }
 
     #[Test]

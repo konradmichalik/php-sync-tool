@@ -97,11 +97,21 @@ final class ConfigResolver
      */
     public function getLocalEndpoint(): array
     {
-        $this->load();
-
-        $local = $this->deepMerge($this->globalDefaults, $this->projectDefaults)['local'] ?? [];
+        $local = $this->getMergedDefaults()['local'] ?? [];
 
         return is_array($local) ? $local : [];
+    }
+
+    /**
+     * Global defaults with the project defaults laid over them.
+     *
+     * @return array<string, mixed>
+     */
+    public function getMergedDefaults(): array
+    {
+        $this->load();
+
+        return $this->deepMerge($this->globalDefaults, $this->projectDefaults);
     }
 
     /**

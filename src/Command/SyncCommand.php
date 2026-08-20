@@ -38,10 +38,19 @@ use function sprintf;
  * @license GPL-3.0-or-later
  */
 #[AsCommand(name: 'sync', description: 'Synchronize a database (and optionally files) between systems.')]
-final class SyncCommand extends Command
+// Deliberately not final: PullCommand and PushCommand are this pipeline with a
+// different endpoint assembly, and they override buildConfig() to provide it.
+
+/**
+ * SyncCommand.
+ *
+ * @author Konrad Michalik <km@move-elevator.de>
+ * @license GPL-3.0-or-later
+ */
+class SyncCommand extends Command
 {
     public function __construct(
-        private readonly ConfigResolver $resolver = new ConfigResolver(),
+        protected readonly ConfigResolver $resolver = new ConfigResolver(),
         private readonly ConfigLoader $loader = new ConfigLoader(),
         private readonly ConfigValidator $validator = new ConfigValidator(),
         private readonly SyncModeResolver $modeResolver = new SyncModeResolver(),
@@ -54,7 +63,18 @@ final class SyncCommand extends Command
     {
         $this
             ->addArgument('origin', InputArgument::OPTIONAL, 'Origin host name from the host file')
-            ->addArgument('target', InputArgument::OPTIONAL, 'Target host name from the host file')
+            ->addArgument('target', InputArgument::OPTIONAL, 'Target host name from the host file');
+
+        $this->configureSharedOptions();
+    }
+
+    /**
+     * Every option that is not about which endpoints to use. `pull` and `push`
+     * take the same set, they only name their endpoints differently.
+     */
+    protected function configureSharedOptions(): void
+    {
+        $this
             ->addOption('config-file', 'f', InputOption::VALUE_REQUIRED, 'Path to a configuration file')
             ->addOption('mute', 'm', InputOption::VALUE_NONE, 'Mute console output')
             ->addOption('yes', 'y', InputOption::VALUE_NONE, 'Skip the import confirmation prompt')
@@ -101,7 +121,9 @@ final class SyncCommand extends Command
             /** @var string|null $outputOption */
             $outputOption = $input->getOption('output');
             $mode = OutputMode::fromString($outputOption);
-            if (true === $input->getOption('quiet') || true === $input->getOption('mute')) {
+            // `--quiet` belongs to the application, so it is absent when a command
+            // runs standalone.
+            if (($input->hasOption('quiet') && true === $input->getOption('quiet')) || true === $input->getOption('mute')) {
                 $mode = OutputMode::Quiet;
             }
 
@@ -166,7 +188,7 @@ final class SyncCommand extends Command
     /**
      * @return array<string, mixed>
      */
-    private function buildConfig(InputInterface $input, OutputInterface $output): array
+    protected function buildConfig(InputInterface $input, OutputInterface $output): array
     {
         /** @var string|null $configFile */
         $configFile = $input->getOption('config-file');
@@ -191,6 +213,19 @@ final class SyncCommand extends Command
             }
         }
 
+        return $this->finishConfig($base, $input, $output);
+    }
+
+    /**
+     * Host links, CLI overrides and endpoint flags, applied the same way no
+     * matter where the two endpoints came from.
+     *
+     * @param array<string, mixed> $base
+     *
+     * @return array<string, mixed>
+     */
+    protected function finishConfig(array $base, InputInterface $input, OutputInterface $output): array
+    {
         $base = $this->applyHostLinks($base);
 
         $config = array_merge($base, $this->cliOverrides($input, $output));
@@ -214,7 +249,7 @@ final class SyncCommand extends Command
     /**
      * @return array<string, mixed>
      */
-    private function cliOverrides(InputInterface $input, OutputInterface $output): array
+    protected function cliOverrides(InputInterface $input, OutputInterface $output): array
     {
         $overrides = [];
 
@@ -267,28 +302,13 @@ final class SyncCommand extends Command
      *
      * @return array<string, mixed>
      */
-    private function swapEndpoints(array $config): array
+    protected function swapEndpoints(array $config): array
     {
         $origin = $config['origin'] ?? [];
         $config['origin'] = $config['target'] ?? [];
         $config['target'] = $origin;
 
         return $config;
-    }
-
-    /**
-     * @return array<string, string|null>
-     */
-    private function endpointRaw(InputInterface $input, string $prefix): array
-    {
-        $raw = [];
-        foreach ([...array_keys(EndpointOverrides::SUFFIX_MAP), ...array_keys(EndpointOverrides::DB_SUFFIX_MAP)] as $suffix) {
-            /** @var string|null $value */
-            $value = $input->getOption($prefix.'-'.$suffix);
-            $raw[$suffix] = $value;
-        }
-
-        return $raw;
     }
 
     /**
@@ -299,7 +319,7 @@ final class SyncCommand extends Command
      *
      * @return array<string, mixed>
      */
-    private function applyHostLinks(array $config): array
+    protected function applyHostLinks(array $config): array
     {
         foreach (['origin', 'target'] as $key) {
             $endpoint = $this->asArray($config[$key] ?? null);
@@ -322,7 +342,7 @@ final class SyncCommand extends Command
      *
      * @return array<string, mixed>
      */
-    private function applyEndpoint(array $config, string $key, InputInterface $input): array
+    protected function applyEndpoint(array $config, string $key, InputInterface $input): array
     {
         $merged = $this->mergeEndpoint(
             $this->asArray($config[$key] ?? null),
@@ -341,6 +361,29 @@ final class SyncCommand extends Command
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    protected function asArray(mixed $value): array
+    {
+        return is_array($value) ? $value : [];
+    }
+
+    /**
+     * @return array<string, string|null>
+     */
+    private function endpointRaw(InputInterface $input, string $prefix): array
+    {
+        $raw = [];
+        foreach ([...array_keys(EndpointOverrides::SUFFIX_MAP), ...array_keys(EndpointOverrides::DB_SUFFIX_MAP)] as $suffix) {
+            /** @var string|null $value */
+            $value = $input->getOption($prefix.'-'.$suffix);
+            $raw[$suffix] = $value;
+        }
+
+        return $raw;
+    }
+
+    /**
      * @param array<string, mixed> $base
      * @param array<string, mixed> $override
      *
@@ -353,14 +396,6 @@ final class SyncCommand extends Command
         }
 
         return array_merge($base, $override);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function asArray(mixed $value): array
-    {
-        return is_array($value) ? $value : [];
     }
 
     private function describeClient(bool $isRemote, string $host): string
