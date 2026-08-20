@@ -61,4 +61,22 @@ final class HostDefinitionTest extends TestCase
         self::assertSame('local (local)', $definition->displayName());
         self::assertSame(['path' => '/var/www'], $definition->toClientConfig());
     }
+
+    #[Test]
+    public function carriesAnSshPasswordSoItIsNotSilentlyDropped(): void
+    {
+        $host = HostDefinition::fromArray('prod', [
+            'host' => 'prod.example.com',
+            'user' => 'deploy',
+            'password' => 'secret',
+        ]);
+
+        self::assertSame('secret', $host->password);
+    }
+
+    #[Test]
+    public function hasNoPasswordWhenNoneIsConfigured(): void
+    {
+        self::assertNull(HostDefinition::fromArray('prod', ['host' => 'prod.example.com'])->password);
+    }
 }

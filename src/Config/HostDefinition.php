@@ -32,6 +32,7 @@ final readonly class HostDefinition
         public string $name,
         public ?string $host = null,
         public ?string $user = null,
+        public ?string $password = null,
         public ?string $path = null,
         public ?int $port = null,
         public ?string $sshKey = null,
@@ -51,6 +52,7 @@ final readonly class HostDefinition
             name: $name,
             host: self::nullableString($data, 'host'),
             user: self::nullableString($data, 'user'),
+            password: self::nullableString($data, 'password'),
             path: self::nullableString($data, 'path'),
             port: is_numeric($port) ? (int) $port : null,
             sshKey: self::nullableString($data, 'ssh_key'),
@@ -83,6 +85,9 @@ final readonly class HostDefinition
         }
         if (null !== $this->user && '' !== $this->user) {
             $config['user'] = $this->user;
+        }
+        if (null !== $this->password && '' !== $this->password) {
+            $config['password'] = $this->password;
         }
         if (null !== $this->path && '' !== $this->path) {
             $config['path'] = $this->path;
