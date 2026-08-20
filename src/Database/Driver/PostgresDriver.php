@@ -159,7 +159,7 @@ final readonly class PostgresDriver implements DatabaseDriver
     private function validatedList(array $tables): string
     {
         return implode(', ', array_map(
-            static fn (string $table): string => TableName::validate($table),
+            TableName::validate(...),
             $tables,
         ));
     }
