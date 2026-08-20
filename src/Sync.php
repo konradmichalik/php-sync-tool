@@ -283,18 +283,26 @@ final readonly class Sync
         }
 
         $isDarwin = !$client->isRemote() && 'Darwin' === \PHP_OS_FAMILY;
+        // Only dumps this tool wrote. The glob used to be `*`, which made every
+        // foreign .sql or .gz in the dump directory a deletion candidate.
         $listing = $runner->run(
-            $this->dumps->listDumpsCommand('stat', 'sort', 'grep', $this->dumpDir($client).'*', $isDarwin),
+            $this->dumps->listDumpsCommand('stat', 'sort', 'grep', $this->dumpDir($client).DumpFileNamer::PREFIX.'*', $isDarwin),
             true,
         );
 
         $lines = array_values(array_filter(array_map(trim(...), explode("\n", $listing))));
         $files = array_map($this->dumps->extractFilename(...), $lines);
+        $obsolete = $this->dumps->filesToRemove($files, $client->keepDumps);
 
-        foreach ($this->dumps->filesToRemove($files, $client->keepDumps) as $file) {
-            ($this->log)('Removing old dump '.$file);
-            $runner->run(sprintf('rm -f %s', escapeshellarg($file)), true);
+        if ([] === $obsolete) {
+            return;
         }
+
+        foreach ($obsolete as $file) {
+            ($this->log)('Removing old dump '.$file);
+        }
+
+        $runner->run('rm -f '.implode(' ', array_map(escapeshellarg(...), $obsolete)), true);
     }
 
     private function clearDatabase(SyncConfig $config, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void

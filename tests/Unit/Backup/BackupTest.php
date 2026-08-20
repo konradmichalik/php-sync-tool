@@ -33,7 +33,34 @@ final class BackupTest extends TestCase
         $config = new SyncConfig(origin: new ClientConfig(db: new DatabaseConfig(name: 'project')));
         $name = (new DumpFileNamer())->generate($config, new DateTimeImmutable('2026-06-29 12:37:00'));
 
-        self::assertSame('_project_2026-06-29_12-37.sql', $name);
+        self::assertSame('sync-tool_project_2026-06-29_12-37-00.sql', $name);
+    }
+
+    /**
+     * Two runs in the same minute must not land on one filename, otherwise the
+     * second overwrites the first and retention treats them as one dump.
+     */
+    #[Test]
+    public function dumpFileNamerSeparatesRunsWithinTheSameMinute(): void
+    {
+        $config = new SyncConfig(origin: new ClientConfig(db: new DatabaseConfig(name: 'project')));
+        $namer = new DumpFileNamer();
+
+        self::assertNotSame(
+            $namer->generate($config, new DateTimeImmutable('2026-06-29 12:37:04')),
+            $namer->generate($config, new DateTimeImmutable('2026-06-29 12:37:41')),
+        );
+    }
+
+    #[Test]
+    public function generatedDumpsCarryThePrefixRetentionGlobsOn(): void
+    {
+        $config = new SyncConfig(origin: new ClientConfig(db: new DatabaseConfig(name: 'project')));
+
+        self::assertStringStartsWith(
+            DumpFileNamer::PREFIX,
+            (new DumpFileNamer())->generate($config, new DateTimeImmutable('2026-06-29 12:37:00')),
+        );
     }
 
     #[Test]

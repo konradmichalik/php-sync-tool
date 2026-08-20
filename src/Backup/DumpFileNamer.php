@@ -24,14 +24,25 @@ use KonradMichalik\SyncTool\Config\SyncConfig;
  */
 final class DumpFileNamer
 {
+    /**
+     * Marks a dump as ours. Retention globs on this prefix, so a dump directory
+     * shared with other tools (and `/tmp/`, the default, always is) keeps its
+     * foreign `.sql` and `.gz` files.
+     */
+    public const PREFIX = 'sync-tool_';
+
+    /**
+     * Seconds are part of the stamp because two runs within the same minute
+     * would otherwise write, transfer and prune the same filename.
+     */
     public function generate(SyncConfig $config, ?DateTimeImmutable $now = null): string
     {
         if ('' !== $config->dumpName) {
             return $config->dumpName.'.sql';
         }
 
-        $timestamp = ($now ?? new DateTimeImmutable())->format('Y-m-d_H-i');
+        $timestamp = ($now ?? new DateTimeImmutable())->format('Y-m-d_H-i-s');
 
-        return '_'.$config->origin->db->name.'_'.$timestamp.'.sql';
+        return self::PREFIX.$config->origin->db->name.'_'.$timestamp.'.sql';
     }
 }

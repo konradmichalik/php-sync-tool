@@ -34,7 +34,7 @@ Both `origin` and `target` accept the same structure:
 | `dump_dir` | string | Directory for temporary dump files (default: `/tmp/`). |
 | `keep_dumps` | number | Retention: keep only the N most recent dumps in `dump_dir`. |
 | `after_dump` | string | Additional SQL file to import after the main import. |
-| `post_sql` | array | SQL statements to execute after import. |
+| `post_sql` | array | SQL statements to execute after import, in one batch. |
 | `protect` | boolean | Refuse to use this endpoint as an import target without confirmation. |
 | `console` | object | Custom command paths (`php`, `mysql`, `mysqldump`). |
 | `script` | object | Lifecycle commands: `before`, `after`, `error`. |
@@ -103,6 +103,21 @@ target:
     before: php artisan down
     after: php artisan up
 ```
+
+## Dump Files and Retention
+
+Generated dumps are named `sync-tool_<database>_<YYYY-MM-DD_HH-MM-SS>.sql.gz`.
+Two things follow from that name:
+
+- **`keep_dumps` only ever deletes dumps the tool wrote itself.** Retention globs
+  on the `sync-tool_` prefix, so other `.sql` and `.gz` files in `dump_dir` are
+  left alone. That matters because the default `dump_dir` is `/tmp/`, which is
+  rarely yours exclusively.
+- **A dump written with `--dump-name` is yours, not ours.** It carries no prefix
+  and is therefore never pruned automatically.
+
+The timestamp is precise to the second, so repeated runs within the same minute
+produce distinct files instead of overwriting each other.
 
 ## Common Configurations
 

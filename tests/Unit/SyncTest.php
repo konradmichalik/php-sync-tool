@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit;
 
+use KonradMichalik\SyncTool\Backup\DumpFileNamer;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Mode\SyncPlan;
@@ -207,6 +208,27 @@ final class SyncTest extends TestCase
 
         self::assertTrue($recorder->ran('rm -f'), 'removes dumps beyond the retention limit');
         self::assertContains('Removing old dump /tmp/_app_b.gz', $this->logs);
+    }
+
+    /**
+     * The default dump directory is /tmp/, so a retention glob of `*` would put
+     * every foreign .sql and .gz on the deletion list.
+     */
+    #[Test]
+    public function retentionOnlyListsDumpsWrittenByThisTool(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['path' => '/o', 'keep_dumps' => 1, 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+        ]);
+
+        $recorder = $this->runSync($config, Plans::dumpLocal());
+
+        self::assertTrue(
+            $recorder->ran('/tmp/'.DumpFileNamer::PREFIX.'*'),
+            'the listing is scoped to our own dump prefix',
+        );
+        self::assertFalse($recorder->ran('stat -c "%y %n" /tmp/* '), 'never globs the whole dump directory');
     }
 
     #[Test]
