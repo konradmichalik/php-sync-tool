@@ -14,8 +14,12 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Remote;
 
 use KonradMichalik\SyncTool\Config\{ClientConfig, JumpHostConfig};
+use KonradMichalik\SyncTool\Security\Shell;
 
+use function implode;
+use function ltrim;
 use function sprintf;
+use function str_replace;
 
 /**
  * RsyncCommandBuilder.
@@ -26,9 +30,12 @@ use function sprintf;
 final class RsyncCommandBuilder
 {
     /**
+     * Directory trees: mirror the source, compress on the wire, normalise
+     * filename encoding and set group-readable modes on dirs and files.
+     *
      * @var list<string>
      */
-    private const DEFAULT_OPTIONS = [
+    private const DIRECTORY_OPTIONS = [
         '--delete',
         '-a',
         '-z',
@@ -38,29 +45,69 @@ final class RsyncCommandBuilder
         '--chmod=D2770,F660',
     ];
 
+    /**
+     * A single gzip dump. `-z` would re-compress compressed bytes, and `--delete`
+     * and `--iconv` have no meaning without a directory to walk. The restrictive
+     * file mode stays: the dump holds production data.
+     *
+     * @var list<string>
+     */
+    private const SINGLE_FILE_OPTIONS = [
+        '-a',
+        '--stats',
+        '--human-readable',
+        '--chmod=F660',
+    ];
+
     public function passwordEnvironment(ClientConfig $client, bool $useSshpass): string
     {
         if ($useSshpass && null === $client->sshKey && null !== $client->password && '' !== $client->password) {
-            return sprintf("SSHPASS='%s' ", $client->password);
+            return 'SSHPASS='.Shell::quote($client->password).' ';
         }
 
         return '';
     }
 
-    public function authorization(ClientConfig $client, bool $useSshpass, ?JumpHostConfig $jump = null): string
-    {
-        $port = $client->port;
-        $jumpOpt = null !== $jump ? ' -J '.$jump->sshSpec() : '';
+    /**
+     * The remote-shell option for rsync, as one shell-quoted argument.
+     *
+     * `$strictHostKeyChecking` mirrors the `ssh_strict_host_key_checking` config
+     * key that the phpseclib command channel already honours. Hard-coding
+     * `StrictHostKeyChecking=no` here left the data channel unauthenticated while
+     * the tool documented the opposite.
+     */
+    public function authorization(
+        ClientConfig $client,
+        bool $useSshpass,
+        ?JumpHostConfig $jump = null,
+        bool $strictHostKeyChecking = true,
+    ): string {
+        // A configured key wins over sshpass, which is why passwordEnvironment()
+        // returns nothing as soon as one is present.
+        $withPassword = '' !== $this->passwordEnvironment($client, $useSshpass);
+
+        $parts = $withPassword ? ['sshpass', '-e', 'ssh'] : ['ssh'];
+
+        if (null !== $jump) {
+            $parts[] = '-J';
+            $parts[] = $jump->sshSpec();
+        }
 
         if (null !== $client->sshKey) {
-            return sprintf('-e "ssh%s -i %s -p%d"', $jumpOpt, $client->sshKey, $port);
+            $parts[] = '-i';
+            $parts[] = $client->sshKey;
         }
 
-        if ($useSshpass && '' !== $this->passwordEnvironment($client, $useSshpass)) {
-            return sprintf('--rsh="sshpass -e ssh%s -p%d -o StrictHostKeyChecking=no -l %s"', $jumpOpt, $port, $client->user);
+        $parts[] = '-p'.$client->port;
+        $parts[] = '-o';
+        $parts[] = 'StrictHostKeyChecking='.($strictHostKeyChecking ? 'yes' : 'no');
+
+        if ($withPassword) {
+            $parts[] = '-l';
+            $parts[] = $client->user;
         }
 
-        return sprintf('-e "ssh%s -p%d -o StrictHostKeyChecking=no"', $jumpOpt, $port);
+        return ($withPassword ? '--rsh=' : '-e ').Shell::quote(implode(' ', $parts));
     }
 
     public function userHost(ClientConfig $client): string
@@ -75,9 +122,9 @@ final class RsyncCommandBuilder
     /**
      * @param list<string> $excludePatterns
      */
-    public function options(?string $additionalOptions, array $excludePatterns = [], bool $withProgress = false): string
+    public function options(?string $additionalOptions, array $excludePatterns = [], bool $withProgress = false, bool $singleFile = false): string
     {
-        $options = implode(' ', self::DEFAULT_OPTIONS);
+        $options = implode(' ', $singleFile ? self::SINGLE_FILE_OPTIONS : self::DIRECTORY_OPTIONS);
 
         if ($withProgress) {
             $options .= ' --info=progress2 --no-i-r';

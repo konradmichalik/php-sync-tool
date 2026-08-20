@@ -38,7 +38,10 @@ final class RsyncCommandBuilderTest extends TestCase
     {
         $client = new ClientConfig(host: 'h', user: 'u', sshKey: '/home/u/.ssh/id_rsa', port: 2222);
 
-        self::assertSame('-e "ssh -i /home/u/.ssh/id_rsa -p2222"', $this->builder->authorization($client, false));
+        self::assertSame(
+            "-e 'ssh -i /home/u/.ssh/id_rsa -p2222 -o StrictHostKeyChecking=yes'",
+            $this->builder->authorization($client, false),
+        );
     }
 
     #[Test]
@@ -46,7 +49,10 @@ final class RsyncCommandBuilderTest extends TestCase
     {
         $client = new ClientConfig(host: 'h', user: 'u', port: 22);
 
-        self::assertSame('-e "ssh -p22 -o StrictHostKeyChecking=no"', $this->builder->authorization($client, false));
+        self::assertSame(
+            "-e 'ssh -p22 -o StrictHostKeyChecking=yes'",
+            $this->builder->authorization($client, false),
+        );
     }
 
     #[Test]
@@ -55,8 +61,38 @@ final class RsyncCommandBuilderTest extends TestCase
         $client = new ClientConfig(host: 'h', user: 'deploy', password: 'secret', port: 2200);
 
         self::assertSame(
-            '--rsh="sshpass -e ssh -p2200 -o StrictHostKeyChecking=no -l deploy"',
+            "--rsh='sshpass -e ssh -p2200 -o StrictHostKeyChecking=yes -l deploy'",
             $this->builder->authorization($client, true),
+        );
+    }
+
+    /**
+     * The data channel has to follow the same `ssh_strict_host_key_checking` key
+     * as the command channel. It used to hard-code `no` regardless.
+     */
+    #[Test]
+    public function authorizationHonoursTheStrictHostKeyCheckingSetting(): void
+    {
+        $client = new ClientConfig(host: 'h', user: 'u', port: 22);
+
+        self::assertStringContainsString(
+            'StrictHostKeyChecking=yes',
+            $this->builder->authorization($client, false, null, true),
+        );
+        self::assertStringContainsString(
+            'StrictHostKeyChecking=no',
+            $this->builder->authorization($client, false, null, false),
+        );
+    }
+
+    #[Test]
+    public function authorizationQuotesAnAwkwardKeyPath(): void
+    {
+        $client = new ClientConfig(host: 'h', user: 'u', sshKey: '/keys/$(id).pem', port: 22);
+
+        self::assertSame(
+            "-e 'ssh -i /keys/$(id).pem -p22 -o StrictHostKeyChecking=yes'",
+            $this->builder->authorization($client, false),
         );
     }
 
@@ -64,11 +100,38 @@ final class RsyncCommandBuilderTest extends TestCase
     public function passwordEnvironmentOnlyWithSshpassAndPasswordAndNoKey(): void
     {
         $withPassword = new ClientConfig(host: 'h', user: 'u', password: 'secret');
-        self::assertSame("SSHPASS='secret' ", $this->builder->passwordEnvironment($withPassword, true));
+        self::assertSame('SSHPASS=secret ', $this->builder->passwordEnvironment($withPassword, true));
         self::assertSame('', $this->builder->passwordEnvironment($withPassword, false));
 
         $withKey = new ClientConfig(host: 'h', user: 'u', password: 'secret', sshKey: '/k');
         self::assertSame('', $this->builder->passwordEnvironment($withKey, true));
+    }
+
+    #[Test]
+    public function passwordEnvironmentQuotesAPasswordWithShellCharacters(): void
+    {
+        $client = new ClientConfig(host: 'h', user: 'u', password: "p'a\$ss");
+
+        self::assertSame(
+            'SSHPASS=\'p\'"\'"\'a$ss\' ',
+            $this->builder->passwordEnvironment($client, true),
+        );
+    }
+
+    #[Test]
+    public function aSingleDumpFileSkipsTheDirectoryOnlyOptions(): void
+    {
+        $directory = $this->builder->options(null);
+        $singleFile = $this->builder->options(null, [], false, true);
+
+        self::assertStringContainsString('-z', $directory);
+        self::assertStringContainsString('--delete', $directory);
+        self::assertStringContainsString('--iconv=UTF-8', $directory);
+
+        self::assertStringNotContainsString('-z', $singleFile);
+        self::assertStringNotContainsString('--delete', $singleFile);
+        self::assertStringNotContainsString('--iconv', $singleFile);
+        self::assertStringContainsString('--chmod=F660', $singleFile);
     }
 
     #[Test]

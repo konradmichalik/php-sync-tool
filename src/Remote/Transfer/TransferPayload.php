@@ -27,12 +27,16 @@ final readonly class TransferPayload
 {
     /**
      * @param list<string> $excludePatterns
+     * @param bool         $singleFile      one already-compressed dump rather than a
+     *                                      directory tree, which takes a leaner rsync
+     *                                      option set
      */
     public function __construct(
         public string $originPath,
         public string $targetPath,
         public array $excludePatterns = [],
         public ?string $extraRsyncOptions = null,
+        public bool $singleFile = false,
     ) {}
 
     public function label(): string

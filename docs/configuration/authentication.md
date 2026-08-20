@@ -85,6 +85,10 @@ ssh-keyscan -H prod.example.com >> ~/.ssh/known_hosts
 ssh deploy@prod.example.com
 ```
 
+This applies to both channels a sync uses: the SSH connection that runs commands
+and the `rsync` connection that moves the dump and any files. Both consult the
+same `~/.ssh/known_hosts` and both follow the setting below.
+
 For controlled environments (e.g. ephemeral CI containers or DDEV) where
 maintaining `known_hosts` is impractical, verification can be disabled:
 
@@ -95,6 +99,13 @@ ssh_strict_host_key_checking: false
 ::: warning
 Only disable host-key verification in trusted, controlled environments. Never
 disable it against production hosts on untrusted networks.
+:::
+
+::: tip
+`rsync` transfers used to pass `StrictHostKeyChecking=no` regardless of this
+setting, so they never failed on an unknown host. They now honour it. If a
+transfer starts failing, the host is missing from `known_hosts`; add it with
+`ssh-keyscan` as shown above.
 :::
 
 ## Jump Host Authentication

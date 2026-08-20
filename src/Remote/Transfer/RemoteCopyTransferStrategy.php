@@ -47,7 +47,7 @@ final readonly class RemoteCopyTransferStrategy implements TransferStrategy
 
     public function transfer(SyncConfig $config, TransferPayload $payload): void
     {
-        $options = $this->rsync->options($payload->extraRsyncOptions, $payload->excludePatterns);
+        $options = $this->rsync->options($payload->extraRsyncOptions, $payload->excludePatterns, singleFile: $payload->singleFile);
         $command = sprintf(
             'rsync %s %s %s',
             $options,

@@ -51,12 +51,12 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
     public function transfer(SyncConfig $config, TransferPayload $payload): void
     {
         $localTemp = sys_get_temp_dir().'/php-sync-tool-'.basename(rtrim($payload->targetPath, '/'));
-        $options = $this->rsync->options($payload->extraRsyncOptions, $payload->excludePatterns);
+        $options = $this->rsync->options($payload->extraRsyncOptions, $payload->excludePatterns, singleFile: $payload->singleFile);
 
         $pull = $this->rsync->build(
             $this->rsync->passwordEnvironment($config->origin, $config->useSshpass),
             $options,
-            $this->rsync->authorization($config->origin, $config->useSshpass, $config->origin->jumpHost),
+            $this->rsync->authorization($config->origin, $config->useSshpass, $config->origin->jumpHost, $config->strictHostKeyChecking),
             $this->rsync->userHost($config->origin),
             $payload->originPath,
             '',
@@ -66,7 +66,7 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         $push = $this->rsync->build(
             $this->rsync->passwordEnvironment($config->target, $config->useSshpass),
             $options,
-            $this->rsync->authorization($config->target, $config->useSshpass, $config->target->jumpHost),
+            $this->rsync->authorization($config->target, $config->useSshpass, $config->target->jumpHost, $config->strictHostKeyChecking),
             '',
             $localTemp,
             $this->rsync->userHost($config->target),
