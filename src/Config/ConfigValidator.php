@@ -149,7 +149,8 @@ final class ConfigValidator
             .'"json_log": {"type": "boolean"},'
             .'"ignore_table": {"type": "array"},'
             .'"target": %1$s,'
-            .'"origin": %1$s'
+            .'"origin": %1$s,'
+            .'"local": %1$s'
             .'}}',
             self::CLIENT_SCHEMA,
         );

@@ -90,6 +90,21 @@ final class ConfigResolver
     }
 
     /**
+     * This machine's endpoint, from the `local` block of the merged defaults.
+     * `pull` and `push` use it as the side that is not the named environment.
+     *
+     * @return array<string, mixed>
+     */
+    public function getLocalEndpoint(): array
+    {
+        $this->load();
+
+        $local = $this->deepMerge($this->globalDefaults, $this->projectDefaults)['local'] ?? [];
+
+        return is_array($local) ? $local : [];
+    }
+
+    /**
      * @return array<string, HostDefinition>
      */
     public function getGlobalHosts(): array

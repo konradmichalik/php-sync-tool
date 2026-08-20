@@ -178,4 +178,28 @@ final class ConfigValidatorTest extends TestCase
             'target' => ['path' => '/t', 'db' => ['name' => 'app']],
         ]);
     }
+
+    #[Test]
+    public function acceptsALocalEndpointBlock(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        (new ConfigValidator())->validate([
+            'local' => ['path' => 'web/typo3conf/LocalConfiguration.php', 'dump_dir' => 'var/transfer/'],
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app']],
+        ]);
+    }
+
+    #[Test]
+    public function rejectsAMistypedKeyInTheLocalEndpointBlock(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        (new ConfigValidator())->validate([
+            'local' => ['port' => 'not-a-number'],
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app']],
+        ]);
+    }
 }

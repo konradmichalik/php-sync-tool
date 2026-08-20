@@ -46,6 +46,35 @@ final class ConfigResolverTest extends TestCase
     }
 
     #[Test]
+    public function readsTheLocalEndpointFromTheProjectDefaults(): void
+    {
+        $this->writeProject('defaults.yaml', "local:\n  path: web/typo3conf/LocalConfiguration.php\n  dump_dir: var/transfer/\n");
+
+        $local = $this->resolver()->getLocalEndpoint();
+
+        self::assertSame('web/typo3conf/LocalConfiguration.php', $local['path']);
+        self::assertSame('var/transfer/', $local['dump_dir']);
+    }
+
+    #[Test]
+    public function theProjectLocalEndpointOverridesTheGlobalOne(): void
+    {
+        $this->writeGlobal('defaults.yaml', "local:\n  path: /global/path\n  dump_dir: /tmp/global/\n");
+        $this->writeProject('defaults.yaml', "local:\n  path: /project/path\n");
+
+        $local = $this->resolver()->getLocalEndpoint();
+
+        self::assertSame('/project/path', $local['path'], 'project wins');
+        self::assertSame('/tmp/global/', $local['dump_dir'], 'global keys survive');
+    }
+
+    #[Test]
+    public function hasNoLocalEndpointWithoutTheBlock(): void
+    {
+        self::assertSame([], $this->resolver()->getLocalEndpoint());
+    }
+
+    #[Test]
     public function resolvesExplicitFile(): void
     {
         $file = $this->work.'/custom.yaml';
