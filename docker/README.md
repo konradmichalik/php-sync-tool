@@ -9,9 +9,13 @@ This stack simulates synchronizing a database between two hosts.
 | `www1`  | origin host (reaches `db1`) | `localhost:2211` | — |
 | `www2`  | target host (reaches `db2`), drives the sync | `localhost:2212` | — |
 | `proxy` | bastion host for jump-host scenarios | `localhost:2213` | — |
+| `pgdb1` | PostgreSQL origin DB (seeded: `person` = 3 rows) | — | `127.0.0.1:54321` |
+| `pgdb2` | PostgreSQL target DB (empty: `person` = 0 rows) | — | `127.0.0.1:54322` |
 
-All web nodes mount the repository at `/app` and ship `php`, the MySQL client,
-`rsync`, `gzip` and `sshpass`. SSH login is `root` / `root`.
+All web nodes mount the repository at `/app` and ship `php`, the MySQL and
+PostgreSQL clients, `rsync`, `gzip` and `sshpass`. SSH login is `root` / `root`.
+The PostgreSQL services stay on the same major version as the client in the web
+image, because `pg_dump` refuses a server newer than itself.
 
 ## Start
 
@@ -33,8 +37,8 @@ composer docker:down      # stop and remove the stack
 `composer test:scenarios` brings the stack up and exercises all configs in
 `docker/configs/`: RECEIVER, SENDER, PROXY, SFTP fallback (dump and
 recursive directory transfer with excludes), clear-database, post_sql,
-where-clause, keep-dump, with-files, import-file, and framework credential
-auto-detection for TYPO3, Symfony, Drupal, WordPress and Laravel.
+where-clause, keep-dump, with-files, import-file, PostgreSQL, and framework
+credential auto-detection for TYPO3, Symfony, Drupal, WordPress and Laravel.
 
 ## Run a sync (RECEIVER: www1 → www2)
 
@@ -45,6 +49,16 @@ docker compose exec www2 php /app/bin/sync-tool \
 
 This dumps `db` on `www1`/`db1`, transfers the gzipped dump to `www2` over
 rsync, and imports it into `db2`.
+
+## Run a PostgreSQL sync (pgdb1 → pgdb2)
+
+```bash
+docker compose exec www2 php /app/bin/sync-tool \
+  -f /app/docker/configs/postgres.yaml -y
+```
+
+Same shape as the RECEIVER scenario, but the dump runs through `pg_dump` and the
+import through `psql`, with the password passed in a `.pgpass` file.
 
 ## Verify
 

@@ -5,6 +5,8 @@
 #   www1 ── origin host (SSH), reaches db1
 #   www2 ── target host (SSH), reaches db2 — sync is driven from here
 #   proxy── bastion host for jump-host scenarios
+#   pgdb1── PostgreSQL origin database (seeded: person has 3 rows)
+#   pgdb2── PostgreSQL target database (empty: person has 0 rows)
 #
 # The repository is mounted read-write at /app in every web node, so the tool
 # runs straight from source. See docker/README.md for usage.
@@ -46,6 +48,42 @@ services:
       timeout: 5s
       retries: 20
 
+  # PostgreSQL pair for the postgres scenario. Kept on the same major version as
+  # the client in the web image (17): pg_dump refuses a server newer than itself.
+  pgdb1:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: db
+      POSTGRES_PASSWORD: db
+    volumes:
+      - ./db/pg-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "54321:5432"
+    networks: [syncnet]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U db -d db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  pgdb2:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: db
+      POSTGRES_PASSWORD: db
+    volumes:
+      - ./db/pg-empty.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "54322:5432"
+    networks: [syncnet]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U db -d db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   www1:
     build: ./web
     volumes:
@@ -55,6 +93,8 @@ services:
     networks: [syncnet]
     depends_on:
       db1:
+        condition: service_healthy
+      pgdb1:
         condition: service_healthy
 
   www2:
@@ -66,6 +106,8 @@ services:
     networks: [syncnet]
     depends_on:
       db2:
+        condition: service_healthy
+      pgdb2:
         condition: service_healthy
 
   proxy:
