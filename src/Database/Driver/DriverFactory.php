@@ -26,11 +26,9 @@ final readonly class DriverFactory
 {
     public function forDatabase(DatabaseConfig $db): DatabaseDriver
     {
-        // The PostgreSQL arm arrives with its driver; the missing arm is deliberate
-        // so that both PHPStan and PHP itself point at this spot until then.
-        // @phpstan-ignore match.unhandled
         return match ($db->type) {
             DatabaseSystem::MySQL, DatabaseSystem::MariaDB => new MysqlDriver(),
+            DatabaseSystem::PostgreSQL => new PostgresDriver(),
         };
     }
 }

@@ -331,6 +331,21 @@ final class SyncTest extends TestCase
         self::assertSame(2, $progress->advances);
     }
 
+    #[Test]
+    public function drivesAPostgresClientWithPostgresBinaries(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres']],
+        ]);
+
+        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+
+        self::assertTrue($recorder->ran('pg_dump'), 'dumps with pg_dump');
+        self::assertTrue($recorder->ran('psql'), 'imports with psql');
+        self::assertFalse($recorder->ran('mysqldump'));
+    }
+
     /**
      * @param array<string, mixed> $overrides
      */

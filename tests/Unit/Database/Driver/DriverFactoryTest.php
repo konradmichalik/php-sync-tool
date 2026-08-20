@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Database\Driver;
 
 use KonradMichalik\SyncTool\Config\DatabaseConfig;
-use KonradMichalik\SyncTool\Database\Driver\{DriverFactory, MysqlDriver};
+use KonradMichalik\SyncTool\Database\Driver\{DriverFactory, MysqlDriver, PostgresDriver};
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -36,6 +36,15 @@ final class DriverFactoryTest extends TestCase
         self::assertInstanceOf(
             MysqlDriver::class,
             $factory->forDatabase(new DatabaseConfig(name: 'app', type: DatabaseSystem::MariaDB)),
+        );
+    }
+
+    #[Test]
+    public function picksThePostgresDriverForPostgres(): void
+    {
+        self::assertInstanceOf(
+            PostgresDriver::class,
+            (new DriverFactory())->forDatabase(new DatabaseConfig(name: 'app', type: DatabaseSystem::PostgreSQL)),
         );
     }
 }
