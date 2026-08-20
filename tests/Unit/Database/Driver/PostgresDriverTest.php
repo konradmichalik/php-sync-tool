@@ -109,7 +109,7 @@ final class PostgresDriverTest extends TestCase
     {
         self::assertSame(
             "SELECT tablename FROM pg_tables WHERE schemaname = 'public';",
-            $this->driver->listTablesSql('app'),
+            $this->driver->listTablesSql(),
         );
         self::assertSame(
             "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'cache_%';",

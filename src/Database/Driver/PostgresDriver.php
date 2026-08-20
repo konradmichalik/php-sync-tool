@@ -36,9 +36,6 @@ use function trim;
  */
 final readonly class PostgresDriver implements DatabaseDriver
 {
-    private const DEFAULT_HOST = 'localhost';
-    private const DEFAULT_PORT = 5432;
-
     public function __construct(
         private PgpassFile $pgpass = new PgpassFile(),
     ) {}
@@ -99,7 +96,7 @@ final readonly class PostgresDriver implements DatabaseDriver
             .' -c '.Shell::quote($sql);
     }
 
-    public function listTablesSql(string $dbName): string
+    public function listTablesSql(): string
     {
         return "SELECT tablename FROM pg_tables WHERE schemaname = 'public';";
     }
@@ -171,8 +168,8 @@ final readonly class PostgresDriver implements DatabaseDriver
 
     private function connection(DatabaseConfig $db): string
     {
-        return ' -h '.Shell::quote('' !== $db->host ? $db->host : self::DEFAULT_HOST)
-            .' -p '.(0 !== $db->port ? $db->port : self::DEFAULT_PORT)
+        return ' -h '.Shell::quote('' !== $db->host ? $db->host : PgpassFile::DEFAULT_HOST)
+            .' -p '.(0 !== $db->port ? $db->port : PgpassFile::DEFAULT_PORT)
             .' -U '.Shell::quote($db->user)
             .' -d '.Shell::quote($db->name);
     }

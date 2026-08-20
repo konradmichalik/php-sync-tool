@@ -117,7 +117,7 @@ final class MysqlDriverTest extends TestCase
     #[Test]
     public function listsTablesAndStripsTheHeaderRowFromTheOutput(): void
     {
-        self::assertSame('SHOW TABLES;', $this->driver->listTablesSql('app'));
+        self::assertSame('SHOW TABLES;', $this->driver->listTablesSql());
         // showTablesLikeSql() backtick-quotes the database name via TableName::sanitize().
         self::assertSame("SHOW TABLES FROM `app` LIKE 'cache_%';", $this->driver->listTablesLikeSql('app', 'cache_%'));
         self::assertSame(

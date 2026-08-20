@@ -43,7 +43,7 @@ interface DatabaseDriver
 
     public function execCommand(DatabaseConfig $db, string $credentialsPath, string $sql): string;
 
-    public function listTablesSql(string $dbName): string;
+    public function listTablesSql(): string;
 
     /**
      * @param string $pattern SQL LIKE pattern, `%` already substituted for `*`

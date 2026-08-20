@@ -29,8 +29,12 @@ use function str_replace;
  */
 final readonly class PgpassFile
 {
-    private const DEFAULT_HOST = 'localhost';
-    private const DEFAULT_PORT = 5432;
+    /**
+     * PostgreSQL's own defaults, shared with PostgresDriver so that the `.pgpass`
+     * line and the connection arguments can never disagree.
+     */
+    public const DEFAULT_HOST = 'localhost';
+    public const DEFAULT_PORT = 5432;
 
     /**
      * A `.pgpass` line is `host:port:database:user:password`; literal colons and

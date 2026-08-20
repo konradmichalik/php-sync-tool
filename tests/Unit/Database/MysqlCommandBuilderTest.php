@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Database;
 
 use KonradMichalik\SyncTool\Database\MysqlCommandBuilder;
-use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -38,25 +37,7 @@ final class MysqlCommandBuilderTest extends TestCase
     {
         self::assertSame(
             '--single-transaction --quick --extended-insert --no-tablespaces ',
-            $this->builder->dumpOptions(DatabaseSystem::MySQL, '8.0.32'),
-        );
-    }
-
-    #[Test]
-    public function dumpOptionsDropsNoTablespacesForOldMysql(): void
-    {
-        self::assertSame(
-            '--single-transaction --quick --extended-insert ',
-            $this->builder->dumpOptions(DatabaseSystem::MySQL, '5.5.0'),
-        );
-    }
-
-    #[Test]
-    public function dumpOptionsKeepsNoTablespacesForMariaDb(): void
-    {
-        self::assertSame(
-            '--single-transaction --quick --extended-insert --no-tablespaces ',
-            $this->builder->dumpOptions(DatabaseSystem::MariaDB, '10.5.0'),
+            $this->builder->dumpOptions(),
         );
     }
 
@@ -65,7 +46,7 @@ final class MysqlCommandBuilderTest extends TestCase
     {
         self::assertSame(
             "--single-transaction --quick --extended-insert --no-tablespaces --where='id > 5' --hex-blob ",
-            $this->builder->dumpOptions(DatabaseSystem::MySQL, '8.0.0', 'id > 5', '--hex-blob'),
+            $this->builder->dumpOptions('id > 5', '--hex-blob'),
         );
     }
 
