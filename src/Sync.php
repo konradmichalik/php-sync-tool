@@ -128,7 +128,7 @@ final readonly class Sync
         $client = $config->origin;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
         $driver = $this->drivers->forDatabase($client->db, $client->console);
-        $this->assertSupported($driver, $config);
+        $this->assertSupported($driver, $config, $client->db);
 
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
 
@@ -180,7 +180,7 @@ final readonly class Sync
         $client = $config->target;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
         $driver = $this->drivers->forDatabase($client->db, $client->console);
-        $this->assertSupported($driver, $config);
+        $this->assertSupported($driver, $config, $client->db);
 
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
 
@@ -381,9 +381,9 @@ final readonly class Sync
      * Refuse a run that asks for something this database system cannot express,
      * before anything is dumped, transferred or imported.
      */
-    private function assertSupported(DatabaseDriver $driver, SyncConfig $config): void
+    private function assertSupported(DatabaseDriver $driver, SyncConfig $config, DatabaseConfig $db): void
     {
-        $unsupported = $driver->unsupportedFeatures($config);
+        $unsupported = $driver->unsupportedFeatures($config, $db);
 
         if ([] !== $unsupported) {
             throw new SyncException(sprintf('%s does not support: %s', $driver->system()->value, implode(', ', $unsupported)));

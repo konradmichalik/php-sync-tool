@@ -150,7 +150,7 @@ final class MysqlDriverTest extends TestCase
             'where' => 'id > 1',
         ]);
 
-        self::assertSame([], $this->driver->unsupportedFeatures($config));
+        self::assertSame([], $this->driver->unsupportedFeatures($config, $config->origin->db));
     }
 
     #[Test]

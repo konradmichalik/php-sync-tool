@@ -136,7 +136,7 @@ final readonly class MysqlDriver implements DatabaseDriver
         return $statements;
     }
 
-    public function unsupportedFeatures(SyncConfig $config): array
+    public function unsupportedFeatures(SyncConfig $config, DatabaseConfig $db): array
     {
         return [];
     }

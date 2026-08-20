@@ -53,6 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The full set of MySQL TLS options is configurable per endpoint: `ssl_skip_verify`,
+  `ssl_ca`, `ssl_capath`, `ssl_cert`, `ssl_key` and `ssl_cipher` join the existing
+  `ssl_disabled`. They are written into the same temporary credential file as the
+  password, so no certificate path reaches the process list. `ssl_skip_verify` is
+  the narrow fix for DDEV 1.25, whose Trixie image serves a self-signed
+  certificate. A `postgres` endpoint that sets any of them now aborts instead of
+  ignoring them and connecting without TLS.
+
 - Database client binaries follow the endpoint's `db.type`. A `mariadb` endpoint
   is addressed through `mariadb-dump` and `mariadb` rather than the `mysqldump`
   and `mysql` symlinks that MariaDB 11 deprecated, and a `postgres` endpoint

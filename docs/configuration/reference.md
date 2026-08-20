@@ -54,8 +54,25 @@ Under `origin.db` / `target.db`:
 | `user` | string | Database user. |
 | `password` | string | Database password. |
 | `port` | number | Database port (default: 3306, PostgreSQL: 5432). |
-| `ssl_disabled` | boolean | Disable TLS for the MySQL connection (useful for DDEV). |
+| `ssl_disabled` | boolean | Turn TLS off entirely for the MySQL connection. |
+| `ssl_skip_verify` | boolean | Keep TLS on but do not verify the server certificate. |
+| `ssl_ca` | string | Path to the CA certificate. |
+| `ssl_capath` | string | Directory of trusted CA certificates in PEM format. |
+| `ssl_cert` | string | Path to the client certificate. |
+| `ssl_key` | string | Path to the client key. |
+| `ssl_cipher` | string | Allowed cipher list. |
 | `type` | enum | Database system: `mysql`, `mariadb`, `postgres` (default: `mysql`). See [PostgreSQL](/configuration/postgresql). |
+
+The `ssl_*` keys configure a MySQL or MariaDB client and are written into the same
+temporary credential file as the password, so no path reaches the process list. A
+`postgres` endpoint that sets any of them aborts the run rather than connecting
+without them: `psql` takes its TLS settings from the environment instead.
+
+::: tip DDEV
+DDEV 1.25 moved to a Trixie image whose MySQL server presents a self-signed
+certificate. `ssl_skip_verify: true` keeps the connection encrypted and only skips
+verification, which is the narrower fix than `ssl_disabled: true`.
+:::
 
 ### Jump Host Object
 

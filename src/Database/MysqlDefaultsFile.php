@@ -39,8 +39,25 @@ final class MysqlDefaultsFile
             $content .= 'port='.$db->port."\n";
         }
 
+        // TLS settings belong in the same file as the password: the client reads
+        // them from `[client]` and nothing ends up in the process list.
         if ($db->sslDisabled) {
             $content .= "ssl=false\n";
+        }
+        if ($db->sslSkipVerify) {
+            $content .= "ssl-verify-server-cert=false\n";
+        }
+
+        foreach ([
+            'ssl-ca' => $db->sslCa,
+            'ssl-capath' => $db->sslCapath,
+            'ssl-cert' => $db->sslCert,
+            'ssl-key' => $db->sslKey,
+            'ssl-cipher' => $db->sslCipher,
+        ] as $option => $value) {
+            if (null !== $value && '' !== $value) {
+                $content .= $option.'="'.str_replace(['\\', '"'], ['\\\\', '\\"'], $value)."\"\n";
+            }
         }
 
         return $content;

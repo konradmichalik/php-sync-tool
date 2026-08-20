@@ -143,7 +143,7 @@ final class PostgresDriverTest extends TestCase
             'additional_mysqldump_options' => '--skip-lock-tables',
         ]);
 
-        self::assertSame(['where', 'additional_mysqldump_options'], $this->driver->unsupportedFeatures($config));
+        self::assertSame(['where', 'additional_mysqldump_options'], $this->driver->unsupportedFeatures($config, $config->origin->db));
     }
 
     #[Test]
@@ -154,7 +154,23 @@ final class PostgresDriverTest extends TestCase
             'target' => ['path' => '/t', 'db' => ['name' => 'app', 'type' => 'postgres']],
         ]);
 
-        self::assertSame([], $this->driver->unsupportedFeatures($config));
+        self::assertSame([], $this->driver->unsupportedFeatures($config, $config->origin->db));
+    }
+
+    /**
+     * The ssl_* keys configure a MySQL client. Silently ignoring them could leave
+     * a connection unencrypted that the configuration says is protected.
+     */
+    #[Test]
+    public function refusesTlsSettingsItCannotHonour(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'type' => 'postgres', 'ssl_skip_verify' => true]],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'type' => 'postgres']],
+        ]);
+
+        self::assertSame(['db.ssl_*'], $this->driver->unsupportedFeatures($config, $config->origin->db));
+        self::assertSame([], $this->driver->unsupportedFeatures($config, $config->target->db), 'only the endpoint that configured them');
     }
 
     #[Test]

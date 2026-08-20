@@ -30,8 +30,29 @@ final readonly class DatabaseConfig
         public string $password = '',
         public int $port = 0,
         public bool $sslDisabled = false,
+        public bool $sslSkipVerify = false,
+        public ?string $sslCa = null,
+        public ?string $sslCapath = null,
+        public ?string $sslCert = null,
+        public ?string $sslKey = null,
+        public ?string $sslCipher = null,
         public DatabaseSystem $type = DatabaseSystem::MySQL,
     ) {}
+
+    /**
+     * Whether anything about TLS was configured at all. Used to refuse a run on a
+     * system that cannot honour it rather than connecting in the clear.
+     */
+    public function hasTlsSettings(): bool
+    {
+        return $this->sslDisabled
+            || $this->sslSkipVerify
+            || null !== $this->sslCa
+            || null !== $this->sslCapath
+            || null !== $this->sslCert
+            || null !== $this->sslKey
+            || null !== $this->sslCipher;
+    }
 
     /**
      * @param array<string, mixed>|null $data
@@ -49,6 +70,12 @@ final readonly class DatabaseConfig
             password: ConfigAccessor::getString($data, 'password', ''),
             port: ConfigAccessor::getInt($data, 'port', 0),
             sslDisabled: ConfigAccessor::getBool($data, 'ssl_disabled', false),
+            sslSkipVerify: ConfigAccessor::getBool($data, 'ssl_skip_verify', false),
+            sslCa: ConfigAccessor::getStringOrNull($data, 'ssl_ca'),
+            sslCapath: ConfigAccessor::getStringOrNull($data, 'ssl_capath'),
+            sslCert: ConfigAccessor::getStringOrNull($data, 'ssl_cert'),
+            sslKey: ConfigAccessor::getStringOrNull($data, 'ssl_key'),
+            sslCipher: ConfigAccessor::getStringOrNull($data, 'ssl_cipher'),
             type: DatabaseSystem::fromConfigValue(ConfigAccessor::getString($data, 'type', '')) ?? DatabaseSystem::MySQL,
         );
     }

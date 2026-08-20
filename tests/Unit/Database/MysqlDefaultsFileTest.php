@@ -76,4 +76,47 @@ final class MysqlDefaultsFileTest extends TestCase
 
         self::assertStringNotContainsString('ssl', $content);
     }
+
+    /**
+     * DDEV 1.25 moved to a Trixie image with stricter SSL defaults, where a local
+     * connection needs verification switched off rather than SSL switched off.
+     */
+    #[Test]
+    public function skipVerifyIsWrittenWithoutDisablingSsl(): void
+    {
+        $content = (new MysqlDefaultsFile())->buildContent(
+            new DatabaseConfig(name: 'db', user: 'db', sslSkipVerify: true),
+        );
+
+        self::assertStringContainsString("ssl-verify-server-cert=false\n", $content);
+        self::assertStringNotContainsString('ssl=false', $content);
+    }
+
+    #[Test]
+    public function everyCertificatePathReachesTheClientSection(): void
+    {
+        $content = (new MysqlDefaultsFile())->buildContent(new DatabaseConfig(
+            name: 'db',
+            user: 'db',
+            sslCa: '/certs/ca.pem',
+            sslCapath: '/certs',
+            sslCert: '/certs/client.pem',
+            sslKey: '/certs/client.key',
+            sslCipher: 'ECDHE-RSA-AES256-GCM-SHA384',
+        ));
+
+        self::assertStringContainsString('ssl-ca="/certs/ca.pem"', $content);
+        self::assertStringContainsString('ssl-capath="/certs"', $content);
+        self::assertStringContainsString('ssl-cert="/certs/client.pem"', $content);
+        self::assertStringContainsString('ssl-key="/certs/client.key"', $content);
+        self::assertStringContainsString('ssl-cipher="ECDHE-RSA-AES256-GCM-SHA384"', $content);
+    }
+
+    #[Test]
+    public function nothingTlsRelatedIsWrittenWhenNothingIsConfigured(): void
+    {
+        $content = (new MysqlDefaultsFile())->buildContent(new DatabaseConfig(name: 'db', user: 'db'));
+
+        self::assertStringNotContainsString('ssl', $content);
+    }
 }

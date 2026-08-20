@@ -82,7 +82,10 @@ interface DatabaseDriver
      * Configured features this driver cannot express, named as their config keys.
      * Sync refuses to run instead of silently ignoring them.
      *
+     * @param DatabaseConfig $db the endpoint being acted on, since some keys are
+     *                           configured per endpoint rather than per run
+     *
      * @return list<string>
      */
-    public function unsupportedFeatures(SyncConfig $config): array;
+    public function unsupportedFeatures(SyncConfig $config, DatabaseConfig $db): array;
 }

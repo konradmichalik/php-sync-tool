@@ -65,6 +65,12 @@ final class ConfigValidator
                     "password": {"type": "string"},
                     "port": {"type": "number"},
                     "ssl_disabled": {"type": "boolean"},
+                    "ssl_skip_verify": {"type": "boolean"},
+                    "ssl_ca": {"type": "string"},
+                    "ssl_capath": {"type": "string"},
+                    "ssl_cert": {"type": "string"},
+                    "ssl_key": {"type": "string"},
+                    "ssl_cipher": {"type": "string"},
                     "type": {"enum": ["mysql", "MySQL", "mariadb", "MariaDB", "postgres", "postgresql", "PostgreSQL", "pgsql"]}
                 }
             },

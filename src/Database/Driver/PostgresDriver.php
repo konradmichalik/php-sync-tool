@@ -153,7 +153,7 @@ final readonly class PostgresDriver implements DatabaseDriver
         return $statements;
     }
 
-    public function unsupportedFeatures(SyncConfig $config): array
+    public function unsupportedFeatures(SyncConfig $config, DatabaseConfig $db): array
     {
         $unsupported = [];
 
@@ -163,6 +163,13 @@ final readonly class PostgresDriver implements DatabaseDriver
 
         if ('' !== $config->additionalMysqldumpOptions) {
             $unsupported[] = 'additional_mysqldump_options';
+        }
+
+        // The ssl_* keys configure a MySQL client. Ignoring them here could leave
+        // a connection unencrypted that the configuration says is protected, so
+        // the run stops instead. psql takes its TLS settings from the environment.
+        if ($db->hasTlsSettings()) {
+            $unsupported[] = 'db.ssl_*';
         }
 
         return $unsupported;
