@@ -14,9 +14,8 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Remote\Transfer;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Remote\Transfer\{ProxyTransferStrategy, RemoteCopyTransferStrategy, RsyncTransferStrategy, SftpTransferStrategy, TransferPayload, TransferStrategyResolver};
-use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, Plans, RecordingCommandRunner};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -44,7 +43,7 @@ final class TransferStrategyResolverTest extends TestCase
             'target' => ['path' => '/srv/b', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        self::assertInstanceOf(RsyncTransferStrategy::class, $this->resolver->resolve($config, SyncMode::SyncLocal));
+        self::assertInstanceOf(RsyncTransferStrategy::class, $this->resolver->resolve($config, Plans::syncLocal()));
     }
 
     #[Test]
@@ -56,7 +55,7 @@ final class TransferStrategyResolverTest extends TestCase
             'target' => ['path' => '/srv/b', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, SyncMode::Receiver));
+        self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, Plans::receiver()));
     }
 
     #[Test]
@@ -67,7 +66,7 @@ final class TransferStrategyResolverTest extends TestCase
             'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        self::assertInstanceOf(ProxyTransferStrategy::class, $this->resolver->resolve($config, SyncMode::Proxy));
+        self::assertInstanceOf(ProxyTransferStrategy::class, $this->resolver->resolve($config, Plans::proxy()));
     }
 
     #[Test]
@@ -78,7 +77,7 @@ final class TransferStrategyResolverTest extends TestCase
             'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        self::assertInstanceOf(RemoteCopyTransferStrategy::class, $this->resolver->resolve($config, SyncMode::SyncRemote));
+        self::assertInstanceOf(RemoteCopyTransferStrategy::class, $this->resolver->resolve($config, Plans::remoteCopy()));
     }
 
     #[Test]
@@ -89,7 +88,7 @@ final class TransferStrategyResolverTest extends TestCase
             'target' => ['path' => '/srv/b', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        self::assertInstanceOf(RsyncTransferStrategy::class, $this->resolver->resolve($config, SyncMode::Receiver));
+        self::assertInstanceOf(RsyncTransferStrategy::class, $this->resolver->resolve($config, Plans::receiver()));
     }
 
     #[Test]
@@ -101,8 +100,8 @@ final class TransferStrategyResolverTest extends TestCase
             'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, SyncMode::Proxy));
-        self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, SyncMode::SyncRemote));
+        self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, Plans::proxy()));
+        self::assertInstanceOf(SftpTransferStrategy::class, $this->resolver->resolve($config, Plans::remoteCopy()));
     }
 
     #[Test]
@@ -116,7 +115,7 @@ final class TransferStrategyResolverTest extends TestCase
         $resolver = new TransferStrategyResolver(new FakeRunnerFactory($recorder));
         $logs = [];
 
-        $strategy = $resolver->resolve($config, SyncMode::Receiver, static function (string $message) use (&$logs): void {
+        $strategy = $resolver->resolve($config, Plans::receiver(), static function (string $message) use (&$logs): void {
             $logs[] = $message;
         });
         $strategy->transfer($config, new TransferPayload('/tmp/o.gz', '/tmp/t.gz'));

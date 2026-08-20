@@ -15,7 +15,7 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Mode\SyncPlan;
 use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory, SshClientFactory};
 
@@ -35,7 +35,7 @@ final readonly class TransferStrategyResolver
 
     public function resolve(
         SyncConfig $config,
-        SyncMode $mode,
+        SyncPlan $plan,
         ?Closure $log = null,
         SyncProgress $progress = new NullSyncProgress(),
     ): TransferStrategy {
@@ -52,11 +52,11 @@ final readonly class TransferStrategyResolver
             return new SftpTransferStrategy($this->sshClientFactory);
         }
 
-        if (SyncMode::Proxy === $mode) {
+        if ($plan->isProxied()) {
             return new ProxyTransferStrategy($this->runners, $this->rsync, $log);
         }
 
-        if (SyncMode::SyncRemote === $mode) {
+        if ($plan->isRemoteCopy()) {
             return new RemoteCopyTransferStrategy($this->runners, $this->rsync, $log);
         }
 

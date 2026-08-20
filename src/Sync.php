@@ -18,9 +18,10 @@ use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
 use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\Driver\{DatabaseDriver, DriverFactory};
 use KonradMichalik\SyncTool\Database\{DumpRequest, RemoteFileWriter, TableStatements};
-use KonradMichalik\SyncTool\Enum\{LifecyclePhase, LogChannel, SyncMode};
+use KonradMichalik\SyncTool\Enum\{LifecyclePhase, LogChannel};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
+use KonradMichalik\SyncTool\Mode\SyncPlan;
 use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Recipe\CredentialResolver;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, RunnerFactory};
@@ -61,7 +62,7 @@ final readonly class Sync
         $this->log = $log ?? static function (string $message, LogChannel $channel = LogChannel::Step): void {};
     }
 
-    public function run(SyncConfig $config, SyncMode $mode): void
+    public function run(SyncConfig $config, SyncPlan $plan): void
     {
         $config = $this->resolveCredentials($config);
 
@@ -72,22 +73,22 @@ final readonly class Sync
             if (!$config->filesOnly) {
                 $dumpName = $this->namer->generate($config);
 
-                if (!$mode->isImport()) {
+                if (!$plan->isImport()) {
                     $this->createOriginDump($config, $dumpName);
                 }
 
-                if (!$mode->isDump()) {
-                    $this->transferDump($config, $mode, $dumpName);
+                if (!$plan->isDump()) {
+                    $this->transferDump($config, $plan, $dumpName);
                 }
 
-                if (!$config->keepDump && !$mode->isDump()) {
-                    $this->importDump($config, $mode, $dumpName);
+                if (!$config->keepDump && !$plan->isDump()) {
+                    $this->importDump($config, $plan, $dumpName);
                 }
             }
 
             if ($config->filesOnly || $config->withFiles) {
                 ($this->log)('Synchronizing files');
-                $this->fileSync->sync($config, $mode, $this->log, $this->progress);
+                $this->fileSync->sync($config, $plan, $this->log, $this->progress);
             }
 
             $this->scripts->run($local, $config, LifecyclePhase::After);
@@ -154,9 +155,9 @@ final readonly class Sync
         }
     }
 
-    private function transferDump(SyncConfig $config, SyncMode $mode, string $dumpName): void
+    private function transferDump(SyncConfig $config, SyncPlan $plan, string $dumpName): void
     {
-        if ($mode->isImport()) {
+        if ($plan->isImport()) {
             return;
         }
 
@@ -166,14 +167,14 @@ final readonly class Sync
             extraRsyncOptions: $config->useRsyncOptions,
         );
 
-        $strategy = $this->transferResolver->resolve($config, $mode, $this->log, $this->progress);
+        $strategy = $this->transferResolver->resolve($config, $plan, $this->log, $this->progress);
         ($this->log)('Transferring dump'.$strategy->describe());
         $this->progress->phase($payload->label());
         $strategy->transfer($config, $payload);
         $this->progress->advance();
     }
 
-    private function importDump(SyncConfig $config, SyncMode $mode, string $dumpName): void
+    private function importDump(SyncConfig $config, SyncPlan $plan, string $dumpName): void
     {
         $client = $config->target;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
@@ -183,7 +184,7 @@ final readonly class Sync
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
 
         try {
-            $dumpPath = $mode->isImport() && '' !== $config->importFile
+            $dumpPath = $plan->isImport() && '' !== $config->importFile
                 ? $config->importFile
                 : $this->dumpDir($client).$dumpName.'.gz';
 

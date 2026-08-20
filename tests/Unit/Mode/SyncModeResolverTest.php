@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Mode;
 
 use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
-use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Mode\SyncModeResolver;
 use PHPUnit\Framework\Attributes\Test;
@@ -43,7 +42,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(path: '/var/www'),
         );
 
-        self::assertSame(SyncMode::Receiver, $this->resolver->resolve($config));
+        self::assertSame('RECEIVER', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -54,7 +53,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(host: 'remote.example.com', user: 'u'),
         );
 
-        self::assertSame(SyncMode::Sender, $this->resolver->resolve($config));
+        self::assertSame('SENDER', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -65,7 +64,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(host: 'b.example.com', user: 'u'),
         );
 
-        self::assertSame(SyncMode::Proxy, $this->resolver->resolve($config));
+        self::assertSame('PROXY', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -77,7 +76,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(host: 'a.example.com', user: 'u', db: $db),
         );
 
-        self::assertSame(SyncMode::DumpRemote, $this->resolver->resolve($config));
+        self::assertSame('DUMP_REMOTE', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -88,7 +87,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(path: '/b', host: 'a.example.com', user: 'u'),
         );
 
-        self::assertSame(SyncMode::SyncRemote, $this->resolver->resolve($config));
+        self::assertSame('SYNC_REMOTE', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -99,7 +98,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(host: 'a.example.com', user: 'u', db: new DatabaseConfig(name: 'db_b', host: 'h')),
         );
 
-        self::assertSame(SyncMode::SyncRemote, $this->resolver->resolve($config));
+        self::assertSame('SYNC_REMOTE', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -110,7 +109,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(path: '/var/www'),
         );
 
-        self::assertSame(SyncMode::DumpLocal, $this->resolver->resolve($config));
+        self::assertSame('DUMP_LOCAL', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -121,7 +120,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(path: '/b'),
         );
 
-        self::assertSame(SyncMode::SyncLocal, $this->resolver->resolve($config));
+        self::assertSame('SYNC_LOCAL', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -132,7 +131,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(path: '/var/www'),
         );
 
-        self::assertSame(SyncMode::ImportLocal, $this->resolver->resolve($config));
+        self::assertSame('IMPORT_LOCAL', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -143,7 +142,7 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(host: 'remote.example.com', user: 'u'),
         );
 
-        self::assertSame(SyncMode::ImportRemote, $this->resolver->resolve($config));
+        self::assertSame('IMPORT_REMOTE', $this->resolver->resolve($config)->label());
     }
 
     #[Test]
@@ -154,12 +153,12 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(path: '/var/www', protect: true),
         );
 
-        $mode = $this->resolver->resolve($config);
+        $plan = $this->resolver->resolve($config);
 
         $this->expectException(SyncException::class);
         $this->expectExceptionMessage('protected');
 
-        $this->resolver->checkForProtection($mode, $config);
+        $this->resolver->checkForProtection($plan, $config);
     }
 
     #[Test]
@@ -170,9 +169,9 @@ final class SyncModeResolverTest extends TestCase
             target: new ClientConfig(path: '/var/www', protect: true),
         );
 
-        $mode = $this->resolver->resolve($config);
-        $this->resolver->checkForProtection($mode, $config);
+        $plan = $this->resolver->resolve($config);
+        $this->resolver->checkForProtection($plan, $config);
 
-        self::assertSame(SyncMode::DumpLocal, $mode);
+        self::assertSame('DUMP_LOCAL', $plan->label());
     }
 }

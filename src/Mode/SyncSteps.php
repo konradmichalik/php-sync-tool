@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Mode;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Enum\SyncMode;
 
 use function array_filter;
 use function count;
@@ -32,20 +31,20 @@ final readonly class SyncSteps
      * How many reported steps a run will take. Mirrors the branching in Sync::run()
      * and FileSync::sync(), so the progress display knows its total up front.
      */
-    public function count(SyncConfig $config, SyncMode $mode): int
+    public function count(SyncConfig $config, SyncPlan $plan): int
     {
         $steps = 0;
 
         if (!$config->filesOnly) {
-            if (!$mode->isImport()) {
+            if (!$plan->isImport()) {
                 ++$steps;
             }
 
-            if (!$mode->isDump()) {
+            if (!$plan->isDump()) {
                 ++$steps;
             }
 
-            if (!$config->keepDump && !$mode->isDump()) {
+            if (!$config->keepDump && !$plan->isDump()) {
                 ++$steps;
                 $steps += $this->targetImportSteps($config);
             }

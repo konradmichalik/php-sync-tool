@@ -14,10 +14,10 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Command;
 
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, SyncConfig};
-use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode, SyncMode};
+use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode};
 use KonradMichalik\SyncTool\Exception\SyncToolException;
 use KonradMichalik\SyncTool\Logging\LogWriter;
-use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncSteps};
+use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncPlan, SyncSteps};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
 use KonradMichalik\SyncTool\Output\Progress\NullSyncProgress;
 use KonradMichalik\SyncTool\Sync;
@@ -111,11 +111,11 @@ final class SyncCommand extends Command
             $this->validator->validate($config);
 
             $syncConfig = SyncConfig::fromArray($config);
-            $syncMode = $this->modeResolver->resolve($syncConfig);
-            $this->modeResolver->checkForProtection($syncMode, $syncConfig);
+            $plan = $this->modeResolver->resolve($syncConfig);
+            $this->modeResolver->checkForProtection($plan, $syncConfig);
 
             $reporter->summary(
-                $syncMode->value.' '.$syncMode->description(),
+                $plan->label().' '.$plan->description(),
                 $this->describeClient($syncConfig->origin->isRemote(), $syncConfig->origin->host),
                 $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host),
             );
@@ -126,7 +126,7 @@ final class SyncCommand extends Command
                 return Command::SUCCESS;
             }
 
-            if ($this->needsConfirmation($syncMode, $syncConfig, $mode, $input->isInteractive())
+            if ($this->needsConfirmation($plan, $syncConfig, $mode, $input->isInteractive())
                 && !$io->confirm(sprintf('This overwrites the %s database. Continue?', $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host)), false)
             ) {
                 $reporter->success('Aborted by user.');
@@ -136,7 +136,7 @@ final class SyncCommand extends Command
 
             $fileLog = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, static function (string $l): void {});
 
-            $progress = $reporter->progress($this->steps->count($syncConfig, $syncMode));
+            $progress = $reporter->progress($this->steps->count($syncConfig, $plan));
 
             $sync = new Sync(
                 log: static function (string $m, LogChannel $channel = LogChannel::Step) use ($reporter, $fileLog): void {
@@ -146,7 +146,7 @@ final class SyncCommand extends Command
                 progress: $progress,
             );
 
-            $sync->run($syncConfig, $syncMode);
+            $sync->run($syncConfig, $plan);
 
             $progress->succeed('Synchronization complete');
             $reporter->success('Synchronization complete.');
@@ -373,9 +373,9 @@ final class SyncCommand extends Command
      * terminal. Non-interactive runs (CI, Deployer), quiet output and the explicit
      * --yes flag all proceed without asking.
      */
-    private function needsConfirmation(SyncMode $syncMode, SyncConfig $syncConfig, OutputMode $outputMode, bool $isInteractive): bool
+    private function needsConfirmation(SyncPlan $plan, SyncConfig $syncConfig, OutputMode $outputMode, bool $isInteractive): bool
     {
-        return $syncMode->isProtectable()
+        return $plan->isProtectable()
             && !$syncConfig->yes
             && $isInteractive
             && OutputMode::Quiet !== $outputMode;

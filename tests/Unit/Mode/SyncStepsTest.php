@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Mode;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Mode\SyncSteps;
+use KonradMichalik\SyncTool\Tests\Fixture\Plans;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -30,25 +30,25 @@ final class SyncStepsTest extends TestCase
     #[Test]
     public function aPlainSyncDumpsTransfersAndImports(): void
     {
-        self::assertSame(3, (new SyncSteps())->count($this->config(), SyncMode::Receiver));
+        self::assertSame(3, (new SyncSteps())->count($this->config(), Plans::receiver()));
     }
 
     #[Test]
     public function dumpOnlyModesSkipTransferAndImport(): void
     {
-        self::assertSame(1, (new SyncSteps())->count($this->config(), SyncMode::DumpLocal));
+        self::assertSame(1, (new SyncSteps())->count($this->config(), Plans::dumpLocal()));
     }
 
     #[Test]
     public function importOnlyModesSkipTheDump(): void
     {
-        self::assertSame(2, (new SyncSteps())->count($this->config(), SyncMode::ImportLocal));
+        self::assertSame(2, (new SyncSteps())->count($this->config(), Plans::importLocal()));
     }
 
     #[Test]
     public function keepingTheDumpSkipsTheImport(): void
     {
-        self::assertSame(2, (new SyncSteps())->count($this->config(['keep_dump' => true]), SyncMode::Receiver));
+        self::assertSame(2, (new SyncSteps())->count($this->config(['keep_dump' => true]), Plans::receiver()));
     }
 
     #[Test]
@@ -63,7 +63,7 @@ final class SyncStepsTest extends TestCase
             ],
         ]);
 
-        self::assertSame(6, (new SyncSteps())->count($config, SyncMode::Receiver));
+        self::assertSame(6, (new SyncSteps())->count($config, Plans::receiver()));
     }
 
     #[Test]
@@ -74,7 +74,7 @@ final class SyncStepsTest extends TestCase
             'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin'], ['origin' => 'uploads', 'target' => 'uploads']],
         ]);
 
-        self::assertSame(5, (new SyncSteps())->count($config, SyncMode::Receiver));
+        self::assertSame(5, (new SyncSteps())->count($config, Plans::receiver()));
     }
 
     #[Test]
@@ -85,13 +85,13 @@ final class SyncStepsTest extends TestCase
             'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin']],
         ]);
 
-        self::assertSame(1, (new SyncSteps())->count($config, SyncMode::Receiver));
+        self::assertSame(1, (new SyncSteps())->count($config, Plans::receiver()));
     }
 
     #[Test]
     public function neverReportsZeroStepsSoTheDisplayStaysSane(): void
     {
-        self::assertSame(1, (new SyncSteps())->count($this->config(['files_only' => true]), SyncMode::Receiver));
+        self::assertSame(1, (new SyncSteps())->count($this->config(['files_only' => true]), Plans::receiver()));
     }
 
     #[Test]
@@ -105,7 +105,7 @@ final class SyncStepsTest extends TestCase
             ],
         ]);
 
-        self::assertSame(4, (new SyncSteps())->count($config, SyncMode::Receiver));
+        self::assertSame(4, (new SyncSteps())->count($config, Plans::receiver()));
     }
 
     /**

@@ -14,13 +14,13 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Mode\SyncPlan;
 use KonradMichalik\SyncTool\Output\Progress\NullSyncProgress;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync};
 use KonradMichalik\SyncTool\Remote\Transfer\TransferStrategyResolver;
 use KonradMichalik\SyncTool\Sync;
-use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner, RecordingSyncProgress};
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, Plans, RecordingCommandRunner, RecordingSyncProgress};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -46,7 +46,7 @@ final class SyncTest extends TestCase
     #[Test]
     public function syncLocalCreatesTransfersAndImports(): void
     {
-        $recorder = $this->runSync($this->localConfig(), SyncMode::SyncLocal);
+        $recorder = $this->runSync($this->localConfig(), Plans::syncLocal());
 
         self::assertTrue($recorder->ran('mysqldump'), 'creates origin dump');
         self::assertTrue($recorder->ran('rsync'), 'transfers the dump via rsync, even for a local-to-local copy');
@@ -62,7 +62,7 @@ final class SyncTest extends TestCase
             'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::Receiver);
+        $recorder = $this->runSync($config, Plans::receiver());
 
         self::assertTrue($recorder->ran('rsync'), 'transfers dump via rsync');
         self::assertContains('Transferring dump', $this->logs);
@@ -81,7 +81,7 @@ final class SyncTest extends TestCase
             'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::Receiver);
+        $recorder = $this->runSync($config, Plans::receiver());
 
         self::assertTrue($recorder->ran('--bwlimit=1000'), 'use_rsync_options flows into the dump transfer command');
     }
@@ -94,7 +94,7 @@ final class SyncTest extends TestCase
             'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        $this->runSync($config, SyncMode::Proxy);
+        $this->runSync($config, Plans::proxy());
 
         self::assertContains('Transferring dump via proxy (origin → local → target)', $this->logs);
     }
@@ -107,7 +107,7 @@ final class SyncTest extends TestCase
             'target' => ['host' => 't.example.com', 'user' => 'deploy', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::SyncRemote);
+        $recorder = $this->runSync($config, Plans::remoteCopy());
 
         self::assertTrue($recorder->ran('rsync'), 'copies dump on remote host via rsync');
         self::assertContains('Transferring dump on the remote host', $this->logs);
@@ -116,7 +116,7 @@ final class SyncTest extends TestCase
     #[Test]
     public function dumpModeSkipsTransferAndImport(): void
     {
-        $recorder = $this->runSync($this->localConfig(), SyncMode::DumpLocal);
+        $recorder = $this->runSync($this->localConfig(), Plans::dumpLocal());
 
         self::assertTrue($recorder->ran('mysqldump'));
         self::assertFalse($recorder->ran('cp '), 'no transfer in dump-only mode');
@@ -132,7 +132,7 @@ final class SyncTest extends TestCase
             'target' => ['path' => '/var/www2', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::ImportLocal);
+        $recorder = $this->runSync($config, Plans::importLocal());
 
         self::assertFalse($recorder->ran('mysqldump'), 'import mode never dumps origin');
         self::assertTrue($recorder->ran('/backups/manual.sql.gz'), 'imports the provided file');
@@ -143,7 +143,7 @@ final class SyncTest extends TestCase
     {
         $config = $this->localConfig(['keep_dump' => true]);
 
-        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+        $recorder = $this->runSync($config, Plans::syncLocal());
 
         self::assertTrue($recorder->ran('mysqldump'));
         self::assertFalse($recorder->ran('gunzip -c'), 'keepDump leaves the target untouched');
@@ -157,7 +157,7 @@ final class SyncTest extends TestCase
         $this->expectException(SyncException::class);
         $this->expectExceptionMessage('Dump validation failed');
 
-        $this->syncWith($recorder)->run($this->localConfig(), SyncMode::SyncLocal);
+        $this->syncWith($recorder)->run($this->localConfig(), Plans::syncLocal());
     }
 
     #[Test]
@@ -175,7 +175,7 @@ final class SyncTest extends TestCase
             ],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+        $recorder = $this->runSync($config, Plans::syncLocal());
 
         self::assertContains('Clearing target database', $this->logs);
         self::assertContains('Truncating tables', $this->logs);
@@ -188,7 +188,7 @@ final class SyncTest extends TestCase
     {
         $config = $this->localConfig(['ignore_table' => ['cache_*', 'sys_log']]);
 
-        $recorder = $this->runSync($config, SyncMode::DumpLocal);
+        $recorder = $this->runSync($config, Plans::dumpLocal());
 
         self::assertTrue($recorder->ran('cache_pages'), 'wildcard expands to matching tables');
         self::assertTrue($recorder->ran('cache_hash'));
@@ -203,7 +203,7 @@ final class SyncTest extends TestCase
             'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::DumpLocal);
+        $recorder = $this->runSync($config, Plans::dumpLocal());
 
         self::assertTrue($recorder->ran('rm -f'), 'removes dumps beyond the retention limit');
         self::assertContains('Removing old dump /tmp/_app_b.gz', $this->logs);
@@ -219,7 +219,7 @@ final class SyncTest extends TestCase
             'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin']],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::Receiver);
+        $recorder = $this->runSync($config, Plans::receiver());
 
         self::assertFalse($recorder->ran('mysqldump'), 'files-only skips the database');
         self::assertTrue($recorder->ran('rsync'), 'transfers files');
@@ -241,7 +241,7 @@ final class SyncTest extends TestCase
             'files' => [['origin' => 'fileadmin', 'target' => 'fileadmin']],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+        $recorder = $this->runSync($config, Plans::syncLocal());
 
         self::assertTrue($recorder->ran('mysqldump'), 'syncs the database');
         self::assertTrue($recorder->ran('rsync'), 'syncs files too');
@@ -260,7 +260,7 @@ final class SyncTest extends TestCase
             self::DEFAULT_RESPONSES + ['cat ' => 'DATABASE_URL=mysql://u:p@h:3306/resolved_db'],
         );
 
-        $this->syncWith($recorder)->run($config, SyncMode::SyncLocal);
+        $this->syncWith($recorder)->run($config, Plans::syncLocal());
 
         self::assertTrue($recorder->ran('resolved_db'), 'resolved db name flows into later commands');
     }
@@ -278,7 +278,7 @@ final class SyncTest extends TestCase
         $sync = $this->syncWith($recorder);
 
         try {
-            $sync->run($config, SyncMode::SyncLocal);
+            $sync->run($config, Plans::syncLocal());
             self::fail('expected the sync to rethrow');
         } catch (SyncException) {
             self::assertTrue($recorder->ran('echo boom'), 'error-phase script executed');
@@ -291,7 +291,7 @@ final class SyncTest extends TestCase
         $progress = new RecordingSyncProgress();
 
         $this->syncWith(new RecordingCommandRunner(self::DEFAULT_RESPONSES), $progress)
-            ->run($this->localConfig(), SyncMode::SyncLocal);
+            ->run($this->localConfig(), Plans::syncLocal());
 
         self::assertContains('Creating origin dump', $progress->phases);
         self::assertContains('Importing dump', $progress->phases);
@@ -309,7 +309,7 @@ final class SyncTest extends TestCase
         $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: 'mysqldump');
 
         try {
-            $this->syncWith($recorder, $progress)->run($this->localConfig(), SyncMode::SyncLocal);
+            $this->syncWith($recorder, $progress)->run($this->localConfig(), Plans::syncLocal());
             self::fail('Expected the failing dump to bubble up.');
         } catch (SyncException) {
             self::assertSame(['Creating origin dump'], $progress->phases);
@@ -327,7 +327,7 @@ final class SyncTest extends TestCase
         ]);
 
         $this->syncWith(new RecordingCommandRunner(self::DEFAULT_RESPONSES), $progress)
-            ->run($config, SyncMode::SyncLocal);
+            ->run($config, Plans::syncLocal());
 
         self::assertSame(['Transferring fileadmin', 'Transferring uploads'], $progress->phases);
         self::assertSame(2, $progress->advances);
@@ -341,7 +341,7 @@ final class SyncTest extends TestCase
             'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres']],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+        $recorder = $this->runSync($config, Plans::syncLocal());
 
         self::assertTrue($recorder->ran('pg_dump'), 'dumps with pg_dump');
         self::assertTrue($recorder->ran('psql'), 'imports with psql');
@@ -359,7 +359,7 @@ final class SyncTest extends TestCase
         $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES);
 
         try {
-            $this->syncWith($recorder)->run($config, SyncMode::SyncLocal);
+            $this->syncWith($recorder)->run($config, Plans::syncLocal());
             self::fail('Expected the unsupported where clause to abort the sync.');
         } catch (SyncException $exception) {
             self::assertStringContainsString('PostgreSQL does not support: where', $exception->getMessage());
@@ -379,7 +379,7 @@ final class SyncTest extends TestCase
             ],
         ]);
 
-        $recorder = $this->runSync($config, SyncMode::SyncLocal);
+        $recorder = $this->runSync($config, Plans::syncLocal());
 
         $importIndex = $this->indexOfCommand($recorder, 'gunzip -c');
         $maskIndex = $this->indexOfCommand($recorder, 'CONCAT(MD5(');
@@ -403,7 +403,7 @@ final class SyncTest extends TestCase
         $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: 'CONCAT(MD5(');
 
         try {
-            $this->syncWith($recorder)->run($config, SyncMode::SyncLocal);
+            $this->syncWith($recorder)->run($config, Plans::syncLocal());
             self::fail('Expected the failing masking statement to abort the sync.');
         } catch (SyncException) {
             self::assertFalse($recorder->ran('UPDATE marker SET done = 1'), 'post_sql never runs');
@@ -413,7 +413,7 @@ final class SyncTest extends TestCase
     #[Test]
     public function runsNoMaskingWithoutRules(): void
     {
-        $recorder = $this->runSync($this->localConfig(), SyncMode::SyncLocal);
+        $recorder = $this->runSync($this->localConfig(), Plans::syncLocal());
 
         self::assertFalse($recorder->ran('CONCAT(MD5('));
     }
@@ -440,10 +440,10 @@ final class SyncTest extends TestCase
         ]);
     }
 
-    private function runSync(SyncConfig $config, SyncMode $mode): RecordingCommandRunner
+    private function runSync(SyncConfig $config, SyncPlan $plan): RecordingCommandRunner
     {
         $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES);
-        $this->syncWith($recorder)->run($config, $mode);
+        $this->syncWith($recorder)->run($config, $plan);
 
         return $recorder;
     }

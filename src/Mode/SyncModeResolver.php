@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Mode;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
-use KonradMichalik\SyncTool\Enum\SyncMode;
+use KonradMichalik\SyncTool\Enum\{SyncDirection, SyncOperation};
 use KonradMichalik\SyncTool\Exception\SyncException;
 
 use function sprintf;
@@ -27,98 +27,43 @@ use function sprintf;
  */
 final class SyncModeResolver
 {
-    public function resolve(SyncConfig $cfg): SyncMode
+    public function resolve(SyncConfig $cfg): SyncPlan
     {
-        $mode = SyncMode::Receiver;
+        $sameHost = $this->isSameHost($cfg);
 
-        $checks = [
-            [SyncMode::Receiver, $this->isReceiver($cfg)],
-            [SyncMode::Sender, $this->isSender($cfg)],
-            [SyncMode::Proxy, $this->isProxy($cfg)],
-            [SyncMode::DumpLocal, $this->isDumpLocal($cfg)],
-            [SyncMode::DumpRemote, $this->isDumpRemote($cfg)],
-            [SyncMode::ImportLocal, $this->isImportLocal($cfg)],
-            [SyncMode::ImportRemote, $this->isImportRemote($cfg)],
-            [SyncMode::SyncLocal, $this->isSyncLocal($cfg)],
-            [SyncMode::SyncRemote, $this->isSyncRemote($cfg)],
-        ];
-
-        foreach ($checks as [$candidate, $matches]) {
-            if ($matches) {
-                $mode = $candidate;
-            }
-        }
-
-        return $mode;
+        return new SyncPlan(
+            SyncDirection::between($cfg->origin->isRemote(), $cfg->target->isRemote()),
+            $this->operation($cfg, $sameHost),
+            $sameHost,
+        );
     }
 
     /**
      * @throws SyncException if the target is protected against writing modes
      */
-    public function checkForProtection(SyncMode $mode, SyncConfig $cfg): void
+    public function checkForProtection(SyncPlan $plan, SyncConfig $cfg): void
     {
-        if ($mode->isProtectable() && $cfg->target->protect) {
+        if ($plan->isProtectable() && $cfg->target->protect) {
             $host = '' !== $cfg->target->host ? $cfg->target->host : 'local';
 
             throw new SyncException(sprintf('The host %s is protected against the import of a database dump. Please check synchronisation target or adjust the host configuration.', $host));
         }
     }
 
-    private function isProxy(SyncConfig $cfg): bool
+    private function operation(SyncConfig $cfg, bool $sameHost): SyncOperation
     {
-        return $cfg->origin->isRemote() && $cfg->target->isRemote();
-    }
+        // Two endpoints on one host pointing at different data are a real sync,
+        // even with an import file configured — that precedence is inherited.
+        if ($sameHost && $this->dataDiffers($cfg)) {
+            return SyncOperation::Full;
+        }
 
-    private function isReceiver(SyncConfig $cfg): bool
-    {
-        return $cfg->origin->isRemote() && !$this->isProxy($cfg) && !$this->isSyncRemote($cfg);
-    }
+        if ('' !== $cfg->importFile) {
+            return SyncOperation::ImportOnly;
+        }
 
-    private function isSender(SyncConfig $cfg): bool
-    {
-        return $cfg->target->isRemote() && !$this->isProxy($cfg) && !$this->isSyncRemote($cfg);
-    }
-
-    private function isDumpLocal(SyncConfig $cfg): bool
-    {
-        return !$cfg->origin->isRemote()
-            && !$cfg->target->isRemote()
-            && $this->isSameHost($cfg)
-            && !$this->isSyncLocal($cfg);
-    }
-
-    private function isDumpRemote(SyncConfig $cfg): bool
-    {
-        return $cfg->origin->isRemote()
-            && $cfg->target->isRemote()
-            && $this->isSameHost($cfg)
-            && !$this->isSyncRemote($cfg);
-    }
-
-    private function isImportLocal(SyncConfig $cfg): bool
-    {
-        return '' !== $cfg->importFile && !$cfg->target->isRemote();
-    }
-
-    private function isImportRemote(SyncConfig $cfg): bool
-    {
-        return '' !== $cfg->importFile && $cfg->target->isRemote();
-    }
-
-    private function isSyncLocal(SyncConfig $cfg): bool
-    {
-        return !$cfg->origin->isRemote()
-            && !$cfg->target->isRemote()
-            && $this->isSameHost($cfg)
-            && $this->isSameSync($cfg);
-    }
-
-    private function isSyncRemote(SyncConfig $cfg): bool
-    {
-        return $cfg->origin->isRemote()
-            && $cfg->target->isRemote()
-            && $this->isSameHost($cfg)
-            && $this->isSameSync($cfg);
+        // One host, one database: there is nothing to transfer, only to export.
+        return $sameHost ? SyncOperation::DumpOnly : SyncOperation::Full;
     }
 
     private function isSameHost(SyncConfig $cfg): bool
@@ -128,17 +73,19 @@ final class SyncModeResolver
             && $cfg->origin->user === $cfg->target->user;
     }
 
-    private function isSameSync(SyncConfig $cfg): bool
+    /**
+     * Whether the two endpoints address different data at all: a different
+     * config path, or a different database.
+     */
+    private function dataDiffers(SyncConfig $cfg): bool
     {
         if ('' !== $cfg->origin->path && '' !== $cfg->target->path && $cfg->origin->path !== $cfg->target->path) {
             return true;
         }
 
         if ('' !== $cfg->origin->db->name && '' !== $cfg->target->db->name) {
-            if ($cfg->origin->db->name !== $cfg->target->db->name
-                || $cfg->origin->db->host !== $cfg->target->db->host) {
-                return true;
-            }
+            return $cfg->origin->db->name !== $cfg->target->db->name
+                || $cfg->origin->db->host !== $cfg->target->db->host;
         }
 
         return false;

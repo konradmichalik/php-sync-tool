@@ -15,7 +15,8 @@ namespace KonradMichalik\SyncTool\Remote;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\{FileTransferConfig, SyncConfig};
-use KonradMichalik\SyncTool\Enum\{LogChannel, SyncMode};
+use KonradMichalik\SyncTool\Enum\LogChannel;
+use KonradMichalik\SyncTool\Mode\SyncPlan;
 use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
 
@@ -36,14 +37,14 @@ final readonly class FileSync
 
     public function sync(
         SyncConfig $config,
-        SyncMode $mode,
+        SyncPlan $plan,
         ?Closure $log = null,
         SyncProgress $progress = new NullSyncProgress(),
     ): void {
         $log ??= static function (string $message, LogChannel $channel = LogChannel::Step): void {};
 
         foreach ($config->files as $entry) {
-            $this->transferEntry($config, $mode, $entry, $log, $progress);
+            $this->transferEntry($config, $plan, $entry, $log, $progress);
         }
     }
 
@@ -64,7 +65,7 @@ final readonly class FileSync
 
     private function transferEntry(
         SyncConfig $config,
-        SyncMode $mode,
+        SyncPlan $plan,
         FileTransferConfig $entry,
         Closure $log,
         SyncProgress $progress,
@@ -76,7 +77,7 @@ final readonly class FileSync
             $entry->options ?? $config->filesOptions,
         );
 
-        $strategy = $this->transferResolver->resolve($config, $mode, $log, $progress);
+        $strategy = $this->transferResolver->resolve($config, $plan, $log, $progress);
         $log('Transferring files'.$strategy->describe());
         $progress->phase($payload->label());
         $strategy->transfer($config, $payload);

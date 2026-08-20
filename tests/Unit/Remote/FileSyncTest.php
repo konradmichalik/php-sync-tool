@@ -14,10 +14,9 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
 use KonradMichalik\SyncTool\Config\{FileTransferConfig, SyncConfig};
-use KonradMichalik\SyncTool\Enum\SyncMode;
 use KonradMichalik\SyncTool\Remote\FileSync;
 use KonradMichalik\SyncTool\Remote\Transfer\TransferStrategyResolver;
-use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRunner};
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, Plans, RecordingCommandRunner};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -58,7 +57,7 @@ final class FileSyncTest extends TestCase
         ]);
 
         $recorder = new RecordingCommandRunner();
-        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, SyncMode::Receiver);
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, Plans::receiver());
 
         self::assertTrue($recorder->ran('rsync'), 'transfers the entry via rsync');
         self::assertTrue($recorder->ran('--delete'), 'per-entry options are applied');
@@ -77,7 +76,7 @@ final class FileSyncTest extends TestCase
         ]);
 
         $recorder = new RecordingCommandRunner();
-        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, SyncMode::Receiver);
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, Plans::receiver());
 
         self::assertTrue($recorder->ran('--archive'));
     }
@@ -92,7 +91,7 @@ final class FileSyncTest extends TestCase
         ]);
 
         $recorder = new RecordingCommandRunner();
-        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, SyncMode::Proxy);
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, Plans::proxy());
 
         self::assertTrue($recorder->ran('php-sync-tool-fileadmin'), 'pulls and pushes through a local temp path');
         self::assertTrue($recorder->ran('rm -rf'), 'cleans up the local temp path');
@@ -109,7 +108,7 @@ final class FileSyncTest extends TestCase
         ]);
 
         $recorder = new RecordingCommandRunner();
-        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, SyncMode::SyncRemote);
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, Plans::remoteCopy());
 
         self::assertTrue($recorder->ran('rsync'), 'runs a plain rsync on the remote host');
         self::assertTrue($recorder->ran('/srv/app/fileadmin'));
@@ -129,7 +128,7 @@ final class FileSyncTest extends TestCase
         $recorder = new RecordingCommandRunner();
         (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync(
             $config,
-            SyncMode::Receiver,
+            Plans::receiver(),
             static function (string $message) use (&$logs): void {
                 $logs[] = $message;
             },
