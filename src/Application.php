@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool;
 
-use KonradMichalik\SyncTool\Command\{PullCommand, PushCommand, SyncCommand};
+use KonradMichalik\SyncTool\Command\{InitCommand, PullCommand, PushCommand, SyncCommand};
 use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
 use Symfony\Component\Console\Input\{InputInterface, StringInput};
@@ -37,6 +37,7 @@ final class Application extends BaseApplication
             'sync' => static fn (): SyncCommand => new SyncCommand(),
             'pull' => static fn (): PullCommand => new PullCommand(),
             'push' => static fn (): PushCommand => new PushCommand(),
+            'init' => static fn (): InitCommand => new InitCommand(),
         ]));
         $this->setDefaultCommand('sync');
     }

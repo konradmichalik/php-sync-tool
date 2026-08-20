@@ -142,6 +142,30 @@ final class SyncPickerTest extends TestCase
         self::assertStringContainsString('Configuration is missing', $tester->getDisplay());
     }
 
+    #[Test]
+    public function offersAnEnvironmentOnlyConfigAsADirection(): void
+    {
+        // This is the shape `sync-tool init` writes: one endpoint, no target.
+        file_put_contents(
+            $this->work.'/.sync-tool/production.yaml',
+            "origin:\n  host: prod.example.com\n  user: deploy\n  db:\n    name: app\n    user: app\n    password: secret\n",
+        );
+        file_put_contents(
+            $this->work.'/.sync-tool/defaults.yaml',
+            "local:\n  path: /var/www/local\n  db:\n    name: app_local\n    user: root\n    password: root\n",
+        );
+
+        $tester = $this->tester();
+        $tester->setInputs(['0']);
+        $exitCode = $tester->execute(['--dry-run' => true]);
+
+        $output = $tester->getDisplay();
+        self::assertStringContainsString('pull from production', $output);
+        self::assertStringNotContainsString('production (project config)', $output);
+        self::assertSame(0, $exitCode, $output);
+        self::assertStringContainsString('RECEIVER', $output, 'the local block became the target');
+    }
+
     private function writeEverything(): void
     {
         $this->writeHosts();

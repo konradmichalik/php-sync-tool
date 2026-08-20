@@ -42,6 +42,7 @@ final class ApplicationTest extends TestCase
         self::assertTrue($this->application->has('sync'));
         self::assertTrue($this->application->has('pull'));
         self::assertTrue($this->application->has('push'));
+        self::assertTrue($this->application->has('init'));
     }
 
     #[Test]
