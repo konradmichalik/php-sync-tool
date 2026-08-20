@@ -218,6 +218,11 @@ final class SyncScenarioTest extends TestCase
     {
         $this->resetDatabases();
         $this->mysql('db2', 'DROP TABLE IF EXISTS legacy; CREATE TABLE legacy (id INT); INSERT INTO legacy VALUES (1),(2);');
+        // Two tables the wildcard has to find, and one it must not touch.
+        $this->mysql('db2', 'DROP TABLE IF EXISTS cache_a, cache_b, keep_me;');
+        $this->mysql('db2', 'CREATE TABLE cache_a (id INT); INSERT INTO cache_a VALUES (1),(2);');
+        $this->mysql('db2', 'CREATE TABLE cache_b (id INT); INSERT INTO cache_b VALUES (1);');
+        $this->mysql('db2', 'CREATE TABLE keep_me (id INT); INSERT INTO keep_me VALUES (1),(2),(3);');
         self::assertSame(2, $this->rowCountOf('db2', 'legacy'), 'legacy should hold rows before the sync');
 
         $result = $this->runSyncTool('www2', 'truncate.yaml');
@@ -225,6 +230,9 @@ final class SyncScenarioTest extends TestCase
         self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
         self::assertSame(3, $this->rowCountOf('db2', 'person'), 'person is imported from the origin');
         self::assertSame(0, $this->rowCountOf('db2', 'legacy'), 'legacy is truncated before the import');
+        self::assertSame(0, $this->rowCountOf('db2', 'cache_a'), 'the wildcard expands against the target');
+        self::assertSame(0, $this->rowCountOf('db2', 'cache_b'));
+        self::assertSame(3, $this->rowCountOf('db2', 'keep_me'), 'a table outside the pattern is left alone');
     }
 
     #[Test]
@@ -334,7 +342,9 @@ final class SyncScenarioTest extends TestCase
     private function resetDatabases(): void
     {
         $this->mysql('db1', 'DROP TABLE IF EXISTS person, cache_a, cache_b; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');
-        $this->mysql('db2', 'DROP TABLE IF EXISTS legacy; DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));');
+        // cache_* and keep_me are left behind by the truncate scenario, and the
+        // ignore-wildcard scenario asserts they are absent from the target.
+        $this->mysql('db2', 'DROP TABLE IF EXISTS legacy, cache_a, cache_b, keep_me; DROP TABLE IF EXISTS person; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));');
     }
 
     private function rowCount(string $dbService): int

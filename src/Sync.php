@@ -15,7 +15,7 @@ namespace KonradMichalik\SyncTool;
 
 use Closure;
 use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
-use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
+use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\Driver\{DatabaseDriver, DriverFactory};
 use KonradMichalik\SyncTool\Database\{DumpRequest, RemoteFileWriter, TableStatements};
 use KonradMichalik\SyncTool\Enum\{LifecyclePhase, LogChannel};
@@ -324,7 +324,9 @@ final readonly class Sync
 
     private function truncateTables(SyncConfig $config, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
     {
-        $statement = $driver->truncateTablesStatement($config->truncateTables);
+        // Expanded against the target, which is the database about to be emptied.
+        $tables = $this->expandPatterns($config->truncateTables, $config->target->db, $runner, $driver, $credentialsPath);
+        $statement = $driver->truncateTablesStatement($tables);
 
         if (null !== $statement) {
             ($this->log)('Truncating tables');
@@ -340,17 +342,31 @@ final readonly class Sync
      */
     private function resolveIgnoreTables(SyncConfig $config, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): array
     {
-        $db = $config->origin->db;
+        return $this->expandPatterns($config->ignoreTables, $config->origin->db, $runner, $driver, $credentialsPath);
+    }
+
+    /**
+     * Turns `table*` entries into the table names they currently match, asking
+     * the database that the caller is about to act on. Names without a wildcard
+     * pass through untouched, so a table that does not exist yet stays in the
+     * list and the driver decides what that means.
+     *
+     * @param list<string> $patterns
+     *
+     * @return list<string>
+     */
+    private function expandPatterns(array $patterns, DatabaseConfig $db, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): array
+    {
         $tables = [];
 
-        foreach ($config->ignoreTables as $table) {
-            if (!str_contains($table, '*')) {
-                $tables[] = $table;
+        foreach ($patterns as $pattern) {
+            if (!str_contains($pattern, '*')) {
+                $tables[] = $pattern;
 
                 continue;
             }
 
-            $sql = $driver->listTablesLikeSql($db->name, str_replace('*', '%', $table));
+            $sql = $driver->listTablesLikeSql($db->name, str_replace('*', '%', $pattern));
             $output = $runner->run($driver->execCommand($db, $credentialsPath, $sql), true);
 
             foreach ($driver->parseTableList($output) as $match) {

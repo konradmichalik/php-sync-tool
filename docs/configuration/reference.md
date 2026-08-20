@@ -11,7 +11,8 @@ but wrong types are rejected.
 | `type` | enum | Framework: `TYPO3`, `Symfony`, `Drupal`, `WordPress`, `Laravel`. Optional if `db` credentials are given. |
 | `origin` | object | Source endpoint (see [Client Object](#client-object)). |
 | `target` | object | Destination endpoint (see [Client Object](#client-object)). |
-| `ignore_table` | array | Tables to exclude from the dump (wildcards supported). |
+| `ignore_table` | array | Tables to exclude from the dump. A `table*` entry is expanded against the origin. |
+| `truncate_tables` | array | Tables to empty on the target before the import. A `table*` entry is expanded against the target. |
 | `log_file` | string | Path to a log file. |
 | `json_log` | boolean | Write the log file as JSON lines. |
 | `ssh_strict_host_key_checking` | boolean | Toggle SSH host-key verification (default: enabled). |

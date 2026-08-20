@@ -1,6 +1,7 @@
 # truncate_tables scenario, driven from www2 (RECEIVER):
 #   the target's `legacy` table (which is NOT part of the origin dump) is
-#   emptied before the import, while `person` is imported normally.
+#   emptied before the import, while `person` is imported normally. The second
+#   entry is a wildcard, expanded against the target before truncating.
 #
 # Run: docker compose exec www2 php /app/bin/sync-tool \
 #        -f /app/docker/configs/truncate.yaml -y
@@ -9,6 +10,7 @@ ssh_strict_host_key_checking: false
 
 truncate_tables:
   - legacy
+  - 'cache_*'
 
 origin:
   host: www1

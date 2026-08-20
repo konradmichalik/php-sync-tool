@@ -197,6 +197,22 @@ final class SyncTest extends TestCase
     }
 
     #[Test]
+    public function wildcardTruncateTablesAreExpandedAgainstTheTarget(): void
+    {
+        $config = SyncConfig::fromArray([
+            'truncate_tables' => ['cache_*', 'sessions'],
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+        ]);
+
+        $recorder = $this->runSync($config, Plans::syncLocal());
+
+        self::assertTrue($recorder->ran('TRUNCATE TABLE `cache_pages`'), 'the wildcard expands to matching tables');
+        self::assertTrue($recorder->ran('TRUNCATE TABLE `cache_hash`'));
+        self::assertTrue($recorder->ran('TRUNCATE TABLE `sessions`'), 'a plain name is kept verbatim');
+    }
+
+    #[Test]
     public function oldDumpsArePrunedWhenKeepDumpsSet(): void
     {
         $config = SyncConfig::fromArray([

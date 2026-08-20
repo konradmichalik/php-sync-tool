@@ -100,6 +100,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `truncate_tables` accepts `table*` wildcards, expanded against the target
+  before truncating, the way `ignore_table` already worked against the origin.
+  It was also missing from the configuration reference entirely.
+
 - The `console` block now actually overrides the database client binaries. Only
   its `php` entry was ever read; `mysql` and `mysqldump` were documented but
   ignored.
