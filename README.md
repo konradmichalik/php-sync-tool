@@ -15,6 +15,7 @@ credential auto-detection for **TYPO3, Symfony, Drupal, WordPress and Laravel**.
 * Synchronize databases between local and remote systems
 * MySQL, MariaDB and PostgreSQL
 * Declarative data anonymization for GDPR-safe copies
+* Named environments with `init`, `pull` and `push`
 * Optional file synchronization over SSH/rsync/SFTP
 * Framework credential auto-detection for TYPO3, Symfony, Drupal, WordPress and Laravel
 
@@ -36,7 +37,18 @@ Or use the standalone PHAR build (`sync-tool.phar`).
 
 ## 📊 Usage
 
-Synchronize databases by running the command:
+Set the project up once, then sync by name:
+
+```bash
+bin/sync-tool init            # writes .sync-tool/ for this project
+bin/sync-tool pull production # that environment's database into this project
+bin/sync-tool push staging    # this project's database into that environment
+```
+
+Called with no arguments on a terminal, the tool offers every sync it finds and
+runs the one you pick.
+
+Explicit configuration works as before:
 
 ```bash
 bin/sync-tool origin target -f config.yaml

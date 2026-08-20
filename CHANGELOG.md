@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Named environments. `sync-tool init` asks a few questions and writes
+  `.sync-tool/defaults.yaml` (framework plus a `local` block describing this
+  machine) and one file per environment. `sync-tool pull <name>` then syncs that
+  environment into the project and `sync-tool push <name>` the other way, with
+  the `local` block as the opposite side. Called with no arguments on a terminal,
+  the tool offers every sync it can find and runs the one you pick; without a
+  terminal it reports missing configuration as before. Every existing invocation
+  keeps working, including `sync-tool prod` and `sync-tool production local`.
+  Environment and host names cannot collide with a command name (`sync`, `pull`,
+  `push`, `init`, `list`, `help`, `completion`).
+
 - Data anonymization as configuration. An `anonymize` block on the target names
   the columns to mask per table, with four strategies: `null`, a `static` value,
   `hash`, and `email` (the address is hashed into the reserved `example.invalid`
@@ -42,6 +53,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The sync mode is derived from three axes (direction, operation, whether both
+  endpoints share a host) instead of nine overlapping cases. The nine mode names
+  in the output are unchanged.
+
 - Every database command now goes through a `DatabaseDriver`. The commands
   emitted for MySQL and MariaDB are unchanged.
 
@@ -56,6 +71,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rsync's `--chmod` defaults rather than a plain `cp`.
 
 ### Fixed
+
+- A `password` in a host definition is no longer silently dropped, so a named
+  host can carry SSH password authentication like any other endpoint.
+- The sync mode line no longer swaps the descriptions of `IMPORT_LOCAL` and
+  `IMPORT_REMOTE`.
 
 - Log output no longer masks long options that merely contain `-p`, so
   `pg_dump --no-privileges` stays readable in `-vv` output. Attached passwords

@@ -8,6 +8,7 @@ in keys are caught early.
 
 | Method | Best For |
 |--------|----------|
+| Named Environments (`pull` / `push`) | Day-to-day work in a project |
 | [Config Files](/configuration/reference) | Complex setups, CI/CD pipelines, reproducibility |
 | Named Hosts | Quick, repeated syncs across projects |
 | [CLI Arguments](/reference/cli) | One-off syncs, scripting, overrides |
@@ -64,10 +65,41 @@ and project definitions:
 └── defaults.yaml    # Global defaults, merged into every config (optional)
 
 <project>/.sync-tool/
-├── defaults.yaml    # Project defaults (optional)
-├── prod.yaml        # A named project config ("prod")
-└── staging.yaml     # A named project config ("staging")
+├── defaults.yaml    # Project defaults, including the `local` block (optional)
+├── prod.yaml        # A named environment ("prod")
+└── staging.yaml     # A named environment ("staging")
 ```
+
+### The `local` Block
+
+`defaults.yaml` describes this machine once, under `local`:
+
+```yaml
+type: TYPO3
+local:
+  path: web/typo3conf/LocalConfiguration.php
+  dump_dir: var/transfer/
+```
+
+`pull <name>` then means "that environment into `local`", and `push <name>` the
+reverse. An environment file only has to describe the remote side:
+
+```yaml
+# .sync-tool/prod.yaml
+origin:
+  host: prod.example.com
+  user: deploy
+  path: /var/www/prod/typo3conf/LocalConfiguration.php
+```
+
+An environment can equally be a host from `hosts.yaml`. Without a `local` block,
+`pull` and `push` refuse with a message naming the file to add it to.
+
+### Reserved Names
+
+An environment or host cannot be named after a command: `sync`, `pull`, `push`,
+`init`, `list`, `help` or `completion`. Any other first argument is understood as
+a name, so `bin/sync-tool production local` keeps working as documented.
 
 The project `.sync-tool/` directory is searched from the current working
 directory upwards.

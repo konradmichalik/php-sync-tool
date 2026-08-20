@@ -1,8 +1,39 @@
 # Quick Start
 
-This guide shows how to run a database sync without relying on framework
-credential detection. For framework projects, see the
-[framework guides](/getting-started/typo3).
+## The short way
+
+Set the project up once, then sync by name:
+
+```bash
+bin/sync-tool init          # asks a few questions, writes .sync-tool/
+bin/sync-tool pull prod     # pulls that environment's database into this project
+```
+
+`init` detects the framework from the files in the working directory, proposes
+the credential file it found, and asks for the first environment. It writes two
+files:
+
+```text
+.sync-tool/
+├── defaults.yaml   # framework plus the `local` block describing this machine
+└── prod.yaml       # the "prod" environment
+```
+
+From then on `pull <name>` and `push <name>` need nothing else, and calling
+`bin/sync-tool` with no arguments offers every sync it can find:
+
+```text
+How should this be synchronized?
+  [0] pull from prod
+  [1] push to prod
+```
+
+The picker only appears on a terminal. In a pipeline or with
+`--no-interaction`, the tool behaves as it always has and reports that
+configuration is missing.
+
+The rest of this page shows the explicit forms, which stay fully supported and
+are what you want in CI.
 
 ## Command Line
 

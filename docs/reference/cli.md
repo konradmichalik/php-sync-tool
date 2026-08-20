@@ -2,11 +2,28 @@
 
 Complete command line reference for php-sync-tool.
 
+## Commands
+
+| Command | Purpose |
+|---------|---------|
+| `sync` | Synchronize, the default when no command is named |
+| `pull <environment>` | That environment's database into this project |
+| `push <environment>` | This project's database into that environment |
+| `init` | Ask a few questions and write `.sync-tool/` for this project |
+
+`pull`, `push` and `init` are described under [Named Environments](#named-environments).
+Every option in this reference applies to `pull` and `push` as well, apart from the
+`ORIGIN` and `TARGET` arguments, which the environment name replaces.
+
 ## Basic Usage
 
 ```bash
 bin/sync-tool [OPTIONS] [ORIGIN] [TARGET]
 ```
+
+Called with no arguments on a terminal, the tool offers every sync it can find
+and runs the one you pick. Without a terminal it reports that configuration is
+missing, exactly as before.
 
 ## Arguments
 
@@ -138,6 +155,28 @@ The same set of overrides is available for the target:
 php-sync-tool is built on Symfony Console, which also provides the standard
 global options `--help` (`-h`), `--quiet` (`-q`), `--verbose` (`-v`/`-vv`/`-vvv`),
 `--version` (`-V`), and `--no-interaction` (`-n`).
+
+## Named Environments
+
+```bash
+bin/sync-tool init                 # set the project up
+bin/sync-tool pull production      # production → this project
+bin/sync-tool push staging         # this project → staging
+```
+
+An environment is a host from `hosts.yaml` or a file in `.sync-tool/`. The other
+side comes from the `local` block in `.sync-tool/defaults.yaml`. See
+[Configuration](/configuration/#the-local-block).
+
+`init` options:
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--environment` | `-e` | Name for the first environment (default: `production`) |
+| `--force` | | Overwrite existing files without asking |
+
+`init` needs a terminal; it refuses to run without one rather than writing files
+from defaults.
 
 ## Examples
 
