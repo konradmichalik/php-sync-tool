@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Database;
 
-use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use KonradMichalik\SyncTool\Security\{Shell, TableName};
 
 use function sprintf;
@@ -27,23 +26,14 @@ use function sprintf;
 final class MysqlCommandBuilder
 {
     private const BASE_DUMP_OPTIONS = '--single-transaction --quick --extended-insert --no-tablespaces ';
-    private const BASE_DUMP_OPTIONS_LEGACY = '--single-transaction --quick --extended-insert ';
 
     /**
-     * mysqldump option string. `--no-tablespaces` is dropped for MySQL < 5.6;
-     * an optional WHERE clause and additional options are appended verbatim.
+     * mysqldump option string. An optional WHERE clause and additional options
+     * are appended verbatim.
      */
-    public function dumpOptions(
-        ?DatabaseSystem $system,
-        ?string $version,
-        string $where = '',
-        string $additional = '',
-    ): string {
+    public function dumpOptions(string $where = '', string $additional = ''): string
+    {
         $options = self::BASE_DUMP_OPTIONS;
-
-        if (DatabaseSystem::MySQL === $system && null !== $version && version_compare($version, '5.6.0', '<')) {
-            $options = self::BASE_DUMP_OPTIONS_LEGACY;
-        }
 
         if ('' !== $where) {
             $options .= "--where='".$where."' ";

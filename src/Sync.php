@@ -272,7 +272,7 @@ final readonly class Sync
     private function clearDatabase(SyncConfig $config, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
     {
         $db = $config->target->db;
-        $output = $runner->run($driver->execCommand($db, $credentialsPath, $driver->listTablesSql($db->name)));
+        $output = $runner->run($driver->execCommand($db, $credentialsPath, $driver->listTablesSql()));
         $statement = $driver->dropTablesStatement($driver->parseTableList($output));
 
         if (null !== $statement) {

@@ -65,7 +65,7 @@ final readonly class MysqlDriver implements DatabaseDriver
         return $this->commands->dumpCommand(
             'mysqldump',
             $this->argument($request->credentialsPath),
-            $this->commands->dumpOptions(null, null, $request->where, $request->additionalOptions),
+            $this->commands->dumpOptions($request->where, $request->additionalOptions),
             $request->db->name,
             $ignoreOptions,
             $request->exportTables,
@@ -85,9 +85,9 @@ final readonly class MysqlDriver implements DatabaseDriver
     }
 
     /**
-     * `mysql` already runs with the database selected, so the name is not needed here.
+     * `mysql` already runs with the database selected.
      */
-    public function listTablesSql(string $dbName): string
+    public function listTablesSql(): string
     {
         return 'SHOW TABLES;';
     }
