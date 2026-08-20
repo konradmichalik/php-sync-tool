@@ -64,13 +64,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are no longer printed unless `-v` (phases) or `-vv` (commands) is passed. The
   `ci` and `json` output modes and the log file are unaffected.
 
+- A successful interactive run is two lines: a heading naming the tool and both
+  endpoints, and the live progress line, which now stays on screen and becomes the
+  result with the spinner turning into a status icon. The separate success block
+  and the framed definition list are gone. The sync mode moved onto the heading
+  behind `-v`, as the label alone, because the two endpoints already state the
+  direction; `ci` and `json` keep reporting the full mode string. Without a TTY the
+  confirmation is printed as one plain line, and failures keep their error block.
+
 - Local-to-local and same-host (`SYNC_REMOTE`) dump transfers now use
   `rsync` instead of `cp`, unifying with how file synchronization already
   handled these cases. The copied data is the same, but this now requires
   the `rsync` binary to be present, and file permissions on the copy follow
   rsync's `--chmod` defaults rather than a plain `cp`.
 
+### Security
+
+- SQL from configuration is no longer expanded by the shell. `post_sql`, an
+  `anonymize` `static` value and `where` were passed to `mysql` inside a
+  double-quoted argument, which left `$(…)` and `$VAR` live: a config file
+  became a command-execution path. They are single-quoted now. An SSH key path
+  and an `sshpass` password are quoted the same way in `rsync` commands.
+
+- `rsync` transfers honour `ssh_strict_host_key_checking` instead of always
+  passing `StrictHostKeyChecking=no`. The command channel already verified host
+  keys while the channel carrying the dump did not. Transfers to a host missing
+  from `known_hosts` now fail rather than proceeding unauthenticated.
+
 ### Fixed
+
+- Anonymization no longer skipped when credentials come from framework
+  auto-detection. Resolving credentials rebuilds the endpoint, and that copy
+  dropped its `anonymize` rules, so masking silently did not run for exactly the
+  `path`-based configuration the documentation recommends. Unmasked production
+  data reached the target without a warning, and the progress bar counted the
+  step regardless.
+
+- `keep_dumps` no longer deletes files it did not create. Retention listed
+  everything in `dump_dir` and removed any `.sql` or `.gz` beyond the limit,
+  which with the default `dump_dir` of `/tmp/` could hit other tools' files. Dumps
+  now carry a `sync-tool_` prefix and retention globs on it.
+
+- Dump filenames are precise to the second, so two runs within the same minute no
+  longer write to the same file.
 
 - A `password` in a host definition is no longer silently dropped, so a named
   host can carry SSH password authentication like any other endpoint.
@@ -87,6 +123,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `FileSync` with a shared `TransferStrategy` interface and resolver
   (`Remote\Transfer\*`), removing `SftpTransfer`, `ProxyTransfer` and
   `SftpDirection`.
+
+- `RunnerFactory` reuses one runner per endpoint for the lifetime of a run. A
+  sync asks for the same endpoint in several phases, and each miss cost a full
+  SSH handshake; on a measured local run that was roughly a quarter of the total
+  time, and it grows with the round-trip.
+
+- Masking and `post_sql` each run as one batched invocation instead of one per
+  statement, removing a round trip per statement. Both now report a single
+  progress step.
+
+- Dump transfers use a leaner `rsync` option set than directory syncs: no `-z` on
+  already-compressed bytes and no `--delete` or `--iconv` without a directory to
+  walk. The restrictive file mode is kept.
+
+- A reflection-based test asserts that the wither methods on `SyncConfig` and
+  `ClientConfig` carry over every constructor property, so a field forgotten in a
+  hand-written copy fails the suite instead of disappearing at runtime.
+
+- Removed the unused `MysqlCredentials::legacyArguments()`, which built
+  `-u'user' -p'password'` command lines, and folded the remaining one-line helper
+  into `MysqlDriver`. The duplicated SQL literal escaping in both drivers moved to
+  `Security\SqlLiteral`.
 
 ## [0.1.0] - 2026-07-01
 
