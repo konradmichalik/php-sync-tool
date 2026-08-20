@@ -63,7 +63,7 @@ final class SyncCommandTest extends TestCase
             YAML);
 
         $tester = $this->tester();
-        $exitCode = $tester->execute(['--config-file' => $file, '--dry-run' => true]);
+        $exitCode = $tester->execute(['--config-file' => $file, '--dry-run' => true], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         self::assertSame(0, $exitCode);
         $output = $tester->getDisplay();
@@ -99,7 +99,7 @@ final class SyncCommandTest extends TestCase
             YAML);
 
         $tester = $this->tester();
-        $tester->execute(['--config-file' => $file, '--reverse' => true, '--dry-run' => true]);
+        $tester->execute(['--config-file' => $file, '--reverse' => true, '--dry-run' => true], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         // Without reverse this is SENDER (local→remote); after the swap the
         // remote prod becomes the origin → RECEIVER (remote→local).
@@ -125,7 +125,7 @@ final class SyncCommandTest extends TestCase
             '--origin-host' => 'remote.example.com',
             '--origin-db-name' => 'remotedb',
             '--dry-run' => true,
-        ]);
+        ], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         self::assertSame(0, $exitCode);
         $output = $tester->getDisplay();
@@ -154,7 +154,7 @@ final class SyncCommandTest extends TestCase
             '--json-log' => true,
             '--log-file' => $this->dir.'/run.log',
             '--dry-run' => true,
-        ]);
+        ], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         self::assertSame(0, $exitCode);
         self::assertStringContainsString('RECEIVER', $tester->getDisplay());
@@ -230,7 +230,7 @@ final class SyncCommandTest extends TestCase
             '--config-file' => $config,
             '--host-file' => $hosts,
             '--dry-run' => true,
-        ]);
+        ], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         self::assertSame(0, $exit, $tester->getDisplay());
         self::assertStringContainsString('remote (prod.example.com)', $tester->getDisplay());
@@ -257,7 +257,7 @@ final class SyncCommandTest extends TestCase
             'target' => 'staging',
             '--host-file' => $hosts,
             '--dry-run' => true,
-        ]);
+        ], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         self::assertSame(0, $exit, $tester->getDisplay());
         self::assertStringContainsString('prod.example.com', $tester->getDisplay());

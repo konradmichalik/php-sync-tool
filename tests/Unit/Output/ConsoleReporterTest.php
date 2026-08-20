@@ -54,7 +54,7 @@ final class ConsoleReporterTest extends TestCase
     public function jsonSummaryIncludesEndpoints(): void
     {
         $out = new BufferedOutput();
-        $this->reporter(OutputMode::Json, $out)->summary('RECEIVER (REMOTE)', 'remote (h)', 'local');
+        $this->reporter(OutputMode::Json, $out)->summary('RECEIVER', '(REMOTE)', 'remote (h)', 'local');
         $line = $out->fetch();
         self::assertStringContainsString('"event":"summary"', $line);
         self::assertStringContainsString('remote (h)', $line);
@@ -65,7 +65,7 @@ final class ConsoleReporterTest extends TestCase
     {
         $out = new BufferedOutput();
         $r = $this->reporter(OutputMode::Quiet, $out);
-        $r->summary('RECEIVER', 'remote (h)', 'local');
+        $r->summary('RECEIVER', '(REMOTE ➔ LOCAL)', 'remote (h)', 'local');
         $r->step('working');
         $r->success('done');
         self::assertSame('', $out->fetch());
@@ -107,6 +107,85 @@ final class ConsoleReporterTest extends TestCase
         $progress->advance();
 
         self::assertSame('', $out->fetch());
+    }
+
+    #[Test]
+    public function theHeadingNamesBothEndpointsInline(): void
+    {
+        $out = new BufferedOutput();
+
+        $this->reporter(OutputMode::Interactive, $out)->summary('RECEIVER', '(REMOTE ➔ LOCAL)', 'remote (www1)', 'local');
+
+        $text = $out->fetch();
+        self::assertStringContainsString('php-sync-tool', $text);
+        self::assertStringContainsString('remote (www1) ➔ local', $text);
+        self::assertSame(1, substr_count(trim($text), "\n") + 1, 'the heading is one line');
+        self::assertStringNotContainsString('---', $text, 'no framed definition list');
+    }
+
+    /**
+     * The mode label would repeat the direction the endpoints already spell out,
+     * so it waits for someone who asked for detail.
+     */
+    #[Test]
+    public function theModeLabelStaysOutOfTheDefaultHeading(): void
+    {
+        $out = new BufferedOutput();
+
+        $this->reporter(OutputMode::Interactive, $out)->summary('RECEIVER', '(REMOTE ➔ LOCAL)', 'remote (www1)', 'local');
+
+        self::assertStringNotContainsString('RECEIVER', $out->fetch());
+    }
+
+    #[Test]
+    public function verboseAddsTheModeToTheSameHeadingLine(): void
+    {
+        $out = new BufferedOutput();
+        $out->setVerbosity(OutputInterface::VERBOSITY_VERBOSE);
+
+        $this->reporter(OutputMode::Interactive, $out)->summary('RECEIVER', '(REMOTE ➔ LOCAL)', 'remote (www1)', 'local');
+
+        $text = $out->fetch();
+        self::assertStringContainsString('RECEIVER', $text);
+        self::assertStringContainsString('remote (www1) ➔ local', $text);
+        self::assertSame(1, substr_count(trim($text), "\n") + 1, 'still one line');
+        self::assertStringNotContainsString('(REMOTE ➔ LOCAL)', $text, 'the direction is not stated twice');
+    }
+
+    /**
+     * A finished live line already ends in a confirmation. Adding the success
+     * block on top would state the outcome twice.
+     */
+    #[Test]
+    public function interactiveLeavesTheConfirmationToTheLiveLine(): void
+    {
+        $stream = fopen('php://memory', 'w+');
+        self::assertIsResource($stream);
+        $out = new StreamOutput($stream);
+        $reporter = new ConsoleReporter(OutputMode::Interactive, new SymfonyStyle(new ArrayInput([]), $out), $out);
+
+        $progress = $reporter->progress(1);
+        self::assertTrue($progress->enabled(), 'this test needs a live line to be the one confirming');
+
+        rewind($stream);
+        ftruncate($stream, 0);
+        $reporter->success('Synchronization complete');
+
+        rewind($stream);
+        self::assertSame('', (string) stream_get_contents($stream));
+    }
+
+    #[Test]
+    public function withoutALiveLineTheConfirmationIsOnePlainLine(): void
+    {
+        $out = new BufferedOutput();
+
+        $this->reporter(OutputMode::Interactive, $out)->success('Synchronization complete');
+
+        $text = $out->fetch();
+        self::assertStringContainsString('Synchronization complete', $text);
+        self::assertStringNotContainsString('[OK]', $text, 'no SymfonyStyle success block');
+        self::assertSame(1, substr_count(trim($text), "\n") + 1, 'exactly one line');
     }
 
     #[Test]

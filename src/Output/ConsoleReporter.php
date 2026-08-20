@@ -52,13 +52,19 @@ final class ConsoleReporter
         $this->clock = $clock ?? static fn (): string => date(DATE_ATOM);
     }
 
-    public function summary(string $mode, string $origin, string $target): void
+    /**
+     * @param string $mode        the plan's label, e.g. `RECEIVER`
+     * @param string $description the direction it stands for, e.g. `(REMOTE ➔ LOCAL)`
+     */
+    public function summary(string $mode, string $description, string $origin, string $target): void
     {
+        $full = sprintf('%s %s', $mode, $description);
+
         match ($this->mode) {
             OutputMode::Interactive => $this->interactiveSummary($mode, $origin, $target),
-            OutputMode::Ci => $this->ciSummary($mode, $origin, $target),
+            OutputMode::Ci => $this->ciSummary($full, $origin, $target),
             OutputMode::Json => $this->output->writeln($this->jsonLine('summary', null, [
-                'mode' => $mode,
+                'mode' => $full,
                 'origin' => $origin,
                 'target' => $target,
             ])),
@@ -89,7 +95,7 @@ final class ConsoleReporter
     public function success(string $message): void
     {
         match ($this->mode) {
-            OutputMode::Interactive => $this->io->success($message),
+            OutputMode::Interactive => $this->interactiveSuccess($message),
             OutputMode::Ci => $this->output->writeln($message),
             OutputMode::Json => $this->output->writeln($this->jsonLine('success', $message)),
             OutputMode::Quiet => null,
@@ -148,14 +154,37 @@ final class ConsoleReporter
         $this->io->text($message);
     }
 
+    /**
+     * A finished live line already ends in a confirmation, so repeating it in a
+     * block would say the same thing twice and three lines taller. Without a live
+     * line (piped output, an unsupported terminal, or an outcome reached before
+     * the progress display exists, such as a dry run) this is the only
+     * confirmation there is, so it prints as one plain line.
+     */
+    private function interactiveSuccess(string $message): void
+    {
+        if (null !== $this->progress && $this->progress->enabled()) {
+            return;
+        }
+
+        $this->io->writeln(sprintf('<info>[ok]</info> %s', $message));
+    }
+
+    /**
+     * One heading line naming the tool and where the data is about to move. The
+     * mode label is held back until `-v`: on the default line it would repeat the
+     * direction the two endpoints already spell out.
+     */
     private function interactiveSummary(string $mode, string $origin, string $target): void
     {
-        $this->io->title('php-sync-tool');
-        $this->io->definitionList(
-            ['Sync mode' => $mode],
-            ['Origin' => $origin],
-            ['Target' => $target],
-        );
+        $endpoints = sprintf('%s ➔ %s', $origin, $target);
+
+        $this->io->writeln([
+            $this->output->isVerbose()
+                ? sprintf('<info>php-sync-tool</info>  <comment>%s</comment>  %s', $mode, $endpoints)
+                : sprintf('<info>php-sync-tool</info>  %s', $endpoints),
+            '',
+        ]);
     }
 
     private function ciSummary(string $mode, string $origin, string $target): void

@@ -142,7 +142,8 @@ class SyncCommand extends Command
             $this->modeResolver->checkForProtection($plan, $syncConfig);
 
             $reporter->summary(
-                $plan->label().' '.$plan->description(),
+                $plan->label(),
+                $plan->description(),
                 $this->describeClient($syncConfig->origin->isRemote(), $syncConfig->origin->host),
                 $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host),
             );
@@ -175,8 +176,10 @@ class SyncCommand extends Command
 
             $sync->run($syncConfig, $plan);
 
+            // The live line confirms the run by finishing; the reporter only steps
+            // in when there is no live line to finish.
             $progress->succeed('Synchronization complete');
-            $reporter->success('Synchronization complete.');
+            $reporter->success('Synchronization complete');
 
             return Command::SUCCESS;
         } catch (SyncToolException $e) {

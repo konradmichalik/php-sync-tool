@@ -55,7 +55,7 @@ Both are optional. When omitted, configuration comes from `-f` or discovery.
 
 In `interactive` mode a single live line on **stderr** tracks the whole run, so piped
 stdout stays clean. The bar counts the planned steps: the dump, the dump transfer, the
-import, an `after_dump` import, each `post_sql` statement and each `files` entry. The
+import, an `after_dump` import, the `post_sql` block and each `files` entry. The
 running phase and the rsync percentage appear as fields on the same line, and log lines
 are printed above it.
 
@@ -63,14 +63,36 @@ The rsync percentage needs `--info=progress2`, which rsync added in 3.1. On an o
 rsync (macOS still ships 2.6.9) the transfer runs without it, and the SFTP fallback
 (`--no-rsync`) reports no percentage either. In both cases the step count still advances.
 
-The line clears itself when the run ends. `--output ci`, `--output json`, `--quiet` and
-`--mute` switch it off entirely, and without a TTY it degrades to plain log lines.
+The line stays on screen when the run ends and becomes the result: the leading spinner
+turns into a status icon, the bar fills, and the label reports the outcome. Above it sits
+a heading naming the tool and both endpoints. Together they are the whole default output
+of a successful run:
 
-Interactive runs stay compact: apart from the header, the line and the result, nothing
-is printed. Add `-v` for what the tool is doing and `-vv` for the commands it runs. Both
-are printed above the live line. The verbosity threshold applies to `interactive` only:
-`--output ci` and `--output json` have no live line and keep emitting every message, and
-the `--log-file` always records everything.
+```
+php-sync-tool  remote (www1) ➔ local
+✔  Synchronization complete  ██████████████████  100%  4/4  (0:07)
+```
+
+Nothing else is printed, and there is no separate success block on top of the line.
+`--output ci`, `--output json`, `--quiet` and `--mute` switch the live line off
+entirely; without a TTY it degrades to plain log lines and the confirmation is printed
+as one plain line instead. A failure keeps its own error block, because an error is
+worth interrupting for.
+
+Add `-v` for what the tool is doing and `-vv` for the commands it runs; both are printed
+above the live line. `-v` also names the sync mode on the heading:
+
+```
+php-sync-tool  RECEIVER  remote (www1) ➔ local
+```
+
+Only the mode label appears there, not its `(REMOTE ➔ LOCAL)` description: the two
+endpoints on the same line already state the direction. `--output ci` and `--output json`
+report the full mode string, since a log consumer has no line to read it off.
+
+The verbosity threshold applies to `interactive` only: `--output ci` and `--output json`
+have no live line and keep emitting every message, and the `--log-file` always records
+everything.
 
 ## Execution Options
 

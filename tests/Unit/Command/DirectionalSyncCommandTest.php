@@ -18,6 +18,7 @@ use KonradMichalik\SyncTool\Command\{PullCommand, PushCommand};
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 
 use function dirname;
@@ -54,7 +55,7 @@ final class DirectionalSyncCommandTest extends TestCase
         $this->writeLocalBlock();
 
         $tester = $this->tester(new PullCommand($this->resolver()));
-        $exitCode = $tester->execute(['environment' => 'production', '--dry-run' => true]);
+        $exitCode = $tester->execute(['environment' => 'production', '--dry-run' => true], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         $output = $tester->getDisplay();
         self::assertSame(0, $exitCode, $output);
@@ -69,7 +70,7 @@ final class DirectionalSyncCommandTest extends TestCase
         $this->writeLocalBlock();
 
         $tester = $this->tester(new PushCommand($this->resolver()));
-        $exitCode = $tester->execute(['environment' => 'production', '--dry-run' => true]);
+        $exitCode = $tester->execute(['environment' => 'production', '--dry-run' => true], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         $output = $tester->getDisplay();
         self::assertSame(0, $exitCode, $output);
@@ -115,7 +116,7 @@ final class DirectionalSyncCommandTest extends TestCase
         );
 
         $tester = $this->tester(new PullCommand($this->resolver()));
-        $exitCode = $tester->execute(['environment' => 'staging', '--dry-run' => true]);
+        $exitCode = $tester->execute(['environment' => 'staging', '--dry-run' => true], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         $output = $tester->getDisplay();
         self::assertSame(0, $exitCode, $output);
@@ -133,7 +134,7 @@ final class DirectionalSyncCommandTest extends TestCase
             'environment' => 'production',
             '--origin-host' => 'override.example.com',
             '--dry-run' => true,
-        ]);
+        ], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         self::assertStringContainsString('override.example.com', $tester->getDisplay());
     }

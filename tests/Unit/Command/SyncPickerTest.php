@@ -18,6 +18,7 @@ use KonradMichalik\SyncTool\Command\SyncCommand;
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 
 use function dirname;
@@ -71,7 +72,7 @@ final class SyncPickerTest extends TestCase
         $tester = $this->tester();
         // 0 = the project config, 1 = pull from production
         $tester->setInputs(['1']);
-        $exitCode = $tester->execute(['--dry-run' => true]);
+        $exitCode = $tester->execute(['--dry-run' => true], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         $output = $tester->getDisplay();
         self::assertSame(0, $exitCode, $output);
@@ -86,7 +87,7 @@ final class SyncPickerTest extends TestCase
 
         $tester = $this->tester();
         $tester->setInputs(['2']);
-        $exitCode = $tester->execute(['--dry-run' => true]);
+        $exitCode = $tester->execute(['--dry-run' => true], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         $output = $tester->getDisplay();
         self::assertSame(0, $exitCode, $output);
@@ -100,7 +101,7 @@ final class SyncPickerTest extends TestCase
 
         $tester = $this->tester();
         $tester->setInputs(['0']);
-        $exitCode = $tester->execute(['--dry-run' => true]);
+        $exitCode = $tester->execute(['--dry-run' => true], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         $output = $tester->getDisplay();
         self::assertSame(0, $exitCode, $output);
@@ -157,7 +158,7 @@ final class SyncPickerTest extends TestCase
 
         $tester = $this->tester();
         $tester->setInputs(['0']);
-        $exitCode = $tester->execute(['--dry-run' => true]);
+        $exitCode = $tester->execute(['--dry-run' => true], ['verbosity' => OutputInterface::VERBOSITY_VERBOSE]);
 
         $output = $tester->getDisplay();
         self::assertStringContainsString('pull from production', $output);

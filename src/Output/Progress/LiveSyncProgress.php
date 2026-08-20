@@ -33,9 +33,15 @@ final readonly class LiveSyncProgress implements SyncProgress
      */
     public function __construct(int $totalSteps, mixed $stream, ?Capabilities $capabilities = null)
     {
+        // Not transient: the finished line is the run's confirmation, so it has to
+        // survive. A filled bar plus the elapsed time says more than a separate
+        // success message, and it costs no extra lines.
+        //
+        // The leading spinner turns into the status icon once the line finishes,
+        // which is what makes the persisted line read as a verdict rather than a
+        // bar that stopped moving.
         $live = Live::bar((float) $totalSteps, 'Sync')
-            ->columns('label', 'bar', 'percent', 'count', 'fields', 'elapsed')
-            ->transient()
+            ->columns('spinner', 'label', 'bar', 'percent', 'count', 'fields', 'elapsed')
             ->to($stream);
 
         if (null !== $capabilities) {
