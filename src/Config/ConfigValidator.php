@@ -18,6 +18,8 @@ use Opis\JsonSchema\Errors\ErrorFormatter;
 use Opis\JsonSchema\Validator;
 use stdClass;
 
+use function implode;
+use function is_array;
 use function sprintf;
 
 /**
@@ -73,6 +75,25 @@ final class ConfigValidator
                     "after": {"type": "string"},
                     "error": {"type": "string"}
                 }
+            },
+            "anonymize": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "oneOf": [
+                            {"enum": ["null", "static", "hash", "email"]},
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "strategy": {"enum": ["null", "static", "hash", "email"]},
+                                    "value": {"type": "string"}
+                                },
+                                "required": ["strategy"]
+                            }
+                        ]
+                    }
+                }
             }
         }
     }';
@@ -91,12 +112,31 @@ final class ConfigValidator
 
         $error = $result->error();
         if (null === $error) {
+            $this->assertAnonymizationTargetsTheTarget($config);
+
             return;
         }
 
         $messages = (new ErrorFormatter())->formatFlat($error);
 
         throw new ValidationException('Configuration validation failed'.([] === $messages ? '' : ': '.implode('; ', $messages)));
+    }
+
+    /**
+     * Masking rewrites rows in place. On the origin that would rewrite the system
+     * being copied from, so the block is target-only.
+     *
+     * @param array<string, mixed> $config
+     *
+     * @throws ValidationException
+     */
+    private function assertAnonymizationTargetsTheTarget(array $config): void
+    {
+        $origin = $config['origin'] ?? null;
+
+        if (is_array($origin) && [] !== ($origin['anonymize'] ?? [])) {
+            throw new ValidationException('Configuration validation failed: "anonymize" is only supported on the target, not on the origin');
+        }
     }
 
     private function schema(): string

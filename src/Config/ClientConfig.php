@@ -24,9 +24,10 @@ use function is_array;
 final readonly class ClientConfig
 {
     /**
-     * @param list<string>          $postSql
-     * @param array<string, string> $console
-     * @param array<string, string> $scripts
+     * @param list<string>            $postSql
+     * @param array<string, string>   $console
+     * @param array<string, string>   $scripts
+     * @param list<AnonymizationRule> $anonymize
      */
     public function __construct(
         public string $path = '',
@@ -46,6 +47,7 @@ final readonly class ClientConfig
         public array $scripts = [],
         public bool $protect = false,
         public string $link = '',
+        public array $anonymize = [],
     ) {}
 
     /**
@@ -75,6 +77,7 @@ final readonly class ClientConfig
             scripts: ConfigAccessor::getStringMap($data, 'scripts'),
             protect: ConfigAccessor::getBool($data, 'protect', false),
             link: ConfigAccessor::getString($data, 'link', ''),
+            anonymize: AnonymizationRule::fromConfig(self::subArray($data, 'anonymize')),
         );
     }
 

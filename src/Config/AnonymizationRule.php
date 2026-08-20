@@ -83,11 +83,7 @@ final readonly class AnonymizationRule
         $strategy = AnonymizationStrategy::fromConfigValue($name);
 
         if (null === $strategy) {
-            throw new ConfigException(sprintf(
-                'Unknown anonymization strategy "%s" for %s. Use null, static, hash or email (quote "null" in YAML).',
-                $name,
-                $target,
-            ));
+            throw new ConfigException(sprintf('Unknown anonymization strategy "%s" for %s. Use null, static, hash or email (quote "null" in YAML).', $name, $target));
         }
 
         if ($strategy->requiresValue() && null === $value) {

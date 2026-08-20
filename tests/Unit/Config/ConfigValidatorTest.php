@@ -138,4 +138,44 @@ final class ConfigValidatorTest extends TestCase
             'target' => ['path' => '/t', 'db' => ['name' => 'app']],
         ]);
     }
+
+    #[Test]
+    public function acceptsAnAnonymizationBlockOnTheTarget(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => [
+                'path' => '/t',
+                'db' => ['name' => 'app'],
+                'anonymize' => [
+                    'fe_users' => ['email' => 'email', 'name' => ['strategy' => 'static', 'value' => 'Redacted']],
+                ],
+            ],
+        ]);
+    }
+
+    #[Test]
+    public function rejectsAnUnknownAnonymizationStrategy(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app'], 'anonymize' => ['fe_users' => ['email' => 'shuffle']]],
+        ]);
+    }
+
+    #[Test]
+    public function rejectsAnonymizationOnTheOrigin(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessageMatches('#only supported on the target#');
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app'], 'anonymize' => ['fe_users' => ['email' => 'email']]],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app']],
+        ]);
+    }
 }

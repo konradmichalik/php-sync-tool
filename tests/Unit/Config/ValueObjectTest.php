@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Config;
 
 use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, JumpHostConfig};
+use KonradMichalik\SyncTool\Enum\AnonymizationStrategy;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -156,5 +157,27 @@ final class ValueObjectTest extends TestCase
         self::assertSame('h', $updated->host);
         self::assertSame('/p', $updated->path);
         self::assertSame('', $client->db->name, 'original is unchanged (immutable)');
+    }
+
+    #[Test]
+    public function clientConfigParsesTheAnonymizationBlockIntoRules(): void
+    {
+        $client = ClientConfig::fromArray([
+            'path' => '/var/www',
+            'anonymize' => [
+                'fe_users' => ['email' => 'email', 'name' => ['strategy' => 'static', 'value' => 'Redacted']],
+            ],
+        ]);
+
+        self::assertCount(2, $client->anonymize);
+        self::assertSame('fe_users', $client->anonymize[0]->table);
+        self::assertSame(AnonymizationStrategy::Email, $client->anonymize[0]->strategy);
+        self::assertSame('Redacted', $client->anonymize[1]->value);
+    }
+
+    #[Test]
+    public function clientConfigHasNoRulesWithoutAnAnonymizationBlock(): void
+    {
+        self::assertSame([], ClientConfig::fromArray(['path' => '/var/www'])->anonymize);
     }
 }
