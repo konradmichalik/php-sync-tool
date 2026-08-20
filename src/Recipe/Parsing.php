@@ -13,8 +13,6 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Recipe;
 
-use KonradMichalik\SyncTool\Config\DatabaseConfig;
-use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use KonradMichalik\SyncTool\Exception\ParsingException;
 use KonradMichalik\SyncTool\Util\Pure;
 use OutOfBoundsException;
@@ -34,9 +32,11 @@ use function strlen;
 final class Parsing
 {
     /**
+     * @return array{db_type: string, user: string, password: string, host: string, port: string, name: string}
+     *
      * @throws ParsingException
      */
-    public static function parseSymfonyDatabaseUrl(string $dbCredentials): DatabaseConfig
+    public static function parseSymfonyDatabaseUrl(string $dbCredentials): array
     {
         $value = str_replace("\\n'", '', $dbCredentials);
 
@@ -71,15 +71,14 @@ final class Parsing
             throw new ParsingException('Mismatch of expected database credentials');
         }
 
-        return new DatabaseConfig(
-            name: $name,
-            host: $host,
-            user: rawurldecode($user),
-            password: rawurldecode($parsed['pass']),
-            port: (int) $port,
-            sslDisabled: false,
-            type: DatabaseSystem::fromConfigValue((string) $scheme) ?? DatabaseSystem::MySQL,
-        );
+        return [
+            'db_type' => $scheme,
+            'user' => rawurldecode($user),
+            'password' => rawurldecode($parsed['pass']),
+            'host' => $host,
+            'port' => (string) $port,
+            'name' => $name,
+        ];
     }
 
     /**
