@@ -283,6 +283,36 @@ final class SyncScenarioTest extends TestCase
         self::assertSame(0, (int) trim($plaintext), 'no plaintext address survives');
     }
 
+    /**
+     * Auto-detected credentials rebuild the endpoint objects mid-run. That used to
+     * drop the target's anonymize rules, so masking was skipped without a warning
+     * in exactly the configuration style the documentation recommends. Every unit
+     * test passed, because no scenario crossed auto-detection with a target-side
+     * feature.
+     */
+    #[Test]
+    public function anonymizationSurvivesCredentialAutoDetectionOnBothEndpoints(): void
+    {
+        $result = $this->runSyncTool('www2', 'autodetect-anonymize.yaml');
+        self::assertTrue($result->isSuccessful(), $result->getOutput().$result->getErrorOutput());
+
+        self::assertStringContainsString(
+            'Anonymizing data',
+            $result->getOutput().$result->getErrorOutput(),
+            'the masking step has to run, not just be counted',
+        );
+
+        $plaintext = $this->compose([
+            'exec', '-T', 'db2', 'mariadb', '-udb', '-pdb', 'db', '-N', '-e',
+            "SELECT COUNT(*) FROM account WHERE email IN ('alice@example.com', 'bob@example.com')",
+        ])->getOutput();
+        self::assertSame(0, (int) trim($plaintext), 'no plaintext address reaches the target');
+
+        $row = $this->mysqlRow('db2', "SELECT email, display_name FROM account WHERE email LIKE '%@example.invalid' LIMIT 1");
+        self::assertMatchesRegularExpression('#^[0-9a-f]{32}@example\\.invalid$#', $row[0]);
+        self::assertSame('Redacted', $row[1]);
+    }
+
     private function resetDatabases(): void
     {
         $this->mysql('db1', 'DROP TABLE IF EXISTS person, cache_a, cache_b; CREATE TABLE person (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255)); INSERT INTO person (name) VALUES ("Alice"),("Bob"),("Carol");');

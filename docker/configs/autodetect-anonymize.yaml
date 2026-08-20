@@ -1,0 +1,30 @@
+# Auto-detection on BOTH endpoints, combined with target-side anonymization.
+#   origin = www1 (remote), credentials read from its wp-config.php  -> db1
+#   target = www2 itself (local), credentials read from its own      -> db2
+#
+# This crossing is the one that used to fail silently: resolving credentials
+# rebuilt the target endpoint and dropped its anonymize rules on the way, so
+# plaintext production data landed unmasked without a single log line.
+#
+# Run: docker compose exec www2 php /app/bin/sync-tool \
+#        -f /app/docker/configs/autodetect-anonymize.yaml -y
+use_sshpass: true
+ssh_strict_host_key_checking: false
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  path: /app/docker/fixtures/wp-config.php
+  dump_dir: /tmp/
+
+target:
+  path: /app/docker/fixtures/target/wp-config.php
+  dump_dir: /tmp/
+  anonymize:
+    account:
+      email: email
+      display_name:
+        strategy: static
+        value: Redacted

@@ -101,6 +101,7 @@ final readonly class ClientConfig
             scripts: $this->scripts,
             protect: $this->protect,
             link: $this->link,
+            anonymize: $this->anonymize,
         );
     }
 

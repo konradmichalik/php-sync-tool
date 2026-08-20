@@ -64,8 +64,15 @@ That order is deliberate. It runs after every import step, so rows brought in by
 [after-dump import](/configuration/advanced#after-dump-import) are masked too,
 and before `post_sql`, so your own statements already see masked data.
 
-A failing statement aborts the sync. Reporting success while leaving a copy full
-of plaintext behind would defeat the point of the feature.
+Every rule is applied in one database invocation. A failing statement aborts the
+sync, and because the whole block goes over in a single call there is no window
+in which some columns are masked and others are not. Reporting success while
+leaving a copy full of plaintext behind would defeat the point of the feature.
+
+Masking is independent of how the target's credentials were obtained. It applies
+just the same when they come from
+[framework auto-detection](/getting-started/) via `path` as when the `db` block
+is written out in full.
 
 ## Only on the target
 
