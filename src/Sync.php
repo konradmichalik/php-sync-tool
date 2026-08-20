@@ -165,6 +165,7 @@ final readonly class Sync
             $this->dumpDir($config->origin).$dumpName.'.gz',
             $this->dumpDir($config->target).$dumpName.'.gz',
             extraRsyncOptions: $config->useRsyncOptions,
+            singleFile: true,
         );
 
         $strategy = $this->transferResolver->resolve($config, $plan, $this->log, $this->progress);
@@ -253,27 +254,31 @@ final readonly class Sync
         ($this->log)('Anonymizing data');
         $this->progress->phase('Anonymizing data');
 
-        foreach ($statements as $statement) {
-            $command = $driver->execCommand($client->db, $credentialsPath, $statement);
-            $this->logCommand($command);
-            $runner->run($command);
-        }
+        // One invocation for every rule: each extra exec is a full round trip to
+        // the target, and a partially masked copy is worse than none.
+        $command = $driver->execCommand($client->db, $credentialsPath, implode(' ', $statements));
+        $this->logCommand($command);
+        $runner->run($command);
 
         $this->progress->advance();
     }
 
     private function runPostSql(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
     {
-        foreach ($client->postSql as $sql) {
-            if ('' === $sql) {
-                continue;
-            }
+        $statements = array_filter($client->postSql, static fn (string $sql): bool => '' !== $sql);
 
-            ($this->log)('Running post-import SQL');
-            $this->progress->phase('Running post-import SQL');
-            $runner->run($driver->execCommand($client->db, $credentialsPath, $sql));
-            $this->progress->advance();
+        if ([] === $statements) {
+            return;
         }
+
+        ($this->log)('Running post-import SQL');
+        $this->progress->phase('Running post-import SQL');
+
+        $command = $driver->execCommand($client->db, $credentialsPath, implode(' ', $statements));
+        $this->logCommand($command);
+        $runner->run($command);
+
+        $this->progress->advance();
     }
 
     private function pruneDumps(ClientConfig $client, CommandRunner $runner): void

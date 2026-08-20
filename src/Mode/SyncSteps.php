@@ -66,6 +66,12 @@ final readonly class SyncSteps
             ++$steps;
         }
 
-        return $steps + count(array_filter($target->postSql, static fn (string $sql): bool => '' !== $sql));
+        // Masking and post-import SQL each run as a single batched invocation,
+        // so they are one step apiece however many statements they carry.
+        if ([] !== array_filter($target->postSql, static fn (string $sql): bool => '' !== $sql)) {
+            ++$steps;
+        }
+
+        return $steps;
     }
 }

@@ -51,8 +51,12 @@ final class SyncStepsTest extends TestCase
         self::assertSame(2, (new SyncSteps())->count($this->config(['keep_dump' => true]), Plans::receiver()));
     }
 
+    /**
+     * The whole post_sql block runs in one batched invocation, so it is a single
+     * step no matter how many statements it holds.
+     */
     #[Test]
-    public function eachPostSqlStatementAndTheAfterDumpCountAsAStep(): void
+    public function postSqlIsOneStepAndTheAfterDumpAnother(): void
     {
         $config = $this->config([
             'target' => [
@@ -63,7 +67,21 @@ final class SyncStepsTest extends TestCase
             ],
         ]);
 
-        self::assertSame(6, (new SyncSteps())->count($config, Plans::receiver()));
+        self::assertSame(5, (new SyncSteps())->count($config, Plans::receiver()));
+    }
+
+    #[Test]
+    public function anEmptyPostSqlBlockCountsForNothing(): void
+    {
+        $config = $this->config([
+            'target' => [
+                'path' => '/t',
+                'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p'],
+                'post_sql' => ['', ''],
+            ],
+        ]);
+
+        self::assertSame(3, (new SyncSteps())->count($config, Plans::receiver()));
     }
 
     #[Test]

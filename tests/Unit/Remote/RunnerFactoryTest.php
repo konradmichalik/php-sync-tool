@@ -46,4 +46,53 @@ final class RunnerFactoryTest extends TestCase
 
         self::assertInstanceOf(SystemSshCommandRunner::class, (new RunnerFactory())->forClient($client));
     }
+
+    /**
+     * A run asks for the same endpoint in several phases. Handing out a fresh
+     * runner each time meant a fresh SSH handshake each time.
+     */
+    #[Test]
+    public function theSameEndpointIsServedByOneRunner(): void
+    {
+        $factory = new RunnerFactory();
+        $client = new ClientConfig(
+            host: 'remote.example.com',
+            user: 'deploy',
+            jumpHost: new JumpHostConfig(host: 'jump.example.com', user: 'proxy'),
+        );
+
+        self::assertSame($factory->forClient($client), $factory->forClient($client));
+    }
+
+    #[Test]
+    public function endpointsThatDifferGetTheirOwnRunner(): void
+    {
+        $factory = new RunnerFactory();
+        $jump = new JumpHostConfig(host: 'jump.example.com', user: 'proxy');
+
+        $first = $factory->forClient(new ClientConfig(host: 'a.example.com', user: 'deploy', jumpHost: $jump));
+        $second = $factory->forClient(new ClientConfig(host: 'b.example.com', user: 'deploy', jumpHost: $jump));
+        $otherUser = $factory->forClient(new ClientConfig(host: 'a.example.com', user: 'other', jumpHost: $jump));
+        $otherPort = $factory->forClient(new ClientConfig(host: 'a.example.com', user: 'deploy', port: 2222, jumpHost: $jump));
+
+        self::assertNotSame($first, $second, 'a different host is a different connection');
+        self::assertNotSame($first, $otherUser, 'a different user is a different connection');
+        self::assertNotSame($first, $otherPort, 'a different port is a different connection');
+    }
+
+    #[Test]
+    public function relaxingHostKeyCheckingDoesNotReuseAStrictConnection(): void
+    {
+        $factory = new RunnerFactory();
+        $client = new ClientConfig(
+            host: 'remote.example.com',
+            user: 'deploy',
+            jumpHost: new JumpHostConfig(host: 'jump.example.com', user: 'proxy'),
+        );
+
+        self::assertNotSame(
+            $factory->forClient($client, strictHostKeyChecking: true),
+            $factory->forClient($client, strictHostKeyChecking: false),
+        );
+    }
 }
