@@ -16,7 +16,7 @@ namespace KonradMichalik\SyncTool;
 use Closure;
 use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
 use KonradMichalik\SyncTool\Config\{ClientConfig, SyncConfig};
-use KonradMichalik\SyncTool\Database\{CredentialsFile, MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, TableStatements};
+use KonradMichalik\SyncTool\Database\{MysqlCommandBuilder, MysqlCredentials, MysqlDefaultsFile, RemoteFileWriter, TableStatements};
 use KonradMichalik\SyncTool\Enum\{LifecyclePhase, LogChannel, SyncMode};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
@@ -46,7 +46,7 @@ final readonly class Sync
         private MysqlCommandBuilder $commands = new MysqlCommandBuilder(),
         private MysqlCredentials $credentials = new MysqlCredentials(),
         private MysqlDefaultsFile $defaultsFile = new MysqlDefaultsFile(),
-        private CredentialsFile $credentialsFile = new CredentialsFile(),
+        private RemoteFileWriter $remoteFileWriter = new RemoteFileWriter(),
         private TableStatements $tables = new TableStatements(),
         private TransferStrategyResolver $transferResolver = new TransferStrategyResolver(),
         private DumpFileNamer $namer = new DumpFileNamer(),
@@ -346,7 +346,7 @@ final readonly class Sync
         $path = $this->defaultsFile->generatePath();
 
         if ($client->isRemote()) {
-            $runner->run($this->credentialsFile->remoteWriteCommand($content, $path));
+            $runner->run($this->remoteFileWriter->remoteWriteCommand($content, $path));
         } else {
             file_put_contents($path, $content);
             chmod($path, 0o600);

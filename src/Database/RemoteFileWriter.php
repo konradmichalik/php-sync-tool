@@ -16,12 +16,12 @@ namespace KonradMichalik\SyncTool\Database;
 use function sprintf;
 
 /**
- * CredentialsFile.
+ * RemoteFileWriter.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final class CredentialsFile
+final class RemoteFileWriter
 {
     /**
      * Command that recreates the config file on a remote host from a base64 blob,
