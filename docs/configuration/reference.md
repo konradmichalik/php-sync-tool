@@ -40,6 +40,7 @@ Both `origin` and `target` accept the same structure:
 | `script` | object | Lifecycle commands: `before`, `after`, `error`. |
 | `db` | object | Manual database credentials (see [Database Object](#database-object)). |
 | `jump_host` | object | SSH jump host (see [Jump Host Object](#jump-host-object)). |
+| `anonymize` | object | Masking rules per table and column, target only (see [Data Anonymization](/configuration/anonymization)). |
 
 ### Database Object
 

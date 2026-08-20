@@ -39,33 +39,25 @@ target:
 
 ## Data Anonymization (GDPR/DSGVO)
 
-Production databases pulled into a development environment routinely contain
-personal data (names, emails, addresses, hashed passwords). Under the GDPR you
-must not keep that data in a non-production system without cause. `post_sql`
-runs on the target **after** the import, so it is the natural place to mask
-personal data before it is ever used:
+Masking personal data is configuration, not a hand-written recipe. Declare the
+rules per table and column and the tool applies them after the import:
 
 ```yaml
 target:
-  path: /var/www/html/.env
-  post_sql:
-    # Overwrite direct identifiers with deterministic, non-personal values
-    - "UPDATE users SET email = CONCAT('user', id, '@example.test'), name = CONCAT('User ', id), phone = NULL;"
-    # Neutralize credentials so no real password hash leaves production
-    - "UPDATE users SET password = '$2y$10$abcdefghijklmnopqrstuv';"
-    # Drop rows that have no place in a dev database at all
-    - "TRUNCATE TABLE payment_tokens;"
-    - "DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL 30 DAY;"
+  anonymize:
+    fe_users:
+      email: email
+      password: hash
 ```
 
-For reusable, multi-line masking, keep the statements in a file and apply it
-with [after-dump import](#after-dump-import) or a lifecycle
-[script](#lifecycle-scripts) instead of inlining every rule.
+See [Data Anonymization](/configuration/anonymization) for the available
+strategies, the phase order and the PostgreSQL dialect. `post_sql` remains the
+place for everything masking cannot express, such as deleting rows outright.
 
 ::: tip
-Combine this with [Partial Sync](#partial-sync) (`--tables` / `--where`) to leave
-bulky or sensitive tables behind entirely, rather than copying and then masking
-them.
+Combine either with [Partial Sync](#partial-sync) (`--tables` / `--where`) to
+leave bulky or sensitive tables behind entirely, rather than copying and then
+masking them.
 :::
 
 ## After-Dump Import

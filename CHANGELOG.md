@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Data anonymization as configuration. An `anonymize` block on the target names
+  the columns to mask per table, with four strategies: `null`, a `static` value,
+  `hash`, and `email` (the address is hashed into the reserved `example.invalid`
+  domain, so no primary-key column is needed). Masking runs as its own phase
+  after every import step and before `post_sql`, a failing statement aborts the
+  sync, and the statements are emitted in the dialect of the configured database
+  system. See the
+  [anonymization documentation](https://konradmichalik.github.io/php-sync-tool/configuration/anonymization).
+
 - PostgreSQL support. `db.type` selects the database system (`mysql`, `mariadb`,
   `postgres`), and it is also read from the scheme of a framework database URL,
   so a Symfony `DATABASE_URL=postgresql://…` needs no extra configuration.

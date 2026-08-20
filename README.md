@@ -14,6 +14,7 @@ credential auto-detection for **TYPO3, Symfony, Drupal, WordPress and Laravel**.
 
 * Synchronize databases between local and remote systems
 * MySQL, MariaDB and PostgreSQL
+* Declarative data anonymization for GDPR-safe copies
 * Optional file synchronization over SSH/rsync/SFTP
 * Framework credential auto-detection for TYPO3, Symfony, Drupal, WordPress and Laravel
 

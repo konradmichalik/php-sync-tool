@@ -63,7 +63,8 @@ export default defineConfig({
             { text: 'Authentication', link: '/configuration/authentication' },
             { text: 'Advanced Options', link: '/configuration/advanced' },
             { text: 'File Synchronization', link: '/configuration/file-sync' },
-            { text: 'PostgreSQL', link: '/configuration/postgresql' }
+            { text: 'PostgreSQL', link: '/configuration/postgresql' },
+            { text: 'Data Anonymization', link: '/configuration/anonymization' }
           ]
         }
       ],
