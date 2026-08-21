@@ -66,4 +66,38 @@ final class ShellTest extends TestCase
 
         self::assertStringContainsString($special, Shell::quote($special));
     }
+
+    #[Test]
+    public function strictPipePassesTheProducerOutputToTheConsumer(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'sync-tool-pipe');
+        self::assertIsString($file);
+
+        exec(Shell::strictPipe('printf hello', 'cat > '.Shell::quote($file)), $output, $status);
+
+        self::assertSame(0, $status);
+        self::assertSame('hello', file_get_contents($file));
+
+        unlink($file);
+    }
+
+    /**
+     * The whole point: a plain `producer | consumer` reports the consumer's status,
+     * so a dump that aborted halfway through looked like a success.
+     */
+    #[Test]
+    public function strictPipeFailsWhenTheProducerFails(): void
+    {
+        exec(Shell::strictPipe('sh -c "printf partial; exit 4"', 'cat > /dev/null'), $output, $status);
+
+        self::assertNotSame(0, $status);
+    }
+
+    #[Test]
+    public function strictPipeFailsWhenTheConsumerFails(): void
+    {
+        exec(Shell::strictPipe('printf hello', 'sh -c "exit 5"'), $output, $status);
+
+        self::assertNotSame(0, $status);
+    }
 }

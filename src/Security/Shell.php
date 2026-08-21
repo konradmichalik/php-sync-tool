@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Security;
 
+use function sprintf;
+
 /**
  * Shell.
  *
@@ -44,5 +46,30 @@ final class Shell
         }
 
         return "'".str_replace("'", "'\"'\"'", $value)."'";
+    }
+
+    /**
+     * A pipeline that fails when *either* stage fails.
+     *
+     * A plain `mysqldump … | gzip > dump.gz` reports the exit status of `gzip`,
+     * so a dump that aborted halfway through (wrong credentials, killed query,
+     * full disk) looked like a success and left a valid but useless archive
+     * behind, which the next step then transferred and imported over a database.
+     *
+     * The producer's status travels out on file descriptor 3 while its stdout
+     * stays on the pipe; the assignment keeps the pipeline's own status, so the
+     * `&&` covers the consumer. POSIX-only constructs, verified against sh,
+     * bash, dash and zsh (hence `sync_status`: `status` is read-only in zsh).
+     *
+     * The consumer must not write to stdout: it shares the channel that carries
+     * the status. Every caller either redirects it to a file or discards it.
+     */
+    public static function strictPipe(string $producer, string $consumer): string
+    {
+        return sprintf(
+            'sync_status=$( { { %s; echo $? >&3; } | %s; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
+            $producer,
+            $consumer,
+        );
     }
 }
