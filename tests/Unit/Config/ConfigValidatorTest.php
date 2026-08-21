@@ -202,4 +202,74 @@ final class ConfigValidatorTest extends TestCase
             'target' => ['path' => '/t', 'db' => ['name' => 'app']],
         ]);
     }
+
+    /**
+     * A misspelled key used to validate happily and then do nothing at all, which
+     * is the worst possible outcome for a key like this one.
+     */
+    #[Test]
+    public function rejectsAnUnknownRootKey(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessageMatches('#ignore_tabel#');
+
+        (new ConfigValidator())->validate(['ignore_tabel' => ['cache_pages']]);
+    }
+
+    #[Test]
+    public function rejectsAnUnknownEndpointKey(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessageMatches('#dump_directory#');
+
+        (new ConfigValidator())->validate(['origin' => ['dump_directory' => '/tmp/']]);
+    }
+
+    #[Test]
+    public function rejectsAnUnknownDatabaseKey(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        (new ConfigValidator())->validate(['origin' => ['db' => ['dbname' => 'app']]]);
+    }
+
+    /**
+     * YAML anchors need somewhere to live, and a config author may want a note of
+     * their own, so keys starting with `x` or `.` are none of our business.
+     */
+    #[Test]
+    public function acceptsExtensionAndAnchorKeys(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        (new ConfigValidator())->validate([
+            '.defaults' => ['user' => 'deploy'],
+            'x-note' => 'whatever the author needs',
+            'origin' => ['path' => '/o', '.anchor' => ['a' => 'b'], 'x-owner' => 'team'],
+            'target' => ['path' => '/t'],
+        ]);
+    }
+
+    /**
+     * `script` is the spelling every example in the documentation uses.
+     */
+    #[Test]
+    public function acceptsBothLifecycleScriptSpellings(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        (new ConfigValidator())->validate([
+            'script' => ['before' => 'echo root-before'],
+            'origin' => ['script' => ['before' => 'echo origin-before']],
+            'target' => ['scripts' => ['after' => 'echo target-after']],
+        ]);
+    }
+
+    #[Test]
+    public function rejectsAnUnknownLifecyclePhase(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        (new ConfigValidator())->validate(['target' => ['script' => ['beforre' => 'echo typo']]]);
+    }
 }

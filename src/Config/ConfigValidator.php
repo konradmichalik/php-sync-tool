@@ -20,7 +20,6 @@ use stdClass;
 
 use function implode;
 use function is_array;
-use function sprintf;
 
 /**
  * ConfigValidator.
@@ -30,8 +29,31 @@ use function sprintf;
  */
 final class ConfigValidator
 {
+    /**
+     * Lifecycle commands. `script` is the documented spelling, `scripts` the one
+     * the code has always read, so both are accepted.
+     */
+    private const SCRIPT_SCHEMA = '{
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+            "before": {"type": "string"},
+            "after": {"type": "string"},
+            "error": {"type": "string"}
+        }
+    }';
+
+    /**
+     * Every key an endpoint block may carry. `additionalProperties` is false, so a
+     * misspelled key is reported instead of silently doing nothing: `ignore_tabel`
+     * used to pass validation and then simply not ignore anything. Keys starting
+     * with `x` or `.` are left to the author, which keeps YAML anchor blocks
+     * (`.defaults: &defaults`) usable.
+     */
     private const CLIENT_SCHEMA = '{
         "type": "object",
+        "additionalProperties": false,
+        "patternProperties": {"^[x.]": {}},
         "properties": {
             "name": {"type": "string"},
             "host": {"type": "string"},
@@ -41,6 +63,7 @@ final class ConfigValidator
             "ssh_key": {"type": "string"},
             "port": {"type": "number"},
             "dump_dir": {"type": "string"},
+            "keep_dumps": {"type": "number"},
             "after_dump": {"type": "string"},
             "link": {"type": "string"},
             "protect": {"type": "boolean"},
@@ -48,16 +71,20 @@ final class ConfigValidator
             "console": {"type": "object"},
             "jump_host": {
                 "type": "object",
+                "additionalProperties": false,
                 "properties": {
+                    "name": {"type": "string"},
                     "host": {"type": "string"},
                     "user": {"type": "string"},
                     "password": {"type": "string"},
                     "ssh_key": {"type": "string"},
+                    "private": {"type": "string"},
                     "port": {"type": "number"}
                 }
             },
             "db": {
                 "type": "object",
+                "additionalProperties": false,
                 "properties": {
                     "name": {"type": "string"},
                     "host": {"type": "string"},
@@ -74,14 +101,8 @@ final class ConfigValidator
                     "type": {"enum": ["mysql", "MySQL", "mariadb", "MariaDB", "postgres", "postgresql", "PostgreSQL", "pgsql"]}
                 }
             },
-            "script": {
-                "type": "object",
-                "properties": {
-                    "before": {"type": "string"},
-                    "after": {"type": "string"},
-                    "error": {"type": "string"}
-                }
-            },
+            "script": %SCRIPT%,
+            "scripts": %SCRIPT%,
             "anonymize": {
                 "type": "object",
                 "additionalProperties": {
@@ -101,6 +122,63 @@ final class ConfigValidator
                     }
                 }
             }
+        }
+    }';
+
+    /**
+     * The root block. Everything `SyncConfig::fromArray()` reads is listed here,
+     * including the legacy singular spellings, so that `additionalProperties`
+     * being false rejects typos rather than supported configuration.
+     */
+    private const ROOT_SCHEMA = '{
+        "type": "object",
+        "additionalProperties": false,
+        "patternProperties": {"^[x.]": {}},
+        "properties": {
+            "type": {"enum": ["TYPO3", "Symfony", "Drupal", "WordPress", "Laravel"]},
+            "verbose": {"type": "boolean"},
+            "mute": {"type": "boolean"},
+            "dry_run": {"type": "boolean"},
+            "yes": {"type": "boolean"},
+            "reverse": {"type": "boolean"},
+            "keep_dump": {"type": "boolean"},
+            "dump_name": {"type": "string"},
+            "check_dump": {"type": "boolean"},
+            "clear_database": {"type": "boolean"},
+            "import": {"type": "string"},
+            "tables": {"type": "string"},
+            "where": {"type": "string"},
+            "additional_mysqldump_options": {"type": "string"},
+            "ignore_table": {"type": "array"},
+            "ignore_tables": {"type": "array"},
+            "truncate_table": {"type": "array"},
+            "truncate_tables": {"type": "array"},
+            "use_rsync": {"type": "boolean"},
+            "use_rsync_options": {"type": "string"},
+            "use_sshpass": {"type": "boolean"},
+            "files": {"type": ["array", "object"]},
+            "files_options": {"type": "string"},
+            "with_files": {"type": "boolean"},
+            "files_only": {"type": "boolean"},
+            "ssh_agent": {"type": "boolean"},
+            "force_password": {"type": "boolean"},
+            "ssh_strict_host_key_checking": {"type": "boolean"},
+            "ssh_password": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                    "origin": {"type": "string"},
+                    "target": {"type": "string"}
+                }
+            },
+            "config_file_path": {"type": "string"},
+            "log_file": {"type": "string"},
+            "json_log": {"type": "boolean"},
+            "script": %SCRIPT%,
+            "scripts": %SCRIPT%,
+            "target": %CLIENT%,
+            "origin": %CLIENT%,
+            "local": %CLIENT%
         }
     }';
 
@@ -147,18 +225,10 @@ final class ConfigValidator
 
     private function schema(): string
     {
-        return sprintf(
-            '{"type": "object", "properties": {'
-            .'"type": {"enum": ["TYPO3", "Symfony", "Drupal", "WordPress", "Laravel"]},'
-            .'"log_file": {"type": "string"},'
-            .'"ssh_strict_host_key_checking": {"type": "boolean"},'
-            .'"json_log": {"type": "boolean"},'
-            .'"ignore_table": {"type": "array"},'
-            .'"target": %1$s,'
-            .'"origin": %1$s,'
-            .'"local": %1$s'
-            .'}}',
-            self::CLIENT_SCHEMA,
+        return str_replace(
+            ['%CLIENT%', '%SCRIPT%'],
+            [str_replace('%SCRIPT%', self::SCRIPT_SCHEMA, self::CLIENT_SCHEMA), self::SCRIPT_SCHEMA],
+            self::ROOT_SCHEMA,
         );
     }
 
