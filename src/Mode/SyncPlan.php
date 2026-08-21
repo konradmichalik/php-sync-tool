@@ -18,15 +18,16 @@ use KonradMichalik\SyncTool\Enum\{SyncDirection, SyncOperation};
 /**
  * SyncPlan.
  *
+ * What a run does, described by the three things the configuration actually
+ * determines: which way the data moves, how much of the dump-transfer-import
+ * chain runs, and whether both endpoints sit on the same host. The nine mode
+ * names the tool has always printed are labels derived from those three.
+ *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
 final readonly class SyncPlan
 {
-    // What a run does, described by the three things the configuration actually
-    // determines: which way the data moves, how much of the dump-transfer-import
-    // chain runs, and whether both endpoints sit on the same host. The nine mode
-    // names the tool has always printed are labels derived from those three.
     public function __construct(
         public SyncDirection $direction,
         public SyncOperation $operation,

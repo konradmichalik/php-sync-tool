@@ -35,19 +35,13 @@ use function sprintf;
 /**
  * SyncCommand.
  *
- * @author Konrad Michalik <km@move-elevator.de>
- * @license GPL-3.0-or-later
- */
-#[AsCommand(name: 'sync', description: 'Synchronize a database (and optionally files) between systems.')]
-// Deliberately not final: PullCommand and PushCommand are this pipeline with a
-// different endpoint assembly, and they override buildConfig() to provide it.
-
-/**
- * SyncCommand.
+ * Deliberately not final: PullCommand and PushCommand are this pipeline with a
+ * different endpoint assembly, and they override buildConfig() to provide it.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
+#[AsCommand(name: 'sync', description: 'Synchronize a database (and optionally files) between systems.')]
 class SyncCommand extends Command
 {
     protected readonly EnvironmentAssembler $environments;

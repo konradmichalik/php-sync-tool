@@ -19,12 +19,13 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * DirectionalSyncCommand.
  *
+ * One named environment plus this machine: the verb says which side is which.
+ *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
 abstract class DirectionalSyncCommand extends SyncCommand
 {
-    // One named environment plus this machine: the verb says which side is which.
     protected function configure(): void
     {
         $this->addArgument(
