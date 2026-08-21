@@ -16,12 +16,14 @@ namespace KonradMichalik\SyncTool\Recipe;
 use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Enum\{DatabaseSystem, Framework};
 use KonradMichalik\SyncTool\Remote\CommandRunner;
+use KonradMichalik\SyncTool\Security\Shell;
 
 use function basename;
 use function escapeshellarg;
 use function is_array;
 use function json_decode;
 use function sprintf;
+use function str_replace;
 
 /**
  * CredentialResolver.
@@ -47,7 +49,9 @@ final readonly class CredentialResolver
         }
 
         $file = basename($client->path);
-        $phpBin = $client->console['php'] ?? 'php';
+        // A path, as documented, and quoted as one shell argument like every other
+        // `console` override.
+        $phpBin = Shell::quote($client->console['php'] ?? 'php');
         $strategy = $this->readStrategy($framework, $file);
 
         $content = $runner->run($this->readCommand($strategy, $phpBin, $client->path), ReadStrategy::DrupalDrush === $strategy);
@@ -95,7 +99,7 @@ final readonly class CredentialResolver
             ReadStrategy::Typo3PhpInclude => sprintf(
                 '%s -r %s',
                 $phpBin,
-                escapeshellarg(sprintf("echo json_encode(include '%s');", $path)),
+                escapeshellarg(sprintf("echo json_encode(include '%s');", self::phpLiteral($path))),
             ),
             ReadStrategy::DrupalDrush => 'drush core-status --pipe --fields=db-hostname,db-username,db-password,db-name,db-port --format=json',
         };
@@ -166,5 +170,15 @@ final readonly class CredentialResolver
         }
 
         return Extractors::drupalFromSettings($content);
+    }
+
+    /**
+     * The path goes into a single-quoted PHP string inside the `-r` snippet, where
+     * shell quoting does not help: a path carrying a single quote would close the
+     * literal and have the rest of it run as PHP on the endpoint.
+     */
+    private static function phpLiteral(string $value): string
+    {
+        return str_replace(['\\', "'"], ['\\\\', "\\'"], $value);
     }
 }

@@ -15,7 +15,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Recipe;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\{DatabaseSystem, Framework};
-use KonradMichalik\SyncTool\Recipe\CredentialResolver;
+use KonradMichalik\SyncTool\Recipe\{CredentialResolver, ReadStrategy};
 use KonradMichalik\SyncTool\Tests\Fixture\RecordingCommandRunner;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -42,6 +42,26 @@ final class CredentialResolverTest extends TestCase
         self::assertNotNull($db);
         self::assertSame('typo3_db', $db->name);
         self::assertTrue($runner->ran('php -r'), 'reads the file through a PHP include');
+    }
+
+    /**
+     * The path lands inside a single-quoted PHP string, where shell quoting does
+     * not help: an unescaped quote closes the literal and the rest of the path
+     * runs as PHP on the endpoint.
+     */
+    #[Test]
+    public function theIncludeSnippetEscapesThePathForThePhpLiteral(): void
+    {
+        $command = (new CredentialResolver())->readCommand(
+            ReadStrategy::Typo3PhpInclude,
+            \PHP_BINARY.' -d display_errors=0 -d error_reporting=0',
+            "/app/x';echo 'INJECTED';//.php",
+        );
+
+        exec($command.' 2>/dev/null', $output);
+
+        // The whole path is one string literal, so the include just fails.
+        self::assertSame(['false'], $output);
     }
 
     #[Test]

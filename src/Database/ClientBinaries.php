@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Database;
 
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
+use KonradMichalik\SyncTool\Security\Shell;
 
 /**
  * ClientBinaries.
@@ -37,6 +38,13 @@ final readonly class ClientBinaries
      * binary name it replaces, which keeps the documented `mysql` and `mysqldump`
      * keys working and needs no separate spelling per system.
      *
+     * An override is a path to a binary, as documented, and is quoted as one
+     * shell argument. Interpolating it raw made `console` the one config key that
+     * could still run a command of its own choosing on a remote endpoint. An
+     * ordinary path needs no quoting and is passed through unchanged; a wrapper
+     * that relies on being split into several arguments belongs in a script whose
+     * path is given here.
+     *
      * @param array<string, string> $console
      */
     public static function resolve(DatabaseSystem $system, array $console = []): self
@@ -47,6 +55,9 @@ final readonly class ClientBinaries
             DatabaseSystem::PostgreSQL => ['psql', 'pg_dump'],
         };
 
-        return new self($console[$client] ?? $client, $console[$dump] ?? $dump);
+        return new self(
+            Shell::quote($console[$client] ?? $client),
+            Shell::quote($console[$dump] ?? $dump),
+        );
     }
 }

