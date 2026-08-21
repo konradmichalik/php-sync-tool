@@ -127,7 +127,7 @@ final class InitCommand extends Command
     {
         $directory = $projectDir.'/'.ProjectScaffold::DIRECTORY;
 
-        if (!is_dir($directory) && !mkdir($directory, 0o777, true) && !is_dir($directory)) {
+        if (!is_dir($directory) && !mkdir($directory, 0o755, true) && !is_dir($directory)) {
             $io->error(sprintf('Cannot create %s', $directory));
 
             return false;
@@ -142,7 +142,14 @@ final class InitCommand extends Command
                 return false;
             }
 
-            file_put_contents($path, $contents);
+            // Reporting a file as written and then validating it makes no sense if
+            // the write never happened (read-only checkout, full disk).
+            if (false === file_put_contents($path, $contents)) {
+                $io->error(sprintf('Cannot write %s', $path));
+
+                return false;
+            }
+
             $io->text(sprintf('Wrote %s', $relative));
         }
 
