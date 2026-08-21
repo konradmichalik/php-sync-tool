@@ -70,11 +70,13 @@ final readonly class PostgresDriver implements DatabaseDriver
             $tables .= ' -T '.Shell::quote($table);
         }
 
-        return $this->environment($request->credentialsPath)
-            .$this->binaries->dump.' --no-owner --no-privileges --clean --if-exists'
-            .$this->connection($request->db)
-            .$tables
-            .' | gzip > '.Shell::quote($request->dumpFilePath.'.gz');
+        return Shell::strictPipe(
+            $this->environment($request->credentialsPath)
+                .$this->binaries->dump.' --no-owner --no-privileges --clean --if-exists'
+                .$this->connection($request->db)
+                .$tables,
+            'gzip > '.Shell::quote($request->dumpFilePath.'.gz'),
+        );
     }
 
     public function importCommand(DatabaseConfig $db, string $credentialsPath, string $filepath): string
@@ -83,7 +85,7 @@ final readonly class PostgresDriver implements DatabaseDriver
         $safeFilepath = Shell::quote($filepath);
 
         if (str_ends_with($filepath, '.gz')) {
-            return 'gunzip -c '.$safeFilepath.' | '.$psql;
+            return Shell::strictPipe('gunzip -c '.$safeFilepath, $psql.' > /dev/null');
         }
 
         return $psql.' < '.$safeFilepath;

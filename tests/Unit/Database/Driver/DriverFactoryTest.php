@@ -72,8 +72,8 @@ final class DriverFactoryTest extends TestCase
             ['mysqldump' => '/opt/bin/mysqldump'],
         );
 
-        self::assertStringStartsWith(
-            '/opt/bin/mysqldump',
+        self::assertStringContainsString(
+            '{ /opt/bin/mysqldump',
             $driver->dumpCommand(new DumpRequest(db: new DatabaseConfig(name: 'app'), credentialsPath: '/tmp/c', dumpFilePath: '/tmp/d.sql')),
         );
     }

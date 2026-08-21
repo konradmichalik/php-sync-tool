@@ -47,7 +47,8 @@ final class MysqlCommandBuilder
     }
 
     /**
-     * mysqldump … | gzip > dump.sql.gz.
+     * mysqldump … | gzip > dump.sql.gz, with a failing mysqldump failing the
+     * whole command instead of being masked by gzip's exit status.
      *
      * @param list<string> $exportTables raw (validated) table names, shell-quoted here
      */
@@ -66,14 +67,22 @@ final class MysqlCommandBuilder
             $safeTables = ' '.implode(' ', array_map(Shell::quote(...), $exportTables));
         }
 
-        return $mysqldumpBin.' '.$credentialsArg.' '
-            .$options.Shell::quote($dbName).' '
-            .$ignoreOptions.$safeTables
-            .' | '.$gzipBin.' > '.Shell::quote($dumpFilePath.'.gz');
+        return Shell::strictPipe(
+            $mysqldumpBin.' '.$credentialsArg.' '
+                .$options.Shell::quote($dbName).' '
+                .$ignoreOptions.$safeTables,
+            $gzipBin.' > '.Shell::quote($dumpFilePath.'.gz'),
+        );
     }
 
     /**
      * gunzip -c dump.gz | mysql … db   OR   mysql … db < dump.sql.
+     *
+     * A gunzip that dies on a truncated archive used to be masked by `mysql`,
+     * which reads the partial input and exits 0 — a reported success over a
+     * database that had just been cleared. The client's own output is dropped
+     * because the pipeline reports the dump status on stdout and nothing reads
+     * an import's output anyway.
      */
     public function importCommand(
         string $mysqlBin,
@@ -86,7 +95,7 @@ final class MysqlCommandBuilder
         $safeFilepath = Shell::quote($filepath);
 
         if (str_ends_with($filepath, '.gz')) {
-            return $gunzipBin.' -c '.$safeFilepath.' | '.$mysqlCommand;
+            return Shell::strictPipe($gunzipBin.' -c '.$safeFilepath, $mysqlCommand.' > /dev/null');
         }
 
         return $mysqlCommand.' < '.$safeFilepath;

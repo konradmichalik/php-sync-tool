@@ -51,7 +51,9 @@ final class MysqlDriverTest extends TestCase
         ));
 
         self::assertSame(
-            'mysqldump --defaults-extra-file=/tmp/.my_ab12.cnf --single-transaction --quick --extended-insert --no-tablespaces app  | gzip > /tmp/app.sql.gz',
+            'sync_status=$( { { mysqldump --defaults-extra-file=/tmp/.my_ab12.cnf --single-transaction --quick '
+            .'--extended-insert --no-tablespaces app ; echo $? >&3; } | gzip > /tmp/app.sql.gz; } 3>&1 ) '
+            .'&& [ "$sync_status" -eq 0 ]',
             $command,
         );
     }
@@ -82,7 +84,9 @@ final class MysqlDriverTest extends TestCase
         ));
 
         self::assertSame(
-            "mysqldump --defaults-extra-file=/tmp/.my_ab12.cnf --single-transaction --quick --extended-insert --no-tablespaces --where='id > 1' --skip-lock-tables app  users | gzip > /tmp/app.sql.gz",
+            'sync_status=$( { { mysqldump --defaults-extra-file=/tmp/.my_ab12.cnf --single-transaction --quick '
+            ."--extended-insert --no-tablespaces --where='id > 1' --skip-lock-tables app  users; echo $? >&3; } "
+            .'| gzip > /tmp/app.sql.gz; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
             $command,
         );
     }
@@ -91,7 +95,8 @@ final class MysqlDriverTest extends TestCase
     public function importsAGzippedDumpThroughGunzip(): void
     {
         self::assertSame(
-            'gunzip -c /tmp/app.sql.gz | mysql --defaults-extra-file=/tmp/.my_ab12.cnf app',
+            'sync_status=$( { { gunzip -c /tmp/app.sql.gz; echo $? >&3; } '
+            .'| mysql --defaults-extra-file=/tmp/.my_ab12.cnf app > /dev/null; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
             $this->driver->importCommand(new DatabaseConfig(name: 'app'), '/tmp/.my_ab12.cnf', '/tmp/app.sql.gz'),
         );
     }

@@ -65,8 +65,9 @@ final class MysqlCommandBuilderTest extends TestCase
         );
 
         self::assertSame(
-            'mysqldump --defaults-extra-file=/tmp/.my_x.cnf --single-transaction --quick --extended-insert '
-            .'--no-tablespaces mydb --ignore-table=mydb.cache users orders | gzip > /tmp/_mydb_2026.sql.gz',
+            'sync_status=$( { { mysqldump --defaults-extra-file=/tmp/.my_x.cnf --single-transaction --quick --extended-insert '
+            .'--no-tablespaces mydb --ignore-table=mydb.cache users orders; echo $? >&3; } '
+            .'| gzip > /tmp/_mydb_2026.sql.gz; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
             $command,
         );
     }
@@ -75,7 +76,8 @@ final class MysqlCommandBuilderTest extends TestCase
     public function importCommandStreamsGzip(): void
     {
         self::assertSame(
-            'gunzip -c /tmp/dump.sql.gz | mysql --defaults-extra-file=/tmp/.my.cnf mydb',
+            'sync_status=$( { { gunzip -c /tmp/dump.sql.gz; echo $? >&3; } '
+            .'| mysql --defaults-extra-file=/tmp/.my.cnf mydb > /dev/null; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
             $this->builder->importCommand('mysql', '--defaults-extra-file=/tmp/.my.cnf', 'mydb', 'gunzip', '/tmp/dump.sql.gz'),
         );
     }

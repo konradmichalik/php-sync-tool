@@ -47,8 +47,9 @@ final class PostgresDriverTest extends TestCase
         $command = $this->driver->dumpCommand(new DumpRequest($this->db(), '/tmp/.pgpass_ab12', '/tmp/app.sql'));
 
         self::assertSame(
-            'PGPASSFILE=/tmp/.pgpass_ab12 pg_dump --no-owner --no-privileges --clean --if-exists'
-            .' -h db -p 5432 -U u -d app | gzip > /tmp/app.sql.gz',
+            'sync_status=$( { { PGPASSFILE=/tmp/.pgpass_ab12 pg_dump --no-owner --no-privileges --clean --if-exists'
+            .' -h db -p 5432 -U u -d app; echo $? >&3; } | gzip > /tmp/app.sql.gz; } 3>&1 ) '
+            .'&& [ "$sync_status" -eq 0 ]',
             $command,
         );
     }
@@ -72,7 +73,8 @@ final class PostgresDriverTest extends TestCase
     public function importsAGzippedDumpThroughPsqlAndStopsOnTheFirstError(): void
     {
         self::assertSame(
-            'gunzip -c /tmp/app.sql.gz | PGPASSFILE=/tmp/.pgpass_ab12 psql -v ON_ERROR_STOP=1 -q -h db -p 5432 -U u -d app',
+            'sync_status=$( { { gunzip -c /tmp/app.sql.gz; echo $? >&3; } | PGPASSFILE=/tmp/.pgpass_ab12 psql '
+            .'-v ON_ERROR_STOP=1 -q -h db -p 5432 -U u -d app > /dev/null; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
             $this->driver->importCommand($this->db(), '/tmp/.pgpass_ab12', '/tmp/app.sql.gz'),
         );
     }
