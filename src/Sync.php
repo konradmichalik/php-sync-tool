@@ -410,8 +410,12 @@ final readonly class Sync
         if ($client->isRemote()) {
             $runner->run($this->remoteFileWriter->remoteWriteCommand($content, $path));
         } else {
-            file_put_contents($path, $content);
+            // Create the file empty, restrict it, then fill it. Writing first and
+            // chmod'ing after left the password readable for everyone with access
+            // to the dump directory for the duration of the write.
+            touch($path);
             chmod($path, 0o600);
+            file_put_contents($path, $content);
         }
 
         return $path;
