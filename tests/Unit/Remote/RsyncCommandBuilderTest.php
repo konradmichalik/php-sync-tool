@@ -242,4 +242,27 @@ final class RsyncCommandBuilderTest extends TestCase
             $command,
         );
     }
+
+    /**
+     * Both operands are one shell argument each: a configured path used to be
+     * interpolated raw, which broke on a space and executed on a `$(…)`.
+     */
+    #[Test]
+    public function buildQuotesPathsThatNeedIt(): void
+    {
+        $command = $this->builder->build(
+            '',
+            '-a',
+            '-e ssh',
+            'deploy@server',
+            '/var/www/my files/',
+            '',
+            '/local/$(id)/',
+        );
+
+        self::assertSame(
+            "rsync -a -e ssh 'deploy@server:/var/www/my files/' '/local/\$(id)/'",
+            $command,
+        );
+    }
 }

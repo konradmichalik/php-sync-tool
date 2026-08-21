@@ -153,15 +153,18 @@ final class RsyncCommandBuilder
         $origin = '' !== $originUserHost ? $originUserHost.':' : '';
         $target = '' !== $targetUserHost ? $targetUserHost.':' : '';
 
+        // Both operands are one shell argument each. Interpolating them raw made a
+        // configured path carrying shell syntax a command-execution path on the
+        // machine driving the sync. Ordinary paths contain nothing that needs
+        // quoting, so they still appear verbatim. What `rsync` then does with a
+        // remote path on the far side is its own business.
         return sprintf(
-            '%srsync %s %s %s%s %s%s',
+            '%srsync %s %s %s %s',
             $passwordEnvironment,
             $options,
             $authorization,
-            $origin,
-            $originPath,
-            $target,
-            $targetPath,
+            Shell::quote($origin.$originPath),
+            Shell::quote($target.$targetPath),
         );
     }
 }
