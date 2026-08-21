@@ -4,7 +4,7 @@ layout: home
 hero:
   name: php-sync-tool
   text: Database & File Synchronization for PHP
-  tagline: Sync MySQL/MariaDB databases and files between systems over SSH/rsync/SFTP — with automatic framework credential detection
+  tagline: Sync MySQL, MariaDB or PostgreSQL databases and files between systems over SSH/rsync/SFTP — with automatic framework credential detection
   image:
     src: /logo.svg
     alt: php-sync-tool
@@ -19,7 +19,7 @@ hero:
 features:
   - icon: 🔄
     title: Database Sync
-    details: Synchronize MySQL/MariaDB databases between local and remote systems in nine modes (receiver, sender, proxy, dump, import, sync).
+    details: Synchronize MySQL, MariaDB or PostgreSQL databases between local and remote systems in nine modes (receiver, sender, proxy, dump, import, sync).
     link: /reference/sync-modes
   - icon: 🔐
     title: Auto Credential Detection

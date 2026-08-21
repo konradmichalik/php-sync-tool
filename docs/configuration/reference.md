@@ -1,8 +1,29 @@
 # Configuration Reference
 
 Complete reference for `config.yaml` (or `config.json`). Configuration is
-validated against a JSON schema; unknown values in known objects are ignored,
-but wrong types are rejected.
+validated against a JSON schema: wrong types are rejected, and so is a key the
+tool does not know, so a misspelled `ignore_tabel` is reported instead of quietly
+doing nothing. Keys beginning with `x` or `.` are left to you, which keeps YAML
+anchor blocks such as `.defaults: &defaults` usable.
+
+## The configuration is executable input
+
+A configuration file decides which machine this tool logs into, which binaries it
+runs there and which SQL it executes. Several keys are passed to a shell or a
+database by design:
+
+| Key | Goes to |
+|-----|---------|
+| `script` (`before`, `after`, `error`) | your local shell, as a command |
+| `console.*` | the endpoint, as the path of the binary to run |
+| `additional_mysqldump_options`, `use_rsync_options`, `files_options` | the command line of `mysqldump` / `rsync`, as options |
+| `post_sql`, `anonymize.*.value`, `where` | the database, as SQL |
+
+Treat a configuration file the way you treat a `Makefile` or a CI pipeline
+definition: review one before you run it, and give the repository that holds it
+the same protection as the code it syncs. Values are quoted so that a *database*
+password or a path cannot become a command, but a key documented as a command
+stays a command.
 
 ## Root Keys
 
@@ -38,7 +59,7 @@ Both `origin` and `target` accept the same structure:
 | `post_sql` | array | SQL statements to execute after import, in one batch. |
 | `protect` | boolean | Refuse to use this endpoint as an import target without confirmation. |
 | `console` | object | Custom binary paths, keyed by the binary they replace (`php`, `mysql`, `mysqldump`, `mariadb`, `mariadb-dump`, `psql`, `pg_dump`). |
-| `script` | object | Lifecycle commands: `before`, `after`, `error`. |
+| `script` | object | Lifecycle commands: `before`, `after`, `error`. They run on the machine driving the sync, not on the endpoint. `scripts` is accepted as well. |
 | `db` | object | Manual database credentials (see [Database Object](#database-object)). |
 | `jump_host` | object | SSH jump host (see [Jump Host Object](#jump-host-object)). |
 | `anonymize` | object | Masking rules per table and column, target only (see [Data Anonymization](/configuration/anonymization)). |
@@ -133,9 +154,15 @@ Two things follow from that name:
   rarely yours exclusively.
 - **A dump written with `--dump-name` is yours, not ours.** It carries no prefix
   and is therefore never pruned automatically.
+- **Retention goes by modification time**, not by the name, so a restored or
+  re-transferred dump counts as recent.
 
 The timestamp is precise to the second, so repeated runs within the same minute
 produce distinct files instead of overwriting each other.
+
+A log file that `log_file` points at is created with owner-only permissions
+(`0600`), because it records the hosts, users, databases and commands of the run.
+An existing file keeps whatever permissions it has.
 
 ## Common Configurations
 

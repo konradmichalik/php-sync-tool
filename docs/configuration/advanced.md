@@ -21,9 +21,13 @@ target:
     error: php artisan up
 ```
 
-- `before` — runs before the endpoint's export/import work
+- `before` — runs before the export/import work starts
 - `after` — runs after it completes
 - `error` — runs if the sync fails
+
+Every block runs on the machine driving the sync, in the order root, `origin`,
+`target`, and not on the endpoint it is written under. `scripts` is accepted as
+an alias for `script`.
 
 ## Post-Import SQL
 

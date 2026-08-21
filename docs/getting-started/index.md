@@ -1,9 +1,9 @@
 # Introduction
 
-php-sync-tool is a PHP CLI tool for synchronizing MySQL/MariaDB databases — and
-optionally files — between systems over SSH. It automatically extracts database
-credentials from popular PHP frameworks and supports a range of sync modes for
-different use cases.
+php-sync-tool is a PHP CLI tool for synchronizing MySQL, MariaDB or PostgreSQL
+databases — and optionally files — between systems over SSH. It automatically
+extracts database credentials from popular PHP frameworks and supports a range
+of sync modes for different use cases.
 
 It is a PHP port of the Python [`db-sync-tool`](https://github.com/konradmichalik/db-sync-tool),
 designed to run wherever PHP already runs, without an additional Python runtime.
@@ -13,6 +13,7 @@ designed to run wherever PHP already runs, without an additional Python runtime.
 - **Database sync** from and to remote systems
   - MySQL (>= 5.5)
   - MariaDB (>= 10.0)
+  - [PostgreSQL](/configuration/postgresql)
 - **Proxy mode** between two remote systems (two-hop transfer)
 - Nine [synchronization modes](/reference/sync-modes) selected automatically from your config
 - **Automatic database credential detection** for supported frameworks:
@@ -30,7 +31,8 @@ designed to run wherever PHP already runs, without an additional Python runtime.
 ## Requirements
 
 - PHP **8.2** or higher (`~8.2 || ~8.3 || ~8.4 || ~8.5`)
-- `mysql` / `mysqldump` and `gzip` / `gunzip` on the executing host(s)
+- `mysql` / `mysqldump` (or `psql` / `pg_dump` for PostgreSQL) and `gzip` / `gunzip`
+  on the executing host(s)
 - `rsync` for the default transfer method (SFTP is used automatically as a fallback)
 - Optionally `sshpass` for password-based rsync
 - SSH access to remote systems (for remote syncs)
@@ -41,7 +43,8 @@ designed to run wherever PHP already runs, without an additional Python runtime.
    definitions, or CLI arguments.
 2. **Detect credentials** — for a supported framework, database credentials are
    parsed from its config file (locally or over SSH).
-3. **Export** — a gzip-compressed `mysqldump` is created on the origin system.
+3. **Export** — a gzip-compressed `mysqldump` (or `pg_dump` for PostgreSQL) is
+   created on the origin system.
 4. **Transfer** — the dump is moved via rsync (or SFTP fallback, or a local proxy).
 5. **Import** — the dump is imported on the target system.
 6. **Finalize** — post-import SQL runs, lifecycle scripts fire, and temporary

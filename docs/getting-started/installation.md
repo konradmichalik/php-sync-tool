@@ -4,7 +4,8 @@
 
 - PHP **8.2** or higher
 - [Composer](https://getcomposer.org/) (for the library install)
-- `mysql` / `mysqldump` and `gzip` / `gunzip` available on the executing host(s)
+- `mysql` / `mysqldump` (or `psql` / `pg_dump` for [PostgreSQL](/configuration/postgresql))
+  and `gzip` / `gunzip` available on the executing host(s)
 - `rsync` for fast transfers (optional — SFTP is used automatically if rsync is missing)
 - `sshpass` only if you need password-based rsync
 

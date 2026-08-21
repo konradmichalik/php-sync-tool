@@ -53,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A configuration key the tool does not know is now an error instead of being
+  ignored. The schema only listed a handful of keys and accepted anything else, so
+  `ignore_tabel` or `keep_dump: 3` on an endpoint validated cleanly and then did
+  nothing at all. Every key the code reads is in the schema now, including the
+  legacy singular spellings (`ignore_table`, `truncate_table`). Keys starting with
+  `x` or `.` stay free for the author, so YAML anchor blocks keep working.
+
 - The full set of MySQL TLS options is configurable per endpoint: `ssl_skip_verify`,
   `ssl_ca`, `ssl_capath`, `ssl_cert`, `ssl_key` and `ssl_cipher` join the existing
   `ssl_disabled`. They are written into the same temporary credential file as the
@@ -106,7 +113,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keys while the channel carrying the dump did not. Transfers to a host missing
   from `known_hosts` now fail rather than proceeding unauthenticated.
 
+- Credential files are never briefly world-readable. The remote one is written
+  under `umask 077` instead of being created with the shell's default mode and
+  chmod'ed afterwards, and the local one is created empty, restricted to 0600 and
+  only then filled. On a shared host, `/tmp` is readable by every other user.
+
+- Configured paths are one shell argument each in `rsync` commands. Origin and
+  target were interpolated raw, so a path carrying `$(…)` ran on the machine
+  driving the sync. Dump retention quotes `dump_dir` the same way and appends the
+  glob star outside the quotes. (A remote path is still handed to the remote
+  shell by `rsync` itself, so spaces there remain rsync's own topic.)
+
+- A path reaches the TYPO3 credential reader as an escaped PHP literal. It was
+  interpolated into a single-quoted string inside `php -r`, where a quote in the
+  path closed the literal and had the rest of it run as PHP on the endpoint.
+
+- Failure messages are masked like log output. A failing remote command was
+  quoted back verbatim, which for the credential-file write meant the base64
+  encoded database password, and for a client invocation its `-p` argument.
+
+- A log file this tool creates starts out at 0600. It names hosts, users,
+  databases and the commands run against them. An existing file keeps its mode.
+
+- A `console` override is quoted as one shell argument. It is documented as the
+  path of a binary and lands in a command that runs on the endpoint, which made it
+  the last configuration key able to smuggle a command of its own onto a remote
+  host. An ordinary path is unaffected; a wrapper that needs several arguments
+  belongs in a script whose path is configured here.
+
 ### Fixed
+
+- A dump or import that fails halfway through no longer reports success.
+  `mysqldump … | gzip > dump.gz` and `gunzip -c dump.gz | mysql` report the exit
+  status of the *last* stage, so wrong credentials, a killed query or a full disk
+  left a valid but useless archive behind and the run continued to transfer and
+  import it — on an already cleared target. Both pipelines now fail when either
+  stage fails (`Security\Shell::strictPipe()`).
+
+- A command that fails without saying anything on stderr is a failure. The local
+  runner only raised an error when the exit status *and* stderr agreed, so a
+  silent non-zero exit passed as success and the sync continued on bad state. The
+  message now names the exit status and the (masked) command.
+
+- `keep_dumps` deletes the oldest dumps rather than an arbitrary selection. The
+  listing sorted formatted timestamps numerically, which compares the year on
+  GNU `stat` and nothing at all on BSD, so retention on macOS dropped whichever
+  dumps happened to be listed last. Both formats report epoch seconds now.
+
+- A passphrase-protected or malformed SSH key reports what is wrong with which
+  file instead of surfacing as a phpseclib stack trace.
+
+- `sync-tool init` no longer claims to have written files it could not write.
+
+- A `script` block finally runs. Every example in the documentation writes
+  `script`, the schema accepted `script`, and the code read `scripts`, so
+  documented lifecycle commands were silently skipped. Both spellings work now,
+  and the documentation says what has always been true: the commands run on the
+  machine driving the sync, not on the endpoint they are written under.
 
 - `truncate_tables` accepts `table*` wildcards, expanded against the target
   before truncating, the way `ignore_table` already worked against the origin.
@@ -168,6 +231,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `-u'user' -p'password'` command lines, and folded the remaining one-line helper
   into `MysqlDriver`. The duplicated SQL literal escaping in both drivers moved to
   `Security\SqlLiteral`.
+
+- The local `rsync` version is read once per run instead of once per transferred
+  entry. Every file entry used to spawn `rsync --version` to decide whether a
+  progress percentage is available.
+
+- Directories the SFTP fallback creates locally use the same restrictive mode as
+  the `rsync` path (`0770` rather than `0777` minus umask); the tree can hold a
+  production copy.
+
+- Every `table*` wildcard in `ignore_table` and `truncate_tables` is resolved by a
+  single query instead of one per pattern. A TYPO3 `truncate_tables` list of ten
+  cache patterns paid for ten round trips to the endpoint before the first table
+  was touched. A table matched by two patterns is now listed once.
 
 ## [0.1.0] - 2026-07-01
 
