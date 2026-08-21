@@ -48,6 +48,38 @@ final class ScriptRunnerTest extends TestCase
         self::assertSame([], $runner->scriptsFor($config, LifecyclePhase::Error));
     }
 
+    /**
+     * Every example in the documentation writes `script`, while the code read
+     * `scripts`, so documented lifecycle commands never ran. Both spellings are
+     * accepted now.
+     */
+    #[Test]
+    public function theDocumentedSingularSpellingIsPickedUp(): void
+    {
+        $config = SyncConfig::fromArray([
+            'script' => ['before' => 'global-before'],
+            'origin' => ['script' => ['before' => 'origin-before']],
+            'target' => ['scripts' => ['before' => 'target-before']],
+        ]);
+
+        self::assertSame(
+            ['global-before', 'origin-before', 'target-before'],
+            (new ScriptRunner())->scriptsFor($config, LifecyclePhase::Before),
+        );
+    }
+
+    /**
+     * A configuration carrying both keys is a mistake worth resolving predictably:
+     * the plural one wins, because that is what ran before.
+     */
+    #[Test]
+    public function thePluralSpellingWinsWhenBothArePresent(): void
+    {
+        $config = SyncConfig::fromArray(['scripts' => ['before' => 'plural'], 'script' => ['before' => 'singular']]);
+
+        self::assertSame(['plural'], (new ScriptRunner())->scriptsFor($config, LifecyclePhase::Before));
+    }
+
     #[Test]
     public function runExecutesEachResolvedScript(): void
     {

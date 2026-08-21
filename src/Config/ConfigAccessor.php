@@ -158,9 +158,13 @@ final class ConfigAccessor
      *
      * @return array<string, string>
      */
-    public static function getStringMap(array $data, string $key): array
+    public static function getStringMap(array $data, string $key, ?string $fallbackKey = null): array
     {
         $value = $data[$key] ?? null;
+
+        if (null === $value && null !== $fallbackKey) {
+            $value = $data[$fallbackKey] ?? null;
+        }
 
         if (!is_array($value)) {
             return [];

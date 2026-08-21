@@ -111,7 +111,7 @@ final readonly class SyncConfig
             logFile: ConfigAccessor::getStringOrNull($data, 'log_file'),
             jsonLog: ConfigAccessor::getBool($data, 'json_log', false),
             type: ConfigAccessor::getStringOrNull($data, 'type'),
-            scripts: ConfigAccessor::getStringMap($data, 'scripts'),
+            scripts: ConfigAccessor::getStringMap($data, 'scripts', 'script'),
             origin: ClientConfig::fromArray(self::subArray($data, 'origin')),
             target: ClientConfig::fromArray(self::subArray($data, 'target')),
         );

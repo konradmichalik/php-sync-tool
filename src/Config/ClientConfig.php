@@ -74,7 +74,9 @@ final readonly class ClientConfig
             afterDump: ConfigAccessor::getStringOrNull($data, 'after_dump'),
             postSql: ConfigAccessor::getStringList($data, 'post_sql'),
             console: ConfigAccessor::getStringMap($data, 'console'),
-            scripts: ConfigAccessor::getStringMap($data, 'scripts'),
+            // `script` is what the documentation has always shown; `scripts` is what
+            // the code read, so every documented lifecycle block was ignored.
+            scripts: ConfigAccessor::getStringMap($data, 'scripts', 'script'),
             protect: ConfigAccessor::getBool($data, 'protect', false),
             link: ConfigAccessor::getString($data, 'link', ''),
             anonymize: AnonymizationRule::fromConfig(self::subArray($data, 'anonymize')),
