@@ -52,4 +52,23 @@ final class RsyncVersionTest extends TestCase
     {
         self::assertFalse((new RsyncVersion())->supportsProgress2(new RecordingCommandRunner()));
     }
+
+    /**
+     * The local rsync cannot change while a sync runs, and every transferred entry
+     * used to spawn a process to ask it again.
+     */
+    #[Test]
+    public function theVersionIsReadOnlyOnce(): void
+    {
+        $runner = new RecordingCommandRunner([
+            'rsync --version' => 'rsync  version 3.2.7  protocol version 31',
+        ]);
+        $version = new RsyncVersion();
+
+        $version->supportsProgress2($runner);
+        $version->supportsProgress2($runner);
+        $version->supportsProgress2($runner);
+
+        self::assertSame(['rsync --version'], $runner->commands);
+    }
 }

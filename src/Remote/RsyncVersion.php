@@ -22,14 +22,25 @@ use function version_compare;
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final readonly class RsyncVersion
+final class RsyncVersion
 {
+    /**
+     * The local rsync does not change while a sync runs, but every transferred
+     * entry used to ask it for its version again — one process per file entry.
+     */
+    private ?bool $supportsProgress2 = null;
+
     /**
      * `--info=progress2` arrived in rsync 3.1.0. Older builds abort on the unknown
      * option, and macOS still ships 2.6.9, so the version decides whether a
      * transfer can report a percentage at all.
      */
     public function supportsProgress2(CommandRunner $local): bool
+    {
+        return $this->supportsProgress2 ??= $this->detect($local);
+    }
+
+    private function detect(CommandRunner $local): bool
     {
         $output = $local->run('rsync --version', true);
 

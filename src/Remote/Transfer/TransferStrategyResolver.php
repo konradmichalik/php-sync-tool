@@ -17,7 +17,7 @@ use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Mode\SyncPlan;
 use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
-use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory, SshClientFactory};
+use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RsyncVersion, RunnerFactory, SshClientFactory};
 
 /**
  * TransferStrategyResolver.
@@ -31,6 +31,9 @@ final readonly class TransferStrategyResolver
         private RunnerFactory $runners = new RunnerFactory(),
         private RsyncCommandBuilder $rsync = new RsyncCommandBuilder(),
         private SshClientFactory $sshClientFactory = new SshClientFactory(),
+        // Shared across every strategy this resolver hands out, so a run asks the
+        // local rsync for its version once instead of once per transferred entry.
+        private RsyncVersion $rsyncVersion = new RsyncVersion(),
     ) {}
 
     public function resolve(
@@ -43,7 +46,7 @@ final readonly class TransferStrategyResolver
         $targetRemote = $config->target->isRemote();
 
         if (!$originRemote && !$targetRemote) {
-            return new RsyncTransferStrategy($this->runners, $this->rsync, $log, $progress);
+            return new RsyncTransferStrategy($this->runners, $this->rsync, $log, $progress, $this->rsyncVersion);
         }
 
         if (!$config->useRsync) {
@@ -60,6 +63,6 @@ final readonly class TransferStrategyResolver
             return new RemoteCopyTransferStrategy($this->runners, $this->rsync, $log);
         }
 
-        return new RsyncTransferStrategy($this->runners, $this->rsync, $log, $progress);
+        return new RsyncTransferStrategy($this->runners, $this->rsync, $log, $progress, $this->rsyncVersion);
     }
 }
