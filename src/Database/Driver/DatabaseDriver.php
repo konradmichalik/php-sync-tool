@@ -46,12 +46,16 @@ interface DatabaseDriver
     public function listTablesSql(): string;
 
     /**
-     * @param string $pattern SQL LIKE pattern, `%` already substituted for `*`
+     * One statement matching every given pattern at once. A configuration listing
+     * ten `cache_*` style patterns cost ten round trips to the endpoint when each
+     * one was asked separately.
+     *
+     * @param non-empty-list<string> $patterns SQL LIKE patterns, `%` already substituted for `*`
      */
-    public function listTablesLikeSql(string $dbName, string $pattern): string;
+    public function listTablesMatchingSql(string $dbName, array $patterns): string;
 
     /**
-     * Table names from the raw client output of listTablesSql()/listTablesLikeSql().
+     * Table names from the raw client output of listTablesSql()/listTablesMatchingSql().
      *
      * @return list<string>
      */

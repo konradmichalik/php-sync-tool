@@ -127,11 +127,27 @@ final class MysqlCommandBuilderTest extends TestCase
     }
 
     #[Test]
-    public function showTablesLikeEscapesPatternQuotes(): void
+    public function showTablesMatchingEscapesPatternAndDatabaseQuotes(): void
     {
         self::assertSame(
-            "SHOW TABLES FROM `mydb` LIKE 'cache_%';",
-            $this->builder->showTablesLikeSql('mydb', 'cache_%'),
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'my''db' "
+            ."AND (TABLE_NAME LIKE 'cache_%') ORDER BY TABLE_NAME;",
+            $this->builder->showTablesMatchingSql("my'db", ['cache_%']),
+        );
+    }
+
+    /**
+     * Every pattern is answered by one statement, so a list of them costs one
+     * round trip instead of one per entry.
+     */
+    #[Test]
+    public function showTablesMatchingCombinesEveryPatternIntoOneStatement(): void
+    {
+        self::assertSame(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'mydb' "
+            ."AND (TABLE_NAME LIKE 'cache_%' OR TABLE_NAME LIKE 'cf_%' OR TABLE_NAME LIKE 'sys_log%') "
+            .'ORDER BY TABLE_NAME;',
+            $this->builder->showTablesMatchingSql('mydb', ['cache_%', 'cf_%', 'sys_log%']),
         );
     }
 

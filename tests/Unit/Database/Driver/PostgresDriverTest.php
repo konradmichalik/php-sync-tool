@@ -114,8 +114,9 @@ final class PostgresDriverTest extends TestCase
             $this->driver->listTablesSql(),
         );
         self::assertSame(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'cache_%';",
-            $this->driver->listTablesLikeSql('app', 'cache_%'),
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' "
+            ."AND (tablename LIKE 'cache_%') ORDER BY tablename;",
+            $this->driver->listTablesMatchingSql('app', ['cache_%']),
         );
         self::assertSame(['users', 'posts'], $this->driver->parseTableList("users\nposts\n\n"));
     }

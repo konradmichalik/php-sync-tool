@@ -123,8 +123,11 @@ final class MysqlDriverTest extends TestCase
     public function listsTablesAndStripsTheHeaderRowFromTheOutput(): void
     {
         self::assertSame('SHOW TABLES;', $this->driver->listTablesSql());
-        // showTablesLikeSql() backtick-quotes the database name via TableName::sanitize().
-        self::assertSame("SHOW TABLES FROM `app` LIKE 'cache_%';", $this->driver->listTablesLikeSql('app', 'cache_%'));
+        self::assertSame(
+            "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'app' "
+            ."AND (TABLE_NAME LIKE 'cache_%') ORDER BY TABLE_NAME;",
+            $this->driver->listTablesMatchingSql('app', ['cache_%']),
+        );
         self::assertSame(
             ['users', 'posts'],
             $this->driver->parseTableList("Tables_in_app\nusers\nposts\n"),

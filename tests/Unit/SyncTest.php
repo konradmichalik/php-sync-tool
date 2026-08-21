@@ -196,6 +196,23 @@ final class SyncTest extends TestCase
         self::assertTrue($recorder->ran('sys_log'), 'plain ignore table kept verbatim');
     }
 
+    /**
+     * One query for the whole list rather than one per pattern, each of which was
+     * a full round trip to the endpoint before the first table was touched.
+     */
+    #[Test]
+    public function everyWildcardIsResolvedByOneQuery(): void
+    {
+        $config = $this->localConfig(['ignore_table' => ['cache_*', 'cf_*', 'sys_log*', 'be_sessions']]);
+
+        $recorder = $this->runSync($config, Plans::dumpLocal());
+
+        self::assertCount(
+            1,
+            array_filter($recorder->commands, static fn (string $command): bool => str_contains($command, 'LIKE')),
+        );
+    }
+
     #[Test]
     public function wildcardTruncateTablesAreExpandedAgainstTheTarget(): void
     {

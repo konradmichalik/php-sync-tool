@@ -351,6 +351,11 @@ final readonly class Sync
      * pass through untouched, so a table that does not exist yet stays in the
      * list and the driver decides what that means.
      *
+     * Every wildcard is resolved by a single query. One query per pattern meant a
+     * full round trip per entry, and a TYPO3 `truncate_tables` list of ten cache
+     * patterns paid for ten of them before the first table was touched. A table
+     * matched by two patterns now appears once instead of twice.
+     *
      * @param list<string> $patterns
      *
      * @return list<string>
@@ -358,20 +363,27 @@ final readonly class Sync
     private function expandPatterns(array $patterns, DatabaseConfig $db, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): array
     {
         $tables = [];
+        $wildcards = [];
 
         foreach ($patterns as $pattern) {
-            if (!str_contains($pattern, '*')) {
-                $tables[] = $pattern;
+            if (str_contains($pattern, '*')) {
+                $wildcards[] = str_replace('*', '%', $pattern);
 
                 continue;
             }
 
-            $sql = $driver->listTablesLikeSql($db->name, str_replace('*', '%', $pattern));
-            $output = $runner->run($driver->execCommand($db, $credentialsPath, $sql), true);
+            $tables[] = $pattern;
+        }
 
-            foreach ($driver->parseTableList($output) as $match) {
-                $tables[] = $match;
-            }
+        if ([] === $wildcards) {
+            return $tables;
+        }
+
+        $sql = $driver->listTablesMatchingSql($db->name, $wildcards);
+        $output = $runner->run($driver->execCommand($db, $credentialsPath, $sql), true);
+
+        foreach ($driver->parseTableList($output) as $match) {
+            $tables[] = $match;
         }
 
         return $tables;

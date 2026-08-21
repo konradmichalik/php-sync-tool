@@ -25,7 +25,6 @@ use function explode;
 use function implode;
 use function sprintf;
 use function str_ends_with;
-use function str_replace;
 use function trim;
 
 /**
@@ -104,11 +103,16 @@ final readonly class PostgresDriver implements DatabaseDriver
         return "SELECT tablename FROM pg_tables WHERE schemaname = 'public';";
     }
 
-    public function listTablesLikeSql(string $dbName, string $pattern): string
+    public function listTablesMatchingSql(string $dbName, array $patterns): string
     {
+        $conditions = implode(' OR ', array_map(
+            static fn (string $pattern): string => 'tablename LIKE '.SqlLiteral::quote($pattern),
+            $patterns,
+        ));
+
         return sprintf(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE '%s';",
-            str_replace("'", "''", $pattern),
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND (%s) ORDER BY tablename;",
+            $conditions,
         );
     }
 

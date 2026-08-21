@@ -94,9 +94,9 @@ final readonly class MysqlDriver implements DatabaseDriver
         return 'SHOW TABLES;';
     }
 
-    public function listTablesLikeSql(string $dbName, string $pattern): string
+    public function listTablesMatchingSql(string $dbName, array $patterns): string
     {
-        return $this->commands->showTablesLikeSql($dbName, $pattern);
+        return $this->commands->showTablesMatchingSql($dbName, $patterns);
     }
 
     public function parseTableList(string $output): array

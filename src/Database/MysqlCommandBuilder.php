@@ -13,8 +13,10 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Database;
 
-use KonradMichalik\SyncTool\Security\{Shell, TableName};
+use KonradMichalik\SyncTool\Security\{Shell, SqlLiteral};
 
+use function array_map;
+use function implode;
 use function sprintf;
 
 /**
@@ -116,10 +118,25 @@ final class MysqlCommandBuilder
         return $mysqlBin.' '.$credentialsArg.$databaseName.' -e '.Shell::quote($sql);
     }
 
-    public function showTablesLikeSql(string $dbName, string $pattern): string
+    /**
+     * `SHOW TABLES … LIKE` takes a single pattern, so matching several of them
+     * meant one statement (and one round trip) per pattern. `information_schema`
+     * answers all of them at once and keeps the same collation, so the matching
+     * stays as case-insensitive as it was.
+     *
+     * @param non-empty-list<string> $patterns
+     */
+    public function showTablesMatchingSql(string $dbName, array $patterns): string
     {
-        $safePattern = str_replace("'", "''", $pattern);
+        $conditions = implode(' OR ', array_map(
+            static fn (string $pattern): string => 'TABLE_NAME LIKE '.SqlLiteral::quote($pattern),
+            $patterns,
+        ));
 
-        return sprintf("SHOW TABLES FROM %s LIKE '%s';", TableName::sanitize($dbName), $safePattern);
+        return sprintf(
+            'SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = %s AND (%s) ORDER BY TABLE_NAME;',
+            SqlLiteral::quote($dbName),
+            $conditions,
+        );
     }
 }
