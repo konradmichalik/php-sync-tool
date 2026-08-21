@@ -46,7 +46,15 @@ final readonly class LogWriter
         ($this->console)($line);
 
         if (null !== $this->logFile) {
-            file_put_contents($this->logFile, $line."\n", \FILE_APPEND);
+            // A log names hosts, users, databases and the commands run against
+            // them. It is this run's business, not the whole machine's, so a log
+            // file this tool creates starts out at 0600.
+            $isNew = !is_file($this->logFile);
+            $written = file_put_contents($this->logFile, $line."\n", \FILE_APPEND);
+
+            if ($isNew && false !== $written) {
+                chmod($this->logFile, 0o600);
+            }
         }
     }
 

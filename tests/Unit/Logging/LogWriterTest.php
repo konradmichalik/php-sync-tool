@@ -17,6 +17,8 @@ use KonradMichalik\SyncTool\Logging\LogWriter;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function sprintf;
+
 /**
  * LogWriterTest.
  *
@@ -60,6 +62,36 @@ final class LogWriterTest extends TestCase
             ['{"time":"2026-01-01T00:00:00+00:00","message":"dump /var/www/x"}'],
             $captured,
         );
+    }
+
+    /**
+     * The log names hosts, users, databases and the commands run against them, so
+     * a file this tool creates is readable by its owner only.
+     */
+    #[Test]
+    public function aFreshLogFileIsCreatedPrivate(): void
+    {
+        $file = sys_get_temp_dir().'/logwriter_'.uniqid();
+
+        (new LogWriter(false, $file, static function (string $line): void {}))->log('hello');
+
+        self::assertSame('0600', substr(sprintf('%o', (int) fileperms($file)), -4));
+
+        unlink($file);
+    }
+
+    #[Test]
+    public function anExistingLogFileKeepsItsPermissions(): void
+    {
+        $file = sys_get_temp_dir().'/logwriter_'.uniqid();
+        touch($file);
+        chmod($file, 0o644);
+
+        (new LogWriter(false, $file, static function (string $line): void {}))->log('hello');
+
+        self::assertSame('0644', substr(sprintf('%o', (int) fileperms($file)), -4));
+
+        unlink($file);
     }
 
     #[Test]
