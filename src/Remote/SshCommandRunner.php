@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Remote;
 
 use Closure;
 use KonradMichalik\SyncTool\Exception\SyncException;
+use KonradMichalik\SyncTool\Security\LogSanitizer;
 use phpseclib3\Net\SSH2;
 
 use function is_int;
@@ -44,12 +45,14 @@ final readonly class SshCommandRunner implements CommandRunner
                 return '';
             }
 
-            throw new SyncException(sprintf('Remote command failed: %s', $command));
+            // The command is masked: it carries the credential file's contents on
+            // the way to a remote host, and its own `-p` arguments elsewhere.
+            throw new SyncException(sprintf('Remote command failed: %s', LogSanitizer::sanitize($command)));
         }
 
         $exitStatus = $this->ssh->getExitStatus();
         if (!$allowFail && is_int($exitStatus) && 0 !== $exitStatus) {
-            throw new SyncException(sprintf('Remote command exited with status %d: %s', $exitStatus, $command));
+            throw new SyncException(sprintf('Remote command exited with status %d: %s', $exitStatus, LogSanitizer::sanitize($command)));
         }
 
         return rtrim((string) $output, "\n");

@@ -63,6 +63,26 @@ final class SshCommandRunnerTest extends TestCase
         (new SshCommandRunner($ssh))->run('false');
     }
 
+    /**
+     * The failing command is quoted back to the user, and the one that writes the
+     * credential file to a remote host carries the password in its payload.
+     */
+    #[Test]
+    public function theFailureMessageMasksCredentialsInTheCommand(): void
+    {
+        $ssh = $this->createStub(SSH2::class);
+        $ssh->method('exec')->willReturn('');
+        $ssh->method('getExitStatus')->willReturn(1);
+
+        try {
+            (new SshCommandRunner($ssh))->run("mysql -h db -u root -p's3cret' --defaults-extra-file=/tmp/.my_a.cnf");
+            self::fail('Expected a SyncException');
+        } catch (SyncException $exception) {
+            self::assertStringNotContainsString('s3cret', $exception->getMessage());
+            self::assertStringNotContainsString('/tmp/.my_a.cnf', $exception->getMessage());
+        }
+    }
+
     #[Test]
     public function runnerFactoryReturnsLocalRunnerForLocalClient(): void
     {
