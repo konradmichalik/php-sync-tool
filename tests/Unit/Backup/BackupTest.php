@@ -93,7 +93,29 @@ final class BackupTest extends TestCase
     {
         $manager = new DumpManager();
 
-        self::assertStringContainsString('-c "%y %n"', $manager->listDumpsCommand('stat', 'sort', 'grep', '/tmp/*', false));
-        self::assertStringContainsString('-f "%Sm %N"', $manager->listDumpsCommand('stat', 'sort', 'grep', '/tmp/*', true));
+        self::assertStringContainsString('-c "%Y %n"', $manager->listDumpsCommand('stat', 'sort', 'grep', '/tmp/sync-tool_', false));
+        self::assertStringContainsString('-f "%m %N"', $manager->listDumpsCommand('stat', 'sort', 'grep', '/tmp/sync-tool_', true));
+    }
+
+    /**
+     * `sort -rn` can only order the listing when the timestamp is a number, which
+     * is why both formats report epoch seconds rather than a formatted date.
+     */
+    #[Test]
+    public function listDumpsCommandGlobsThePrefixAndSortsNumerically(): void
+    {
+        self::assertSame(
+            'stat -c "%Y %n" /tmp/sync-tool_* | sort -rn | grep -E "\\.gz$|\\.sql$"',
+            (new DumpManager())->listDumpsCommand('stat', 'sort', 'grep', '/tmp/sync-tool_', false),
+        );
+    }
+
+    #[Test]
+    public function listDumpsCommandQuotesADumpDirectoryWithShellCharacters(): void
+    {
+        self::assertStringContainsString(
+            "'/tmp/dumps; rm -rf ~/sync-tool_'*",
+            (new DumpManager())->listDumpsCommand('stat', 'sort', 'grep', '/tmp/dumps; rm -rf ~/sync-tool_', false),
+        );
     }
 }

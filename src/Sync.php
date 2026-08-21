@@ -291,7 +291,7 @@ final readonly class Sync
         // Only dumps this tool wrote. The glob used to be `*`, which made every
         // foreign .sql or .gz in the dump directory a deletion candidate.
         $listing = $runner->run(
-            $this->dumps->listDumpsCommand('stat', 'sort', 'grep', $this->dumpDir($client).DumpFileNamer::PREFIX.'*', $isDarwin),
+            $this->dumps->listDumpsCommand('stat', 'sort', 'grep', $this->dumpDir($client).DumpFileNamer::PREFIX, $isDarwin),
             true,
         );
 
