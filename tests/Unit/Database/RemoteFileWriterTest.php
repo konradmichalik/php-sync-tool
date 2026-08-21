@@ -31,8 +31,30 @@ final class RemoteFileWriterTest extends TestCase
         $command = (new RemoteFileWriter())->remoteWriteCommand("[client]\nuser=x\n", '/tmp/.my_x.cnf');
 
         self::assertSame(
-            "echo '".base64_encode("[client]\nuser=x\n")."' | base64 -d > /tmp/.my_x.cnf && chmod 600 /tmp/.my_x.cnf && echo 'OK'",
+            "(umask 077 && echo '".base64_encode("[client]\nuser=x\n")."' | base64 -d > /tmp/.my_x.cnf) && chmod 600 /tmp/.my_x.cnf && echo 'OK'",
             $command,
         );
+    }
+
+    /**
+     * The file holds a database password, so it must never exist with the shell's
+     * default mode, not even for the duration of the redirection.
+     */
+    #[Test]
+    public function remoteWriteCommandCreatesTheFileWithARestrictiveUmask(): void
+    {
+        self::assertStringStartsWith(
+            '(umask 077 && ',
+            (new RemoteFileWriter())->remoteWriteCommand('x', '/tmp/.my_x.cnf'),
+        );
+    }
+
+    #[Test]
+    public function remoteWriteCommandQuotesAnAwkwardPath(): void
+    {
+        $command = (new RemoteFileWriter())->remoteWriteCommand('x', '/tmp/a b;id.cnf');
+
+        self::assertStringContainsString("> '/tmp/a b;id.cnf')", $command);
+        self::assertStringContainsString("chmod 600 '/tmp/a b;id.cnf'", $command);
     }
 }
