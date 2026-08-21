@@ -19,6 +19,7 @@ use phpseclib3\Crypt\Common\PrivateKey;
 use phpseclib3\Crypt\PublicKeyLoader;
 use phpseclib3\Net\{SFTP, SSH2};
 use phpseclib3\System\SSH\Agent;
+use Throwable;
 
 use function sprintf;
 
@@ -85,7 +86,15 @@ final readonly class SshClientFactory
                 throw new SyncException(sprintf('SSH key not readable: %s', $client->sshKey));
             }
 
-            $key = PublicKeyLoader::load($keyContents);
+            // A passphrase-protected or malformed key makes phpseclib throw from deep
+            // inside its loader chain. Left alone that surfaces as a stack trace
+            // instead of a sentence naming the file the user has to look at.
+            try {
+                $key = PublicKeyLoader::load($keyContents);
+            } catch (Throwable $exception) {
+                throw new SyncException(sprintf('SSH key could not be loaded (%s): %s. Passphrase-protected keys need an SSH agent (ssh_agent: true).', $client->sshKey, $exception->getMessage()), 0, $exception);
+            }
+
             if (!$key instanceof PrivateKey) {
                 throw new SyncException(sprintf('SSH key is not a usable private key: %s', $client->sshKey));
             }
