@@ -46,6 +46,30 @@ final class LocalCommandRunnerTest extends TestCase
         self::assertSame('', (new LocalCommandRunner())->run('echo boom >&2; exit 1', true));
     }
 
+    /**
+     * A non-zero exit is a failure even from a command that says nothing about it.
+     * Requiring stderr let silent failures through as successes.
+     */
+    #[Test]
+    public function silentlyFailingCommandThrowsWithItsExitCode(): void
+    {
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('status 3');
+
+        (new LocalCommandRunner())->run('exit 3');
+    }
+
+    #[Test]
+    public function theFailureMessageMasksCredentials(): void
+    {
+        try {
+            (new LocalCommandRunner())->run("exit 1 # mysql -p's3cret'");
+            self::fail('Expected a SyncException');
+        } catch (SyncException $exception) {
+            self::assertStringNotContainsString('s3cret', $exception->getMessage());
+        }
+    }
+
     #[Test]
     public function streamsOutputToTheCallbackWhileTheCommandRuns(): void
     {
