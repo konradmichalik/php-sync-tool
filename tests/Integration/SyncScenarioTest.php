@@ -18,6 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Process\Process;
 
 use function sprintf;
+use function trim;
 
 /**
  * SyncScenarioTest.
@@ -272,6 +273,30 @@ final class SyncScenarioTest extends TestCase
 
         self::assertTrue($result->isSuccessful(), $result->getOutput().$result->getErrorOutput());
         self::assertSame(3, $this->postgresRowCount('pgdb2', 'person'));
+    }
+
+    /**
+     * The safety copy has to be a real, non-empty dump of the target, written
+     * before the import replaces the data it holds.
+     */
+    #[Test]
+    public function theTargetIsBackedUpBeforeTheImport(): void
+    {
+        $this->resetDatabases();
+        $this->compose(['exec', '-T', 'www2', 'sh', '-c', 'rm -f /tmp/sync-tool_backup_*']);
+        $this->mysql('db2', 'DROP TABLE IF EXISTS gone_after_import; CREATE TABLE gone_after_import (id INT); INSERT INTO gone_after_import VALUES (1);');
+
+        $result = $this->runSyncTool('www2', 'receiver.yaml', ['--backup-before-import', '--clear-database']);
+
+        self::assertTrue($result->isSuccessful(), $result->getOutput().$result->getErrorOutput());
+        self::assertSame(3, $this->rowCount('db2'), 'the sync itself still runs');
+
+        $backup = $this->compose(['exec', '-T', 'www2', 'sh', '-c', 'ls -S /tmp/sync-tool_backup_*.gz | head -1']);
+        $file = trim($backup->getOutput());
+        self::assertNotSame('', $file, 'a backup file is left behind on the target');
+
+        $contents = $this->compose(['exec', '-T', 'www2', 'sh', '-c', 'gunzip -c '.$file]);
+        self::assertStringContainsString('gone_after_import', $contents->getOutput(), 'it holds the target as it was before the import');
     }
 
     /**

@@ -83,6 +83,7 @@ class SyncCommand extends Command
             ->addOption('dump-name', null, InputOption::VALUE_REQUIRED, 'Custom dump file name')
             ->addOption('keep-dump', null, InputOption::VALUE_NONE, 'Keep the dump and skip the import')
             ->addOption('clear-database', null, InputOption::VALUE_NONE, 'Drop all tables before import')
+            ->addOption('backup-before-import', null, InputOption::VALUE_NONE, 'Dump the target database before it is overwritten')
             ->addOption('tables', null, InputOption::VALUE_REQUIRED, 'Comma-separated list of tables to sync')
             ->addOption('where', null, InputOption::VALUE_REQUIRED, 'WHERE clause for mysqldump')
             ->addOption('additional-mysqldump-options', null, InputOption::VALUE_REQUIRED, 'Extra mysqldump options')
@@ -292,6 +293,7 @@ class SyncCommand extends Command
             'dry-run' => 'dry_run',
             'keep-dump' => 'keep_dump',
             'clear-database' => 'clear_database',
+            'backup-before-import' => 'backup_before_import',
             'with-files' => 'with_files',
             'files-only' => 'files_only',
             'json-log' => 'json_log',

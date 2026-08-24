@@ -62,6 +62,10 @@ final readonly class SyncSteps
         $target = $config->target;
         $steps = null !== $target->afterDump && '' !== $target->afterDump ? 1 : 0;
 
+        if ($config->backupBeforeImport) {
+            ++$steps;
+        }
+
         if ([] !== $target->anonymize) {
             ++$steps;
         }

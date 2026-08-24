@@ -41,8 +41,20 @@ final class DumpFileNamer
             return $config->dumpName.'.sql';
         }
 
-        $timestamp = ($now ?? new DateTimeImmutable())->format('Y-m-d_H-i-s');
+        return self::PREFIX.$config->origin->db->name.'_'.self::stamp($now).'.sql';
+    }
 
-        return self::PREFIX.$config->origin->db->name.'_'.$timestamp.'.sql';
+    /**
+     * The safety copy of the target, named so that it is recognizable next to the
+     * dump being imported and still covered by retention.
+     */
+    public function generateBackup(SyncConfig $config, ?DateTimeImmutable $now = null): string
+    {
+        return self::PREFIX.'backup_'.$config->target->db->name.'_'.self::stamp($now).'.sql';
+    }
+
+    private static function stamp(?DateTimeImmutable $now): string
+    {
+        return ($now ?? new DateTimeImmutable())->format('Y-m-d_H-i-s');
     }
 }

@@ -193,6 +193,10 @@ final readonly class Sync
                 $this->checkDump($runner, $dumpPath);
             }
 
+            if ($config->backupBeforeImport) {
+                $this->backupTarget($config, $runner, $driver, $credentialsPath);
+            }
+
             if ($config->clearDatabase) {
                 $this->clearDatabase($config, $runner, $driver, $credentialsPath);
             }
@@ -214,6 +218,29 @@ final readonly class Sync
         } finally {
             $this->cleanupCredentials($client, $runner, $credentialsPath);
         }
+    }
+
+    /**
+     * A copy of the target as it is now, taken before anything overwrites it. The
+     * export filters are deliberately not applied: a partial sync still needs a
+     * complete copy to go back to.
+     */
+    private function backupTarget(SyncConfig $config, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
+    {
+        $client = $config->target;
+        $path = $this->dumpDir($client).$this->namer->generateBackup($config);
+
+        $command = $driver->dumpCommand(new DumpRequest(
+            db: $client->db,
+            credentialsPath: $credentialsPath,
+            dumpFilePath: $path,
+        ));
+
+        ($this->log)('Backing up the target database to '.$path.'.gz');
+        $this->logCommand($command);
+        $this->progress->phase('Backing up the target');
+        $runner->run($command);
+        $this->progress->advance();
     }
 
     private function checkDump(CommandRunner $runner, string $dumpPath): void

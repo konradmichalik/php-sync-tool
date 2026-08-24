@@ -198,6 +198,7 @@ final class SyncConfigTest extends TestCase
             additionalMysqldumpOptions: '--skip-lock-tables',
             ignoreTables: ['cache_pages'],
             truncateTables: ['sys_log'],
+            backupBeforeImport: true,
             useRsync: false,
             useRsyncOptions: '--archive',
             useSshpass: true,

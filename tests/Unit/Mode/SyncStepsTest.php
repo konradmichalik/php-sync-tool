@@ -126,6 +126,18 @@ final class SyncStepsTest extends TestCase
         self::assertSame(4, (new SyncSteps())->count($config, Plans::receiver()));
     }
 
+    #[Test]
+    public function backingUpTheTargetIsOneMoreStep(): void
+    {
+        self::assertSame(4, (new SyncSteps())->count($this->config(['backup_before_import' => true]), Plans::receiver()));
+    }
+
+    #[Test]
+    public function noBackupStepIsCountedWhenNothingIsImported(): void
+    {
+        self::assertSame(1, (new SyncSteps())->count($this->config(['backup_before_import' => true]), Plans::dumpLocal()));
+    }
+
     /**
      * @param array<string, mixed> $overrides
      */

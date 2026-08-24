@@ -145,6 +145,7 @@ final class ConfigValidator
             "dump_name": {"type": "string"},
             "check_dump": {"type": "boolean"},
             "clear_database": {"type": "boolean"},
+            "backup_before_import": {"type": "boolean"},
             "import": {"type": "string"},
             "tables": {"type": "string"},
             "where": {"type": "string"},

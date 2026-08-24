@@ -184,6 +184,31 @@ final class SyncTest extends TestCase
         self::assertTrue($recorder->ran('UPDATE config SET val = 1'), 'runs post-import SQL');
     }
 
+    /**
+     * The safety copy is only worth anything if it is taken while the target is
+     * still intact, so before clearing, truncating and importing.
+     */
+    #[Test]
+    public function theTargetIsDumpedBeforeItIsOverwritten(): void
+    {
+        $config = $this->localConfig(['backup_before_import' => true, 'clear_database' => true]);
+
+        $recorder = $this->runSync($config, Plans::syncLocal());
+
+        $backup = $this->indexOfCommand($recorder, 'sync-tool_backup_');
+
+        self::assertLessThan($this->indexOfCommand($recorder, 'gunzip -c'), $backup, 'the backup runs before the import');
+        self::assertLessThan($this->indexOfCommand($recorder, 'DROP TABLE'), $backup, 'and before the target is cleared');
+    }
+
+    #[Test]
+    public function noBackupIsTakenUnlessItIsAskedFor(): void
+    {
+        $recorder = $this->runSync($this->localConfig(), Plans::syncLocal());
+
+        self::assertFalse($recorder->ran('sync-tool_backup_'));
+    }
+
     #[Test]
     public function wildcardIgnoreTablesAreExpanded(): void
     {
