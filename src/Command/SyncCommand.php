@@ -89,6 +89,7 @@ class SyncCommand extends Command
             ->addOption('additional-dump-options', null, InputOption::VALUE_REQUIRED, 'Extra options for the dump binary')
             ->addOption('type', 't', InputOption::VALUE_REQUIRED, 'Framework: TYPO3|Symfony|Drupal|WordPress|Laravel')
             ->addOption('no-rsync', null, InputOption::VALUE_NONE, 'Disable rsync (use SFTP fallback)')
+            ->addOption('no-check-dump', null, InputOption::VALUE_NONE, 'Import without checking the dump for content first')
             ->addOption('with-files', null, InputOption::VALUE_NONE, 'Enable file synchronization alongside the database')
             ->addOption('files-only', null, InputOption::VALUE_NONE, 'Synchronize only files, skip the database')
             ->addOption('log-file', 'l', InputOption::VALUE_REQUIRED, 'Write log output to a file')
@@ -284,6 +285,9 @@ class SyncCommand extends Command
         }
         if (true === $input->getOption('no-rsync')) {
             $overrides['use_rsync'] = false;
+        }
+        if (true === $input->getOption('no-check-dump')) {
+            $overrides['check_dump'] = false;
         }
 
         $booleanFlags = [
