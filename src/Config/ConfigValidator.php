@@ -149,6 +149,7 @@ final class ConfigValidator
             "import": {"type": "string"},
             "tables": {"type": "string"},
             "where": {"type": "string"},
+            "additional_dump_options": {"type": "string"},
             "additional_mysqldump_options": {"type": "string"},
             "ignore_table": {"type": "array"},
             "ignore_tables": {"type": "array"},

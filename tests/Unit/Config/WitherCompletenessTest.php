@@ -158,7 +158,7 @@ final class WitherCompletenessTest extends TestCase
             importFile: '/tmp/import.sql',
             tables: 'pages,content',
             where: 'uid > 10',
-            additionalMysqldumpOptions: '--skip-comments',
+            additionalDumpOptions: '--skip-comments',
             ignoreTables: ['cache_*'],
             truncateTables: ['sessions'],
             useRsync: false,

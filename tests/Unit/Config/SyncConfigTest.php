@@ -147,6 +147,31 @@ final class SyncConfigTest extends TestCase
      * field: a forgotten field would silently reset to its default. Every non-client
      * property must survive the copy unchanged.
      */
+    /**
+     * The option is not MySQL-only any more, but a configuration written for the
+     * Python tool still spells it the old way.
+     */
+    #[Test]
+    public function theDumpOptionsAreReadFromEitherSpelling(): void
+    {
+        self::assertSame(
+            '--skip-comments',
+            SyncConfig::fromArray(['additional_dump_options' => '--skip-comments'])->additionalDumpOptions,
+        );
+        self::assertSame(
+            '--skip-lock-tables',
+            SyncConfig::fromArray(['additional_mysqldump_options' => '--skip-lock-tables'])->additionalDumpOptions,
+        );
+        self::assertSame(
+            '--new',
+            SyncConfig::fromArray([
+                'additional_dump_options' => '--new',
+                'additional_mysqldump_options' => '--old',
+            ])->additionalDumpOptions,
+            'the current spelling wins',
+        );
+    }
+
     #[Test]
     public function withClientsPreservesEveryNonClientProperty(): void
     {
@@ -154,7 +179,7 @@ final class SyncConfigTest extends TestCase
             'verbose' => true, 'mute' => true, 'dry_run' => true, 'yes' => true,
             'reverse' => true, 'keep_dump' => true, 'dump_name' => 'd.sql',
             'check_dump' => false, 'clear_database' => true, 'import' => 'in.sql.gz',
-            'tables' => 'a,b', 'where' => 'id>0', 'additional_mysqldump_options' => '--x',
+            'tables' => 'a,b', 'where' => 'id>0', 'additional_dump_options' => '--x',
             'ignore_tables' => ['cache'], 'truncate_tables' => ['log'], 'use_rsync' => false,
             'use_rsync_options' => '-z', 'use_sshpass' => true, 'with_files' => true,
             'files_only' => true, 'ssh_agent' => true, 'force_password' => true,
@@ -195,7 +220,7 @@ final class SyncConfigTest extends TestCase
             importFile: '/tmp/fixture.sql.gz',
             tables: 'users,orders',
             where: 'id > 1',
-            additionalMysqldumpOptions: '--skip-lock-tables',
+            additionalDumpOptions: '--skip-lock-tables',
             ignoreTables: ['cache_pages'],
             truncateTables: ['sys_log'],
             backupBeforeImport: true,

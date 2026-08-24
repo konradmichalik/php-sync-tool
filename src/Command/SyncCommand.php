@@ -86,7 +86,7 @@ class SyncCommand extends Command
             ->addOption('backup-before-import', null, InputOption::VALUE_NONE, 'Dump the target database before it is overwritten')
             ->addOption('tables', null, InputOption::VALUE_REQUIRED, 'Comma-separated list of tables to sync')
             ->addOption('where', null, InputOption::VALUE_REQUIRED, 'WHERE clause for mysqldump')
-            ->addOption('additional-mysqldump-options', null, InputOption::VALUE_REQUIRED, 'Extra mysqldump options')
+            ->addOption('additional-dump-options', null, InputOption::VALUE_REQUIRED, 'Extra options for the dump binary')
             ->addOption('type', 't', InputOption::VALUE_REQUIRED, 'Framework: TYPO3|Symfony|Drupal|WordPress|Laravel')
             ->addOption('no-rsync', null, InputOption::VALUE_NONE, 'Disable rsync (use SFTP fallback)')
             ->addOption('with-files', null, InputOption::VALUE_NONE, 'Enable file synchronization alongside the database')
@@ -310,7 +310,7 @@ class SyncCommand extends Command
             'dump-name' => 'dump_name',
             'tables' => 'tables',
             'where' => 'where',
-            'additional-mysqldump-options' => 'additional_mysqldump_options',
+            'additional-dump-options' => 'additional_dump_options',
             'type' => 'type',
             'log-file' => 'log_file',
             'use-rsync-options' => 'use_rsync_options',

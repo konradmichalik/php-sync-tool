@@ -167,8 +167,8 @@ final readonly class PostgresDriver implements DatabaseDriver
             $unsupported[] = 'where';
         }
 
-        if ('' !== $config->additionalMysqldumpOptions) {
-            $unsupported[] = 'additional_mysqldump_options';
+        if ('' !== $config->additionalDumpOptions) {
+            $unsupported[] = 'additional_dump_options';
         }
 
         // The ssl_* keys configure a MySQL client. Ignoring them here could leave

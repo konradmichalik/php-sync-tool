@@ -143,10 +143,10 @@ final class PostgresDriverTest extends TestCase
             'origin' => ['path' => '/o', 'db' => ['name' => 'app', 'type' => 'postgres']],
             'target' => ['path' => '/t', 'db' => ['name' => 'app', 'type' => 'postgres']],
             'where' => 'id > 1',
-            'additional_mysqldump_options' => '--skip-lock-tables',
+            'additional_dump_options' => '--skip-lock-tables',
         ]);
 
-        self::assertSame(['where', 'additional_mysqldump_options'], $this->driver->unsupportedFeatures($config, $config->origin->db));
+        self::assertSame(['where', 'additional_dump_options'], $this->driver->unsupportedFeatures($config, $config->origin->db));
     }
 
     #[Test]

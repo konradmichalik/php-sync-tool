@@ -40,9 +40,13 @@ final class ConfigAccessor
     /**
      * @param array<string, mixed> $data
      */
-    public static function getString(array $data, string $key, string $default): string
+    public static function getString(array $data, string $key, string $default, ?string $fallbackKey = null): string
     {
         $value = $data[$key] ?? null;
+
+        if (null === $value && null !== $fallbackKey) {
+            $value = $data[$fallbackKey] ?? null;
+        }
 
         if (null === $value) {
             return $default;

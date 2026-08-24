@@ -140,7 +140,7 @@ final readonly class Sync
                 exportTables: $this->tables->exportTables($config->tables),
                 ignoreTables: $this->resolveIgnoreTables($config, $runner, $driver, $credentialsPath),
                 where: $config->where,
-                additionalOptions: $config->additionalMysqldumpOptions,
+                additionalOptions: $config->additionalDumpOptions,
             ));
 
             ($this->log)('Creating origin dump '.$dumpName);
