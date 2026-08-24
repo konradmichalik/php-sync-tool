@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 
 use KonradMichalik\SyncTool\Application;
+use KonradMichalik\SyncTool\Command\SyncCommand;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -290,6 +291,65 @@ final class SyncCommandTest extends TestCase
         );
 
         self::assertSame(0, $exit, $tester->getDisplay());
+    }
+
+    /**
+     * The deployer configurations in the field use the legacy `files.config`
+     * shape, so the override has to land in both.
+     */
+    #[Test]
+    public function theFilesTargetReachesBothDocumentedShapes(): void
+    {
+        $command = new class extends SyncCommand {
+            /**
+             * @param array<string, mixed> $config
+             *
+             * @return array<string, mixed>
+             */
+            public function apply(array $config, string $target): array
+            {
+                return $this->applyFilesTarget($config, $target);
+            }
+        };
+
+        $flat = $command->apply(['files' => [['origin' => '/a']]], '/new');
+        self::assertSame([['origin' => '/a', 'target' => '/new']], $flat['files']);
+
+        $nested = $command->apply(
+            ['files' => ['config' => [['origin' => '/a']], 'option' => ['--delete']]],
+            '/new',
+        );
+        self::assertSame([['origin' => '/a', 'target' => '/new']], $nested['files']['config']);
+        self::assertSame(['--delete'], $nested['files']['option'], 'the option list survives');
+    }
+
+    /**
+     * The override steers a configured entry. With nothing to steer it would
+     * silently sync nothing, so it says so instead.
+     */
+    #[Test]
+    public function filesTargetWithoutAnyFileEntryIsReported(): void
+    {
+        $file = $this->dir.'/nofiles.yaml';
+        file_put_contents($file, <<<'YAML'
+            origin:
+              path: /var/www
+              db: {name: a, user: root, password: root}
+            target:
+              path: /var/www2
+              db: {name: b, user: root, password: root}
+            YAML);
+
+        $tester = $this->tester();
+        $exit = $tester->execute([
+            '--config-file' => $file,
+            '--files-target' => '/var/www2/fileadmin',
+            '--files-only' => true,
+            '--dry-run' => true,
+        ]);
+
+        self::assertSame(1, $exit);
+        self::assertStringContainsString('files', $tester->getDisplay());
     }
 
     #[Test]

@@ -276,6 +276,24 @@ final class SyncScenarioTest extends TestCase
     }
 
     /**
+     * The deployer bridge steers the file target from the outside, because the
+     * path carries the feature branch and is not known when the config is written.
+     */
+    #[Test]
+    public function theFileTargetCanBeOverriddenFromTheCommandLine(): void
+    {
+        $this->compose(['exec', '-T', 'www2', 'rm', '-f', '/tmp/synced-file.txt', '/tmp/steered-file.txt']);
+
+        $result = $this->runSyncTool('www2', 'withfiles.yaml', ['--files-only', '--files-target', '/tmp/steered-file.txt']);
+
+        self::assertTrue($result->isSuccessful(), $result->getErrorOutput().$result->getOutput());
+        $transferred = $this->compose(['exec', '-T', 'www2', 'cat', '/tmp/steered-file.txt'])->getOutput();
+        self::assertStringContainsString('php-sync-tool-file-transfer-ok', $transferred);
+        $configured = $this->compose(['exec', '-T', 'www2', 'test', '-e', '/tmp/synced-file.txt']);
+        self::assertFalse($configured->isSuccessful(), 'the configured target is replaced, not written as well');
+    }
+
+    /**
      * The safety copy has to be a real, non-empty dump of the target, written
      * before the import replaces the data it holds.
      */

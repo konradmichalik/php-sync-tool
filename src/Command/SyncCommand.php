@@ -15,7 +15,7 @@ namespace KonradMichalik\SyncTool\Command;
 
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, EnvironmentAssembler, SyncConfig};
 use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode};
-use KonradMichalik\SyncTool\Exception\SyncToolException;
+use KonradMichalik\SyncTool\Exception\{ConfigException, SyncToolException};
 use KonradMichalik\SyncTool\Logging\LogWriter;
 use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncPlan, SyncSteps};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
@@ -27,6 +27,9 @@ use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption}
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
+use function array_is_list;
+use function array_key_exists;
+use function array_key_first;
 use function array_keys;
 use function is_array;
 use function is_string;
@@ -92,6 +95,7 @@ class SyncCommand extends Command
             ->addOption('no-check-dump', null, InputOption::VALUE_NONE, 'Import without checking the dump for content first')
             ->addOption('with-files', null, InputOption::VALUE_NONE, 'Enable file synchronization alongside the database')
             ->addOption('files-only', null, InputOption::VALUE_NONE, 'Synchronize only files, skip the database')
+            ->addOption('files-target', null, InputOption::VALUE_REQUIRED, 'Target path of the first files entry')
             ->addOption('log-file', 'l', InputOption::VALUE_REQUIRED, 'Write log output to a file')
             ->addOption('json-log', null, InputOption::VALUE_NONE, 'Format log output as JSON lines')
             ->addOption('host-file', 'o', InputOption::VALUE_REQUIRED, 'Additional hosts file to merge')
@@ -266,6 +270,12 @@ class SyncCommand extends Command
             $config['target']['after_dump'] = $afterDump;
         }
 
+        /** @var string|null $filesTarget */
+        $filesTarget = $input->getOption('files-target');
+        if (null !== $filesTarget) {
+            $config = $this->applyFilesTarget($config, $filesTarget);
+        }
+
         if (true === ($config['reverse'] ?? false)) {
             $config = $this->swapEndpoints($config);
         }
@@ -338,6 +348,44 @@ class SyncCommand extends Command
         $origin = $config['origin'] ?? [];
         $config['origin'] = $config['target'] ?? [];
         $config['target'] = $origin;
+
+        return $config;
+    }
+
+    /**
+     * The target of the first `files` entry, from the command line. A deployment
+     * path that carries a branch or release name is not known when the
+     * configuration file is written, so it comes in from outside.
+     *
+     * @param array<string, mixed> $config
+     *
+     * @return array<string, mixed>
+     *
+     * @throws ConfigException when there is no entry to steer
+     */
+    protected function applyFilesTarget(array $config, string $target): array
+    {
+        /** @var array<int|string, mixed> $files */
+        $files = is_array($config['files'] ?? null) ? $config['files'] : [];
+        // Both documented shapes: a flat list, and the legacy `files.config` list.
+        $nested = !array_is_list($files) && array_key_exists('config', $files) && is_array($files['config']);
+        /** @var array<int|string, mixed> $entries */
+        $entries = $nested ? $files['config'] : $files;
+
+        $first = array_key_first($entries);
+
+        if (null === $first || !is_array($entries[$first])) {
+            throw new ConfigException('--files-target names the target of a file entry, but the configuration has no "files" entry to apply it to.');
+        }
+
+        $entries[$first]['target'] = $target;
+
+        if ($nested) {
+            $files['config'] = $entries;
+            $config['files'] = $files;
+        } else {
+            $config['files'] = $entries;
+        }
 
         return $config;
     }

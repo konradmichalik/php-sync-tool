@@ -55,6 +55,23 @@ Named-host syncs work the same way, only the config directory name changes from
 bin/sync-tool production local
 ```
 
+### Replacing file-sync-tool
+
+`file_sync_tool` was a second command with its own flags. Its work is a run of
+this tool with `--files-only`, reading the same `files` block:
+
+```bash
+# file-sync-tool (Python)
+file_sync_tool -f config.yaml --files-target /var/www/target/fileadmin
+
+# php-sync-tool (PHP)
+bin/sync-tool -f config.yaml --files-only --files-target /var/www/target/fileadmin
+```
+
+`--files-target` behaves as it did there: it sets the target of the first entry.
+The Python flags `--files-origin`, `--files-exclude` and `--files-option` have no
+counterpart yet; those values belong in the `files` block.
+
 ### Jump Hosts
 
 php-sync-tool tunnels through jump hosts using the system SSH client

@@ -132,6 +132,7 @@ everything.
 |--------|-------|-------------|
 | `--with-files` | | Enable file synchronization alongside the database |
 | `--files-only` | | Synchronize only files, skip the database |
+| `--files-target` | | Target path of the first `files` entry, overriding the configuration |
 
 ## Origin Endpoint Overrides
 

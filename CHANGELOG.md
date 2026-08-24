@@ -56,6 +56,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `protect: true`. The copy is complete even for a partial sync and is written
   before `clear_database`, `truncate_table` and the import.
 
+- `--files-target` sets the target of the first `files` entry for a run. A
+  deployment path carrying a branch or release name is not known when the
+  configuration file is written, which is why the Python `file_sync_tool` had
+  the same option. Without an entry to apply it to, the run stops instead of
+  synchronizing nothing.
+
 - `sync-tool environments` lists the synchronizations a project is configured
   for. The interactive picker only offers that list on a terminal, so a script,
   a Makefile or a colleague reading the repository had no way to see it.

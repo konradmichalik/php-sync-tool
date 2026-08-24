@@ -55,6 +55,20 @@ files:
 | `exclude` | array | Patterns to exclude from the transfer. |
 | `options` | string | Extra transfer options for this entry. |
 
+### Steering the target from outside
+
+A deployment path often carries a branch or release name that the configuration
+file cannot know. `--files-target` sets the `target` of the **first** entry for
+that run:
+
+```bash
+bin/sync-tool -f config.yaml --files-only \
+  --files-target /var/www/instances/feature-123/fileadmin
+```
+
+Every other entry keeps its configured target. With no `files` entry to apply it
+to, the run stops and says so rather than synchronizing nothing.
+
 ## Transfer Behavior
 
 - File transfers use the same endpoint roles and modes as the database sync
