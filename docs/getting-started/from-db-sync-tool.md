@@ -35,8 +35,8 @@ PHP that is already present.
 | Config directory | `~/.db-sync-tool/` | `~/.sync-tool/` |
 | Project config dir | `.db-sync-tool/` | `.sync-tool/` |
 | rsync toggle | `--use-rsync` (opt in) | rsync is default; `--no-rsync` opts out to SFTP |
-| Shell completion | built-in (`--install-completion`) | not provided |
-| Interactive selection | interactive prompts / discovery | not provided (use explicit config, host args, or `@links`) |
+| Shell completion | built-in (`--install-completion`) | `sync-tool completion <shell>`, from Symfony Console |
+| Interactive selection | interactive prompts / discovery | the sync picker on a terminal, `environments` without one |
 
 ### Command Migration
 
@@ -67,8 +67,7 @@ php-sync-tool tunnels through jump hosts using the system SSH client
 A few Python-tool conveniences are intentionally out of scope, as they add
 little value for non-interactive CI/deploy automation:
 
-- Interactive host/config discovery and selection prompts
-- Shell completion installation
+- Interactive host/config discovery prompts beyond the sync picker
 - SFTP transfer progress callbacks
 
 Explicit config files, host arguments, and [`@hostname` links](/configuration/advanced#linking-hosts)

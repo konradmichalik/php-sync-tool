@@ -16,7 +16,7 @@ database by design:
 |-----|---------|
 | `script` (`before`, `after`, `error`) | your local shell, as a command |
 | `console.*` | the endpoint, as the path of the binary to run |
-| `additional_mysqldump_options`, `use_rsync_options`, `files_options` | the command line of `mysqldump` / `rsync`, as options |
+| `additional_dump_options`, `use_rsync_options`, `files_options` | the command line of the dump binary / `rsync`, as options |
 | `post_sql`, `anonymize.*.value`, `where` | the database, as SQL |
 
 Treat a configuration file the way you treat a `Makefile` or a CI pipeline
@@ -34,6 +34,9 @@ stays a command.
 | `target` | object | Destination endpoint (see [Client Object](#client-object)). |
 | `ignore_table` | array | Tables to exclude from the dump. A `table*` entry is expanded against the origin. |
 | `truncate_tables` | array | Tables to empty on the target before the import. A `table*` entry is expanded against the target. |
+| `backup_before_import` | boolean | Dump the target database before anything overwrites it (default: off). |
+| `check_dump` | boolean | Verify the dump has content before importing it (default: on). |
+| `additional_dump_options` | string | Extra options for the dump binary. `additional_mysqldump_options`, the name the Python tool used, is still read. |
 | `log_file` | string | Path to a log file. |
 | `json_log` | boolean | Write the log file as JSON lines. |
 | `ssh_strict_host_key_checking` | boolean | Toggle SSH host-key verification (default: enabled). |

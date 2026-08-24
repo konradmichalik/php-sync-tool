@@ -16,6 +16,8 @@ credential auto-detection for **TYPO3, Symfony, Drupal, WordPress and Laravel**.
 - MySQL, MariaDB and PostgreSQL
 - Declarative data anonymization for GDPR-safe copies
 - Named environments with `init`, `pull` and `push`
+- Guards against overwriting the wrong database: confirmation prompt, protected
+  hosts, and an optional backup of the target before the import
 - Optional file synchronization over SSH/rsync/SFTP
 - Framework credential auto-detection for TYPO3, Symfony, Drupal, WordPress and Laravel
 

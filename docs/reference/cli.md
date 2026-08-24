@@ -10,8 +10,9 @@ Complete command line reference for php-sync-tool.
 | `pull <environment>` | That environment's database into this project |
 | `push <environment>` | This project's database into that environment |
 | `init` | Ask a few questions and write `.sync-tool/` for this project |
+| `environments` | List the synchronizations this project is configured for |
 
-`pull`, `push` and `init` are described under [Named Environments](#named-environments).
+`pull`, `push`, `init` and `environments` are described under [Named Environments](#named-environments).
 Every option in this reference applies to `pull` and `push` as well, apart from the
 `ORIGIN` and `TARGET` arguments, which the environment name replaces.
 
@@ -113,7 +114,9 @@ everything.
 | `--clear-database` | | Drop all tables before import |
 | `--tables` | | Comma-separated list of tables to sync |
 | `--where` | | WHERE clause for mysqldump |
-| `--additional-mysqldump-options` | | Extra mysqldump options |
+| `--additional-dump-options` | | Extra options for the dump binary |
+| `--backup-before-import` | | Dump the target database before it is overwritten |
+| `--no-check-dump` | | Import without checking the dump for content first |
 | `--target-after-dump` | | Additional dump to import on the target after the main import |
 
 ## Transfer Options
@@ -182,6 +185,8 @@ global options `--help` (`-h`), `--quiet` (`-q`), `--verbose` (`-v`/`-vv`/`-vvv`
 
 ```bash
 bin/sync-tool init                 # set the project up
+bin/sync-tool init -e staging      # add another environment to it
+bin/sync-tool environments         # list what is configured
 bin/sync-tool pull production      # production → this project
 bin/sync-tool push staging         # this project → staging
 ```
@@ -194,11 +199,16 @@ side comes from the `local` block in `.sync-tool/defaults.yaml`. See
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--environment` | `-e` | Name for the first environment (default: `production`) |
+| `--environment` | `-e` | Name of the environment to set up (default: `production`) |
 | `--force` | | Overwrite existing files without asking |
 
+Run in a project that already carries a `defaults.yaml`, `init` keeps it and only
+adds the environment: the framework and this machine are asked about once, not
+again for every environment. `--force` rewrites the defaults from fresh answers.
+
 `init` needs a terminal; it refuses to run without one rather than writing files
-from defaults.
+from defaults. `environments` needs none, which is what makes it usable from a
+script or a Makefile.
 
 ## Examples
 

@@ -190,6 +190,46 @@ origin:
 Mark every production host `protect: true` so it can only ever be a sync
 **source**, never overwritten.
 
+## Backup Before Import
+
+An import replaces what the target holds. `backup_before_import` dumps the target
+first, while it is still intact, so there is something to go back to:
+
+```yaml
+backup_before_import: true
+```
+
+Or for a single run:
+
+```bash
+bin/sync-tool -f config.yaml --backup-before-import
+```
+
+The file lands in the target's `dump_dir` as
+`sync-tool_backup_<database>_<timestamp>.sql.gz` and holds the whole database,
+even when the sync itself is a partial one. It is written before `clear_database`,
+before `truncate_table` and before the import.
+
+::: warning
+The backup counts as one of this tool's dumps, so `keep_dumps` retention can
+delete it like any other. Give a target you rely on this for either no
+`keep_dumps` or enough room for both files.
+:::
+
+## Dump Check
+
+Before the import, the tool checks that the dump it is about to load has content
+at all, so that an empty or truncated file cannot silently clear a database. That
+check is on by default and can be turned off for a run:
+
+```bash
+bin/sync-tool -f config.yaml --no-check-dump
+```
+
+```yaml
+check_dump: false
+```
+
 ## Reverse Origin and Target
 
 Swap origin and target for a single run:

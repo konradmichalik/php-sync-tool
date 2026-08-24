@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   terminal it reports missing configuration as before. Every existing invocation
   keeps working, including `sync-tool prod` and `sync-tool production local`.
   Environment and host names cannot collide with a command name (`sync`, `pull`,
-  `push`, `init`, `list`, `help`, `completion`).
+  `push`, `init`, `environments`, `list`, `help`, `completion`).
 
 - Data anonymization as configuration. An `anonymize` block on the target names
   the columns to mask per table, with four strategies: `null`, a `static` value,
@@ -51,7 +51,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   directories, including recursive transfer and `exclude` patterns — not
   just the database dump.
 
+- `backup_before_import` (`--backup-before-import`) dumps the target database
+  before anything overwrites it, next to the existing confirmation prompt and
+  `protect: true`. The copy is complete even for a partial sync and is written
+  before `clear_database`, `truncate_table` and the import.
+
+- `sync-tool environments` lists the synchronizations a project is configured
+  for. The interactive picker only offers that list on a terminal, so a script,
+  a Makefile or a colleague reading the repository had no way to see it.
+
+- `--no-check-dump` turns the pre-import dump check off for a run. The
+  `check_dump` setting behind it was only reachable from a configuration file,
+  and was not documented at all.
+
 ### Changed
+
+- Framework credential auto-detection now decides the *database system*, not
+  just the credentials. TYPO3 (`driver`), Drupal (`driver`, or `db-driver` from
+  drush) and Laravel (`DB_CONNECTION`) are read the way Symfony's `DATABASE_URL`
+  scheme already was, and the default port follows the system, so 5432 rather
+  than 3306 for PostgreSQL. A PostgreSQL project that let the tool detect its
+  credentials was previously dumped with `mysqldump` on port 3306.
+
+- `sync-tool init` in a project that is already set up now keeps
+  `defaults.yaml` and only adds the environment. It used to ask all six
+  questions again and then stop at "defaults.yaml exists. Overwrite it?", so
+  declining wrote nothing at all and there was no supported way to add a second
+  environment. `--force` still rewrites the defaults from fresh answers.
+
+- `additional_mysqldump_options` is now `additional_dump_options`, and the CLI
+  option `--additional-mysqldump-options` is `--additional-dump-options`. The
+  value goes to whichever dump binary the endpoint uses. The old configuration
+  key is still read, so a configuration written for the Python tool keeps
+  working.
 
 - A configuration key the tool does not know is now an error instead of being
   ignored. The schema only listed a handful of keys and accepted anything else, so

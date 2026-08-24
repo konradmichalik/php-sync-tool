@@ -99,6 +99,14 @@ For tables that should never be copied in the first place, `ignore_table` or a
 [partial sync](/configuration/advanced#partial-sync) is cheaper than copying and
 then masking.
 
+## Masking runs with the import
+
+The statements run on the target, right after the dump has been imported. A run
+that imports nothing therefore masks nothing: `keep_dump` and `--keep-dump`
+leave the *unmasked* dump of the origin lying in the target's dump directory,
+and so does `--dry-run`. Treat such a dump as production data, or let the sync
+finish and mask.
+
 ## PostgreSQL
 
 The same rules work unchanged. The tool emits the dialect of the configured

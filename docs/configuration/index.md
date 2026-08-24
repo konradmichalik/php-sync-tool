@@ -98,8 +98,9 @@ An environment can equally be a host from `hosts.yaml`. Without a `local` block,
 ### Reserved Names
 
 An environment or host cannot be named after a command: `sync`, `pull`, `push`,
-`init`, `list`, `help` or `completion`. Any other first argument is understood as
-a name, so `bin/sync-tool production local` keeps working as documented.
+`init`, `environments`, `list`, `help` or `completion`. Any other first argument
+is understood as a name, so `bin/sync-tool production local` keeps working as
+documented.
 
 The project `.sync-tool/` directory is searched from the current working
 directory upwards.

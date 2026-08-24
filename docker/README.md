@@ -38,12 +38,15 @@ composer docker:down      # stop and remove the stack
 `docker/configs/`: RECEIVER, SENDER, PROXY, SFTP fallback (dump and recursive
 directory transfer with excludes), clear-database, post_sql, where-clause,
 keep-dump, with-files, import-file, PostgreSQL, MariaDB binaries, anonymization,
-and framework credential auto-detection for TYPO3, Symfony, Drupal, WordPress
-and Laravel.
+target backup, and framework credential auto-detection for TYPO3, Symfony,
+Drupal, WordPress and Laravel.
 
-`autodetect-anonymize.yaml` crosses two of them: auto-detection on both endpoints
-combined with target-side masking. Features that pass on their own can still fail
-together, and this pair did.
+Two configs cross features on purpose, because things that pass on their own can
+still fail together, and both of these pairs did: `autodetect-anonymize.yaml`
+combines auto-detection on both endpoints with target-side masking, and
+`framework-typo3-postgres.yaml` lets auto-detection pick the database system,
+reading `driver: pdo_pgsql` out of a TYPO3 configuration on `www1` and dumping
+`pgdb1` with `pg_dump`.
 
 ## Run a sync (RECEIVER: www1 → www2)
 

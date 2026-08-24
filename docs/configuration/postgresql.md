@@ -33,8 +33,19 @@ any casing. Without `type`, the tool assumes MySQL, which keeps every existing
 configuration working unchanged.
 
 When credentials come from framework auto-detection instead of the config file,
-the database system is read from the scheme of the framework's database URL, so
-a Symfony `DATABASE_URL=postgresql://…` needs no `type` at all.
+the database system is read from the framework configuration too, so an endpoint
+that carries only a `path` needs no `type`:
+
+| Framework | Read from |
+|-----------|-----------|
+| Symfony | the scheme of `DATABASE_URL` |
+| TYPO3 | `driver` of the `Default` connection (`pdo_pgsql`, `mysqli`, …) |
+| Drupal | `driver` in `settings.php`, or `db-driver` from drush |
+| Laravel | `DB_CONNECTION` |
+| WordPress | nothing: WordPress runs on MySQL and MariaDB only |
+
+The port follows from it as well: an endpoint that names no port is dialled on
+5432 rather than 3306 once the driver says PostgreSQL.
 
 ## Requirements
 
@@ -76,8 +87,8 @@ Two options are MySQL-only. A PostgreSQL run that uses them aborts before
 anything is dumped, transferred or imported, rather than ignoring them:
 
 - `where` — `pg_dump` has no equivalent of `mysqldump --where`.
-- `additional_mysqldump_options` — passed verbatim to `mysqldump`, meaningless
-  for `pg_dump`.
+- `additional_dump_options` — the value is passed verbatim to `mysqldump` and
+  means nothing to `pg_dump`.
 
 The error names both the system and the option:
 
