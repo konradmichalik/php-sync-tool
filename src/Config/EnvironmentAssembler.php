@@ -60,6 +60,45 @@ final readonly class EnvironmentAssembler
     }
 
     /**
+     * Every sync the discovered configuration allows, keyed by what the user
+     * reads, valued by the verb and name that run it.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public function syncChoices(): array
+    {
+        $choices = [];
+
+        // A direction needs a local endpoint to point at.
+        $hasLocal = $this->hasLocalEndpoint();
+
+        foreach ($this->resolver->getProjectConfigs() as $name => $project) {
+            // A config that names both endpoints is a complete sync on its own.
+            // One that names only an environment is a direction away from here,
+            // which is what `init` writes.
+            if ([] !== $this->asArray($project->config['target'] ?? null)) {
+                $choices[sprintf('%s (project config)', $name)] = ['project', (string) $name];
+
+                continue;
+            }
+
+            if ($hasLocal) {
+                $choices[sprintf('pull from %s', $name)] = ['pull', (string) $name];
+                $choices[sprintf('push to %s', $name)] = ['push', (string) $name];
+            }
+        }
+
+        if ($hasLocal) {
+            foreach (array_keys($this->resolver->getGlobalHosts()) as $name) {
+                $choices[sprintf('pull from %s', $name)] = ['pull', (string) $name];
+                $choices[sprintf('push to %s', $name)] = ['push', (string) $name];
+            }
+        }
+
+        return $choices;
+    }
+
+    /**
      * Every name that can be used as an environment.
      *
      * @return list<string>
