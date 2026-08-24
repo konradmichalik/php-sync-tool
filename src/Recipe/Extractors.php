@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Recipe;
 
+use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use KonradMichalik\SyncTool\Util\Pure;
 
 use function is_string;
@@ -28,50 +29,58 @@ final class Extractors
     /**
      * TYPO3 .env: TYPO3_CONF_VARS__DB__Connections__Default__* variables.
      *
-     * @return array{name: string, host: string, user: string, password: string, port: string}
+     * @return array{name: string, host: string, user: string, password: string, port: string, db_type: string}
      */
     public static function typo3FromEnv(string $content): array
     {
         $prefix = 'TYPO3_CONF_VARS__DB__Connections__Default__';
+        $driver = self::envValue($content, $prefix.'driver');
 
         return [
             'name' => self::envValue($content, $prefix.'dbname'),
             'host' => self::envValue($content, $prefix.'host'),
             'user' => self::envValue($content, $prefix.'user'),
             'password' => self::envValue($content, $prefix.'password'),
-            'port' => self::withPortDefault(self::envValue($content, $prefix.'port')),
+            'port' => self::withPortDefault(self::envValue($content, $prefix.'port'), $driver),
+            'db_type' => $driver,
         ];
     }
 
     /**
      * TYPO3 AdditionalConfiguration.php / additional.php: 'key' => 'value'.
      *
-     * @return array{name: string, host: string, user: string, password: string, port: string}
+     * @return array{name: string, host: string, user: string, password: string, port: string, db_type: string}
      */
     public static function typo3FromAdditional(string $content): array
     {
+        $driver = self::phpArrowValue($content, 'driver');
+
         return [
             'name' => self::phpArrowValue($content, 'dbname'),
             'host' => self::phpArrowValue($content, 'host'),
             'user' => self::phpArrowValue($content, 'user'),
             'password' => self::phpArrowValue($content, 'password'),
-            'port' => self::withPortDefault(self::phpArrowValue($content, 'port')),
+            'port' => self::withPortDefault(self::phpArrowValue($content, 'port'), $driver),
+            'db_type' => $driver,
         ];
     }
 
     /**
      * Drupal settings.php: $databases['default']['default']['key'] => value.
      *
-     * @return array{name: string, host: string, user: string, password: string, port: string}
+     * @return array{name: string, host: string, user: string, password: string, port: string, db_type: string}
      */
     public static function drupalFromSettings(string $content): array
     {
+        $driver = self::drupalValue($content, 'driver');
+
         return [
             'name' => self::drupalValue($content, 'database'),
             'host' => self::drupalValue($content, 'host'),
             'user' => self::drupalValue($content, 'username'),
             'password' => self::drupalValue($content, 'password'),
-            'port' => self::withPortDefault(self::drupalValue($content, 'port')),
+            'port' => self::withPortDefault(self::drupalValue($content, 'port'), $driver),
+            'db_type' => $driver,
         ];
     }
 
@@ -94,7 +103,7 @@ final class Extractors
     /**
      * Laravel .env: DB_* variables (no port default, mirroring the recipe).
      *
-     * @return array{name: string, host: string, user: string, password: string, port: string}
+     * @return array{name: string, host: string, user: string, password: string, port: string, db_type: string}
      */
     public static function laravelFromEnv(string $content): array
     {
@@ -104,6 +113,7 @@ final class Extractors
             'user' => self::laravelValue($content, 'DB_USERNAME'),
             'password' => self::laravelValue($content, 'DB_PASSWORD'),
             'port' => self::laravelValue($content, 'DB_PORT'),
+            'db_type' => self::laravelValue($content, 'DB_CONNECTION'),
         ];
     }
 
@@ -204,9 +214,18 @@ final class Extractors
         return '';
     }
 
-    private static function withPortDefault(string $port): string
+    /**
+     * The default port of the system the driver names, so that a PostgreSQL
+     * endpoint that spells out no port is not dialled on the MySQL one. WordPress
+     * runs on MySQL only and names no driver.
+     */
+    private static function withPortDefault(string $port, string $driver = ''): string
     {
-        return '' === $port ? '3306' : $port;
+        if ('' !== $port) {
+            return $port;
+        }
+
+        return (string) DatabaseSystem::fromDriver($driver)->defaultPort();
     }
 
     private static function clean(string $value): string

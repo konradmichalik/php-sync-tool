@@ -1,0 +1,24 @@
+# TYPO3 credential auto-detection against PostgreSQL, driven from www2.
+# The origin names no `db` block at all: system, host, user, password and port
+# all come out of the framework configuration file on www1.
+use_sshpass: true
+ssh_strict_host_key_checking: false
+type: TYPO3
+
+origin:
+  host: www1
+  user: root
+  password: root
+  port: 22
+  path: /app/docker/fixtures/typo3-postgres/LocalConfiguration.php
+  dump_dir: /tmp/
+
+target:
+  dump_dir: /tmp/
+  db:
+    type: postgres
+    name: db
+    host: pgdb2
+    user: db
+    password: db
+    port: 5432

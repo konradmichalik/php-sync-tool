@@ -275,6 +275,26 @@ final class SyncScenarioTest extends TestCase
     }
 
     /**
+     * Auto-detection decides the database system, not just the credentials: a
+     * framework file naming a PostgreSQL driver has to reach for `pg_dump`, on
+     * the PostgreSQL default port, without a `db` block on that endpoint.
+     */
+    #[Test]
+    public function autoDetectionReadsThePostgresDriverFromTheFrameworkConfig(): void
+    {
+        $this->compose(['exec', '-T', 'pgdb2', 'psql', '-U', 'db', '-d', 'db', '-c', 'TRUNCATE TABLE person;']);
+        self::assertSame(0, $this->postgresRowCount('pgdb2', 'person'), 'target starts empty');
+
+        $result = $this->runSyncTool('www2', 'framework-typo3-postgres.yaml', ['-vv']);
+
+        self::assertTrue($result->isSuccessful(), $result->getOutput().$result->getErrorOutput());
+        $log = $result->getOutput().$result->getErrorOutput();
+        self::assertStringContainsString('pg_dump ', $log);
+        self::assertStringNotContainsString('mysqldump ', $log);
+        self::assertSame(3, $this->postgresRowCount('pgdb2', 'person'));
+    }
+
+    /**
      * MariaDB 11 deprecated the `mysqldump` and `mysql` symlinks. `db.type:
      * mariadb` has to reach for `mariadb-dump` and `mariadb` instead, and the
      * result has to be the same sync.

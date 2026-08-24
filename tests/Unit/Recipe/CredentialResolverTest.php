@@ -307,4 +307,53 @@ final class CredentialResolverTest extends TestCase
         self::assertNotNull($db);
         self::assertSame(DatabaseSystem::MySQL, $db->type);
     }
+
+    #[Test]
+    public function resolveReportsPostgresWhenTypo3NamesThatDriver(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'typo3', 'origin' => ['path' => '/app/LocalConfiguration.php']]);
+        $json = json_encode(['DB' => ['Connections' => ['Default' => [
+            'dbname' => 'pg_db', 'host' => 'db', 'user' => 'u', 'password' => 'p',
+            'driver' => 'pdo_pgsql',
+        ]]]], \JSON_THROW_ON_ERROR);
+        $runner = new RecordingCommandRunner(['LocalConfiguration.php' => $json]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame(DatabaseSystem::PostgreSQL, $db->type);
+        self::assertSame(5432, $db->port);
+    }
+
+    #[Test]
+    public function resolveReportsPostgresWhenLaravelNamesThatConnection(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'laravel', 'origin' => ['path' => '/app/.env']]);
+        $env = "DB_CONNECTION=pgsql\nDB_HOST=db\nDB_PORT=5432\nDB_DATABASE=app\nDB_USERNAME=u\nDB_PASSWORD=p\n";
+        $runner = new RecordingCommandRunner(['.env' => $env]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame(DatabaseSystem::PostgreSQL, $db->type);
+    }
+
+    #[Test]
+    public function resolveFallsBackToMysqlWhenNoDriverIsNamed(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'wordpress', 'origin' => ['path' => '/app/wp-config.php']]);
+        $content = <<<'PHP'
+            <?php
+            define( 'DB_NAME', 'wp' );
+            define( 'DB_USER', 'u' );
+            define( 'DB_PASSWORD', 'p' );
+            define( 'DB_HOST', 'localhost' );
+            PHP;
+        $runner = new RecordingCommandRunner(['wp-config.php' => $content]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame(DatabaseSystem::MySQL, $db->type);
+    }
 }

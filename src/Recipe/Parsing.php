@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Recipe;
 
+use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use KonradMichalik\SyncTool\Exception\ParsingException;
 use KonradMichalik\SyncTool\Util\Pure;
 use OutOfBoundsException;
@@ -84,7 +85,7 @@ final class Parsing
     /**
      * @param array<string, mixed> $dbCredentials
      *
-     * @return array{name: mixed, host: mixed, password: mixed, port: mixed, user: mixed}
+     * @return array{name: mixed, host: mixed, password: mixed, port: mixed, user: mixed, db_type: mixed}
      *
      * @throws OutOfBoundsException when a required drush key is missing (mirrors Python KeyError)
      */
@@ -96,12 +97,16 @@ final class Parsing
             'password' => self::requireKey($dbCredentials, 'db-password'),
             'port' => self::requireKey($dbCredentials, 'db-port'),
             'user' => self::requireKey($dbCredentials, 'db-username'),
+            // A drush old enough not to report the driver leaves the system to
+            // the configured default rather than failing the whole read.
+            'db_type' => $dbCredentials['db-driver'] ?? '',
         ];
     }
 
     /**
      * Handles TYPO3 v8+ (nested Connections.Default) and v7- (flat database/username),
-     * preserving every extra field and defaulting the port to the integer 3306.
+     * preserving every extra field and defaulting the port to the one of the
+     * system its `driver` names.
      *
      * @param array<string, mixed> $dbCredentials
      *
@@ -125,8 +130,11 @@ final class Parsing
             $config['name'] = self::requireKey($config, 'database');
         }
 
+        $driver = $config['driver'] ?? '';
+        $config['db_type'] = is_string($driver) ? $driver : '';
+
         if (!array_key_exists('port', $config)) {
-            $config['port'] = 3306;
+            $config['port'] = DatabaseSystem::fromDriver($config['db_type'])->defaultPort();
         }
 
         return $config;

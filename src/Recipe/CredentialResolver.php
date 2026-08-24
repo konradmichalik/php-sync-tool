@@ -73,7 +73,7 @@ final readonly class CredentialResolver
             password: (string) ($creds['password'] ?? ''),
             port: (int) ($creds['port'] ?? 0),
             sslDisabled: false,
-            type: DatabaseSystem::fromConfigValue((string) ($creds['db_type'] ?? '')) ?? DatabaseSystem::MySQL,
+            type: DatabaseSystem::fromDriver((string) ($creds['db_type'] ?? '')),
         );
     }
 
@@ -101,7 +101,7 @@ final readonly class CredentialResolver
                 $phpBin,
                 escapeshellarg(sprintf("echo json_encode(include '%s');", self::phpLiteral($path))),
             ),
-            ReadStrategy::DrupalDrush => 'drush core-status --pipe --fields=db-hostname,db-username,db-password,db-name,db-port --format=json',
+            ReadStrategy::DrupalDrush => 'drush core-status --pipe --fields=db-hostname,db-username,db-password,db-name,db-port,db-driver --format=json',
         };
     }
 

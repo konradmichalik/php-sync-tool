@@ -39,7 +39,7 @@ final class ExtractorsTest extends TestCase
 
         self::assertSame([
             'name' => 'typo3_db', 'host' => 'localhost', 'user' => 'typo3user',
-            'password' => 'secret', 'port' => '3306',
+            'password' => 'secret', 'port' => '3306', 'db_type' => '',
         ], Extractors::typo3FromEnv($content));
     }
 
@@ -187,5 +187,82 @@ final class ExtractorsTest extends TestCase
 
         self::assertSame('only_db', $result['name']);
         self::assertSame('', $result['host']);
+    }
+
+    #[Test]
+    public function typo3FromEnvReadsTheDriverAndDefaultsThePortForIt(): void
+    {
+        $content = <<<'ENV'
+            TYPO3_CONF_VARS__DB__Connections__Default__dbname=typo3_db
+            TYPO3_CONF_VARS__DB__Connections__Default__host=localhost
+            TYPO3_CONF_VARS__DB__Connections__Default__user=typo3user
+            TYPO3_CONF_VARS__DB__Connections__Default__password=secret
+            TYPO3_CONF_VARS__DB__Connections__Default__driver=pdo_pgsql
+            ENV;
+
+        $result = Extractors::typo3FromEnv($content);
+
+        self::assertSame('pdo_pgsql', $result['db_type']);
+        self::assertSame('5432', $result['port']);
+    }
+
+    #[Test]
+    public function typo3FromAdditionalReadsTheDriver(): void
+    {
+        $content = <<<'PHP'
+            <?php
+            'dbname' => 'additional_db',
+            'host' => 'db.internal',
+            'user' => 'webuser',
+            'password' => 'p4ss',
+            'driver' => 'pdo_pgsql',
+            PHP;
+
+        $result = Extractors::typo3FromAdditional($content);
+
+        self::assertSame('pdo_pgsql', $result['db_type']);
+        self::assertSame('5432', $result['port']);
+    }
+
+    #[Test]
+    public function drupalFromSettingsReadsTheDriver(): void
+    {
+        $content = <<<'PHP'
+            <?php
+            $databases['default']['default'] = array (
+              'database' => 'drupal_db',
+              'username' => 'drupal_user',
+              'password' => 'drupal_pass',
+              'host' => 'localhost',
+              'driver' => 'pgsql',
+            );
+            PHP;
+
+        $result = Extractors::drupalFromSettings($content);
+
+        self::assertSame('pgsql', $result['db_type']);
+        self::assertSame('5432', $result['port']);
+    }
+
+    #[Test]
+    public function laravelFromEnvReadsTheConnection(): void
+    {
+        $content = <<<'ENV'
+            DB_CONNECTION=pgsql
+            DB_HOST=127.0.0.1
+            DB_DATABASE=laravel
+            DB_USERNAME=laravel_user
+            DB_PASSWORD=laravel_pass
+            ENV;
+
+        self::assertSame('pgsql', Extractors::laravelFromEnv($content)['db_type']);
+    }
+
+    #[Test]
+    public function aMysqlDriverKeepsTheMysqlPortDefault(): void
+    {
+        $content = "TYPO3_CONF_VARS__DB__Connections__Default__driver=mysqli\n";
+
+        self::assertSame('3306', Extractors::typo3FromEnv($content)['port']);
     }
 }

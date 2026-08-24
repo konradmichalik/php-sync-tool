@@ -76,7 +76,7 @@ final readonly class DatabaseConfig
             sslCert: ConfigAccessor::getStringOrNull($data, 'ssl_cert'),
             sslKey: ConfigAccessor::getStringOrNull($data, 'ssl_key'),
             sslCipher: ConfigAccessor::getStringOrNull($data, 'ssl_cipher'),
-            type: DatabaseSystem::fromConfigValue(ConfigAccessor::getString($data, 'type', '')) ?? DatabaseSystem::MySQL,
+            type: DatabaseSystem::fromDriver(ConfigAccessor::getString($data, 'type', '')),
         );
     }
 }

@@ -135,7 +135,7 @@ final class ParsingTest extends TestCase
 
         self::assertSame([
             'name' => 'drupal_db', 'host' => 'localhost', 'password' => 'secret123',
-            'port' => 3306, 'user' => 'drupal_user',
+            'port' => 3306, 'user' => 'drupal_user', 'db_type' => '',
         ], $result);
     }
 
@@ -216,5 +216,51 @@ final class ParsingTest extends TestCase
 
         self::assertSame('pässwörd', $result['password']);
         self::assertSame(3306, $result['port']);
+    }
+
+    #[Test]
+    public function parseTypo3ReportsTheDriverAsTheDatabaseType(): void
+    {
+        $result = Parsing::parseTypo3DatabaseCredentials([
+            'Connections' => ['Default' => [
+                'dbname' => 'pg_db', 'host' => 'db', 'user' => 'u', 'password' => 'p',
+                'driver' => 'pdo_pgsql',
+            ]],
+        ]);
+
+        self::assertSame('pdo_pgsql', $result['db_type']);
+        self::assertSame(5432, $result['port']);
+    }
+
+    #[Test]
+    public function parseTypo3KeepsTheMysqlPortDefaultForAMysqlDriver(): void
+    {
+        $result = Parsing::parseTypo3DatabaseCredentials([
+            'Connections' => ['Default' => ['dbname' => 'db', 'driver' => 'mysqli']],
+        ]);
+
+        self::assertSame(3306, $result['port']);
+    }
+
+    #[Test]
+    public function parseDrupalDrushReportsTheDriverWhenDrushNamesOne(): void
+    {
+        $result = Parsing::parseDrupalDrushCredentials([
+            'db-name' => 'drupal', 'db-hostname' => 'db', 'db-password' => 'p',
+            'db-port' => '5432', 'db-username' => 'u', 'db-driver' => 'pgsql',
+        ]);
+
+        self::assertSame('pgsql', $result['db_type']);
+    }
+
+    #[Test]
+    public function parseDrupalDrushToleratesADrushWithoutTheDriverField(): void
+    {
+        $result = Parsing::parseDrupalDrushCredentials([
+            'db-name' => 'drupal', 'db-hostname' => 'db', 'db-password' => 'p',
+            'db-port' => '3306', 'db-username' => 'u',
+        ]);
+
+        self::assertSame('', $result['db_type']);
     }
 }
