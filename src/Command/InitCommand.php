@@ -22,12 +22,15 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Yaml\Yaml;
 
+use function array_keys;
 use function array_map;
+use function array_unique;
 use function file_put_contents;
 use function getcwd;
 use function is_array;
 use function is_dir;
 use function is_file;
+use function is_string;
 use function mkdir;
 use function sprintf;
 
@@ -52,7 +55,7 @@ final class InitCommand extends Command
     {
         $this
             ->addOption('force', null, InputOption::VALUE_NONE, 'Overwrite existing files without asking')
-            ->addOption('environment', 'e', InputOption::VALUE_REQUIRED, 'Name of the first environment', 'production');
+            ->addOption('environment', 'e', InputOption::VALUE_REQUIRED, 'Name of the environment to set up', 'production');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -69,29 +72,39 @@ final class InitCommand extends Command
 
         $io->title('php-sync-tool');
 
-        $framework = $this->askFramework($io, $projectDir);
-        $localPath = $io->ask('Path to the credential file on this machine', $this->scaffold->proposePath($projectDir, $framework));
+        $defaultsFile = ProjectScaffold::DIRECTORY.'/defaults.yaml';
+        $files = [];
+
+        // A project that is already set up gets another environment added to it.
+        // The framework and this machine are shared by all of them, so those
+        // questions are neither asked nor answered a second time.
+        if ($force || !is_file($projectDir.'/'.$defaultsFile)) {
+            $framework = $this->askFramework($io, $projectDir);
+            $localPath = (string) $io->ask('Path to the credential file on this machine', $this->scaffold->proposePath($projectDir, $framework));
+            $files[$defaultsFile] = $this->scaffold->defaults($framework, ['path' => $localPath]);
+        } else {
+            $io->text(sprintf('%s is already there, adding an environment to it.', $defaultsFile));
+            $localPath = $this->configuredLocalPath($projectDir.'/'.$defaultsFile);
+        }
+
         $environment = $this->askEnvironment($input, $io);
 
         $io->section(sprintf('The "%s" environment', $environment));
         $host = $io->ask('SSH host');
         $user = $io->ask('SSH user');
-        $remotePath = $io->ask('Path to the credential file there', (string) $localPath);
+        $remotePath = $io->ask('Path to the credential file there', $localPath);
 
-        $files = [
-            ProjectScaffold::DIRECTORY.'/defaults.yaml' => $this->scaffold->defaults($framework, ['path' => (string) $localPath]),
-            ProjectScaffold::DIRECTORY.'/'.$environment.'.yaml' => $this->scaffold->environment($environment, [
-                'host' => (string) $host,
-                'user' => (string) $user,
-                'path' => (string) $remotePath,
-            ]),
-        ];
+        $files[ProjectScaffold::DIRECTORY.'/'.$environment.'.yaml'] = $this->scaffold->environment($environment, [
+            'host' => (string) $host,
+            'user' => (string) $user,
+            'path' => (string) $remotePath,
+        ]);
 
         if (!$this->write($io, $projectDir, $files, $force)) {
             return Command::FAILURE;
         }
 
-        $this->validateWritten($projectDir, $files);
+        $this->validateWritten($projectDir, [$defaultsFile, ...array_keys($files)]);
 
         $io->success(sprintf('Ready. Run "sync-tool pull %s" to pull that database into this project.', $environment));
 
@@ -109,13 +122,26 @@ final class InitCommand extends Command
         return Framework::from($answer);
     }
 
+    /**
+     * The path this machine keeps its credential file at, so that the remote one
+     * can be proposed from it.
+     */
+    private function configuredLocalPath(string $defaultsPath): ?string
+    {
+        $parsed = Yaml::parseFile($defaultsPath);
+        $local = is_array($parsed) ? ($parsed['local'] ?? null) : null;
+        $path = is_array($local) ? ($local['path'] ?? null) : null;
+
+        return is_string($path) ? $path : null;
+    }
+
     private function askEnvironment(InputInterface $input, SymfonyStyle $io): string
     {
         /** @var string $default */
         $default = $input->getOption('environment');
 
         /** @var string $name */
-        $name = $io->ask('Name of the first environment', $default);
+        $name = $io->ask('Name of the environment', $default);
 
         return $name;
     }
@@ -157,15 +183,16 @@ final class InitCommand extends Command
     }
 
     /**
-     * The files are only useful if the tool can read them back.
+     * The files are only useful if the tool can read them back, and an added
+     * environment is only valid together with the defaults it builds on.
      *
-     * @param array<string, string> $files
+     * @param list<string> $relatives
      */
-    private function validateWritten(string $projectDir, array $files): void
+    private function validateWritten(string $projectDir, array $relatives): void
     {
         $merged = [];
 
-        foreach (array_keys($files) as $relative) {
+        foreach (array_unique($relatives) as $relative) {
             $parsed = Yaml::parseFile($projectDir.'/'.$relative);
 
             if (is_array($parsed)) {

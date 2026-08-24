@@ -81,18 +81,52 @@ final class InitCommandTest extends TestCase
     }
 
     #[Test]
-    public function keepsAnExistingFileWhenTheAnswerIsNo(): void
+    public function keepsAnExistingEnvironmentFileWhenTheAnswerIsNo(): void
     {
-        mkdir($this->project.'/.sync-tool', 0o777, true);
-        file_put_contents($this->project.'/.sync-tool/defaults.yaml', "# hand written\n");
+        $this->writeDefaults();
+        file_put_contents($this->project.'/.sync-tool/production.yaml', "# hand written\n");
 
         $tester = $this->tester();
-        $tester->setInputs(['TYPO3', 'config/system/settings.php', 'production', 'prod.example.com', 'deploy', '/remote/path', 'no']);
+        $tester->setInputs(['production', 'prod.example.com', 'deploy', '/remote/path', 'no']);
         $exitCode = $tester->execute([]);
 
         self::assertSame(1, $exitCode);
-        self::assertSame("# hand written\n", file_get_contents($this->project.'/.sync-tool/defaults.yaml'));
-        self::assertFileDoesNotExist($this->project.'/.sync-tool/production.yaml');
+        self::assertSame("# hand written\n", file_get_contents($this->project.'/.sync-tool/production.yaml'));
+    }
+
+    /**
+     * A second environment is the normal case, not a reason to rewrite the shared
+     * defaults: the questions behind them are not asked again.
+     */
+    #[Test]
+    public function addsAnEnvironmentWithoutTouchingTheExistingDefaults(): void
+    {
+        $this->writeDefaults();
+
+        $tester = $this->tester();
+        $tester->setInputs(['staging', 'stage.example.com', 'deploy', '/var/www/stage/.env']);
+        $exitCode = $tester->execute(['--environment' => 'staging']);
+
+        self::assertSame(0, $exitCode, $tester->getDisplay());
+        self::assertSame("type: Symfony\nlocal:\n  path: .env\n", file_get_contents($this->project.'/.sync-tool/defaults.yaml'));
+
+        $environment = Yaml::parseFile($this->project.'/.sync-tool/staging.yaml');
+        self::assertSame('stage.example.com', $environment['origin']['host']);
+        self::assertSame('/var/www/stage/.env', $environment['origin']['path']);
+        self::assertFileExists($this->project.'/.sync-tool/production.yaml');
+    }
+
+    #[Test]
+    public function theRemotePathFallsBackToTheConfiguredLocalPath(): void
+    {
+        $this->writeDefaults();
+
+        $tester = $this->tester();
+        $tester->setInputs(['staging', 'stage.example.com', 'deploy', '']);
+        $tester->execute([]);
+
+        $environment = Yaml::parseFile($this->project.'/.sync-tool/staging.yaml');
+        self::assertSame('.env', $environment['origin']['path'], 'taken from local.path in defaults.yaml');
     }
 
     #[Test]
@@ -135,6 +169,13 @@ final class InitCommandTest extends TestCase
         self::assertSame(1, $exitCode);
         self::assertStringContainsString('needs a terminal', $tester->getDisplay());
         self::assertFileDoesNotExist($this->project.'/.sync-tool/defaults.yaml');
+    }
+
+    private function writeDefaults(): void
+    {
+        mkdir($this->project.'/.sync-tool', 0o777, true);
+        file_put_contents($this->project.'/.sync-tool/defaults.yaml', "type: Symfony\nlocal:\n  path: .env\n");
+        file_put_contents($this->project.'/.sync-tool/production.yaml', "origin:\n  host: prod.example.com\n");
     }
 
     private function tester(): CommandTester
