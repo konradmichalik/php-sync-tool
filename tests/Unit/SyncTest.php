@@ -38,9 +38,16 @@ final class SyncTest extends TestCase
     private const DEFAULT_RESPONSES = [
         'LIKE' => "col\ncache_pages\ncache_hash",
         'SHOW TABLES;' => "Tables_in_app\nusers\nposts",
-        'echo VALID' => 'VALID',
+        'tail -n 5' => "--\n-- Dump completed on 2026-08-31 12:00:00",
         'stat ' => "d1 /tmp/_app_a.gz\nd2 /tmp/_app_b.gz\nd3 /tmp/_app_c.gz",
     ];
+
+    /**
+     * The trailer of a complete dump, in the dialect of the target being imported
+     * into. A test whose target is Postgres has to say so, otherwise it asserts
+     * against a dump mysqldump would have written.
+     */
+    private const POSTGRES_TRAILER = ['tail -n 5' => "--\n-- PostgreSQL database dump complete\n--"];
     /** @var list<string> */
     private array $logs = [];
 
@@ -51,7 +58,7 @@ final class SyncTest extends TestCase
 
         self::assertTrue($recorder->ran('mysqldump'), 'creates origin dump');
         self::assertTrue($recorder->ran('rsync'), 'transfers the dump via rsync, even for a local-to-local copy');
-        self::assertTrue($recorder->ran('gunzip -c'), 'imports dump into target');
+        self::assertTrue($recorder->ran('| mysql'), 'imports dump into target');
         self::assertContains('Transferring dump', $this->logs);
     }
 
@@ -121,7 +128,7 @@ final class SyncTest extends TestCase
 
         self::assertTrue($recorder->ran('mysqldump'));
         self::assertFalse($recorder->ran('cp '), 'no transfer in dump-only mode');
-        self::assertFalse($recorder->ran('gunzip -c'), 'no import in dump-only mode');
+        self::assertFalse($recorder->ran('| mysql'), 'no import in dump-only mode');
     }
 
     #[Test]
@@ -147,18 +154,56 @@ final class SyncTest extends TestCase
         $recorder = $this->runSync($config, Plans::syncLocal());
 
         self::assertTrue($recorder->ran('mysqldump'));
-        self::assertFalse($recorder->ran('gunzip -c'), 'keepDump leaves the target untouched');
+        self::assertFalse($recorder->ran('| mysql'), 'keepDump leaves the target untouched');
     }
 
     #[Test]
     public function checkDumpFailureAborts(): void
     {
-        $recorder = new RecordingCommandRunner(['echo VALID' => 'MISSING']);
+        $recorder = new RecordingCommandRunner([]);
 
         $this->expectException(SyncException::class);
-        $this->expectExceptionMessage('Dump validation failed');
+        $this->expectExceptionMessage('is missing or empty');
 
         $this->syncWith($recorder)->run($this->localConfig(), Plans::syncLocal());
+    }
+
+    /**
+     * The case a size check cannot see: a dump the tool started but never
+     * finished still has content, and importing it silently loses rows.
+     */
+    #[Test]
+    public function truncatedDumpAborts(): void
+    {
+        $recorder = new RecordingCommandRunner(['tail -n 5' => "INSERT INTO `users` VALUES (1,'a'),(2,'b"]);
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('is incomplete');
+
+        $this->syncWith($recorder)->run($this->localConfig(), Plans::syncLocal());
+    }
+
+    #[Test]
+    public function completeDumpPassesTheCheck(): void
+    {
+        $recorder = $this->runSync($this->localConfig(), Plans::syncLocal());
+
+        self::assertTrue($recorder->ran('| tail -n 5'), 'the dump trailer is read');
+        self::assertTrue($recorder->ran('| mysql'), 'and the import follows');
+    }
+
+    /**
+     * An external `--import-file` may be a plain .sql, which has to be read
+     * without gunzip.
+     */
+    #[Test]
+    public function plainImportFileIsReadWithoutGunzip(): void
+    {
+        $config = $this->localConfig(['import' => '/dumps/plain.sql']);
+
+        $recorder = $this->runSync($config, Plans::importLocal());
+
+        self::assertTrue($recorder->ran("cat '/dumps/plain.sql' | tail -n 5"));
     }
 
     #[Test]
@@ -197,7 +242,7 @@ final class SyncTest extends TestCase
 
         $backup = $this->indexOfCommand($recorder, 'sync-tool_backup_');
 
-        self::assertLessThan($this->indexOfCommand($recorder, 'gunzip -c'), $backup, 'the backup runs before the import');
+        self::assertLessThan($this->indexOfCommand($recorder, '| mysql'), $backup, 'the backup runs before the import');
         self::assertLessThan($this->indexOfCommand($recorder, 'DROP TABLE'), $backup, 'and before the target is cleared');
     }
 
@@ -358,7 +403,7 @@ final class SyncTest extends TestCase
         ]);
 
         $recorder = new RecordingCommandRunner(
-            self::DEFAULT_RESPONSES + ['cat ' => 'DATABASE_URL=postgresql://u:p@postgres:5432/resolved_db'],
+            self::POSTGRES_TRAILER + self::DEFAULT_RESPONSES + ['cat ' => 'DATABASE_URL=postgresql://u:p@postgres:5432/resolved_db'],
         );
 
         $this->syncWith($recorder)->run($config, Plans::syncLocal());
@@ -380,7 +425,7 @@ final class SyncTest extends TestCase
         // Empty password in the application's own configuration. The credential
         // check has to see the configured one, otherwise the override is pointless.
         $recorder = new RecordingCommandRunner(
-            self::DEFAULT_RESPONSES + ['cat ' => 'DATABASE_URL=postgresql://u:@postgres:5432/resolved_db'],
+            self::POSTGRES_TRAILER + self::DEFAULT_RESPONSES + ['cat ' => 'DATABASE_URL=postgresql://u:@postgres:5432/resolved_db'],
         );
 
         $this->syncWith($recorder)->run($config, Plans::syncLocal());
@@ -464,7 +509,7 @@ final class SyncTest extends TestCase
             'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres']],
         ]);
 
-        $recorder = $this->runSync($config, Plans::syncLocal());
+        $recorder = $this->runSync($config, Plans::syncLocal(), self::POSTGRES_TRAILER);
 
         self::assertTrue($recorder->ran('pg_dump'), 'dumps with pg_dump');
         self::assertTrue($recorder->ran('psql'), 'imports with psql');
@@ -504,7 +549,7 @@ final class SyncTest extends TestCase
 
         $recorder = $this->runSync($config, Plans::syncLocal());
 
-        $importIndex = $this->indexOfCommand($recorder, 'gunzip -c');
+        $importIndex = $this->indexOfCommand($recorder, '| mysql');
         $maskIndex = $this->indexOfCommand($recorder, 'CONCAT(MD5(');
         $postSqlIndex = $this->indexOfCommand($recorder, 'UPDATE marker SET done = 1');
 
@@ -563,9 +608,13 @@ final class SyncTest extends TestCase
         ]);
     }
 
-    private function runSync(SyncConfig $config, SyncPlan $plan): RecordingCommandRunner
+    /**
+     * @param array<string, string> $responses substring => canned stdout, taking
+     *                                         precedence over the defaults
+     */
+    private function runSync(SyncConfig $config, SyncPlan $plan, array $responses = []): RecordingCommandRunner
     {
-        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES);
+        $recorder = new RecordingCommandRunner($responses + self::DEFAULT_RESPONSES);
         $this->syncWith($recorder)->run($config, $plan);
 
         return $recorder;

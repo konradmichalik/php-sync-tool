@@ -32,6 +32,7 @@ use Throwable;
 use function implode;
 use function sprintf;
 use function str_contains;
+use function str_ends_with;
 use function str_replace;
 
 /**
@@ -190,7 +191,7 @@ final readonly class Sync
                 : $this->dumpDir($client).$dumpName.'.gz';
 
             if ($config->checkDump) {
-                $this->checkDump($runner, $dumpPath);
+                $this->checkDump($runner, $driver, $dumpPath);
             }
 
             if ($config->backupBeforeImport) {
@@ -243,12 +244,28 @@ final readonly class Sync
         $this->progress->advance();
     }
 
-    private function checkDump(CommandRunner $runner, string $dumpPath): void
+    /**
+     * A dump is only trustworthy if the dump tool got to the end of it. Checking
+     * the file size alone accepts the half-written file a mysqldump killed by a
+     * full disk leaves behind, and the import that follows may already have
+     * dropped the target's tables.
+     *
+     * The trailer is read rather than the last line alone, because pg_dump closes
+     * its marker with a comment rule while mysqldump does not.
+     */
+    private function checkDump(CommandRunner $runner, DatabaseDriver $driver, string $dumpPath): void
     {
-        $result = $runner->run(sprintf('test -s %s && echo VALID', escapeshellarg($dumpPath)), true);
+        $safePath = escapeshellarg($dumpPath);
+        $read = str_ends_with($dumpPath, '.gz') ? 'gunzip -c '.$safePath : 'cat '.$safePath;
 
-        if ('VALID' !== trim($result)) {
+        $trailer = trim($runner->run(sprintf('test -s %s && %s | tail -n 5', $safePath, $read), true));
+
+        if ('' === $trailer) {
             throw new SyncException(sprintf('Dump validation failed: %s is missing or empty', $dumpPath));
+        }
+
+        if (!str_contains($trailer, $driver->dumpCompletionMarker())) {
+            throw new SyncException(sprintf('Dump validation failed: %s is incomplete, the dump tool did not finish writing it. Set check_dump to false if the dump is intentionally written without comments.', $dumpPath));
         }
     }
 
