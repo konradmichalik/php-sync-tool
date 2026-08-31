@@ -17,15 +17,12 @@ use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\{ClientBinaries, DumpRequest, PgpassFile};
 use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
 use KonradMichalik\SyncTool\Security\{Shell, SqlLiteral, TableName};
+use KonradMichalik\SyncTool\Util\Pure;
 
-use function array_filter;
 use function array_map;
-use function array_values;
-use function explode;
 use function implode;
 use function sprintf;
 use function str_ends_with;
-use function trim;
 
 /**
  * PostgresDriver.
@@ -129,7 +126,7 @@ final readonly class PostgresDriver implements DatabaseDriver
     public function parseTableList(string $output): array
     {
         // `psql -t -A` prints one bare value per line, no header.
-        return array_values(array_filter(array_map(trim(...), explode("\n", $output))));
+        return Pure::outputLines($output);
     }
 
     public function dropTablesStatement(array $tables): ?string
