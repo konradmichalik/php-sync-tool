@@ -130,6 +130,11 @@ final readonly class SyncConfig
         return $this->with(['sshAgent' => $sshAgent]);
     }
 
+    public function withSshpass(bool $useSshpass): self
+    {
+        return $this->with(['useSshpass' => $useSshpass]);
+    }
+
     public function getClient(string $client): ClientConfig
     {
         return match ($client) {

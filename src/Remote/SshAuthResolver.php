@@ -20,19 +20,21 @@ use KonradMichalik\SyncTool\Mode\SyncPlan;
 use function sprintf;
 
 /**
- * SshPasswordResolver.
+ * SshAuthResolver.
  *
- * Fills in the SSH passwords a run needs but does not have, by asking. Without
- * this, `--force-password` could only succeed when a password was already in the
- * configuration, which is the one case where the flag is pointless.
+ * Turns what the configuration says about SSH authentication into what the run
+ * will actually use: the agent it can see, the passwords it has to ask for, and
+ * whether rsync can carry a password at all.
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
  */
-final readonly class SshPasswordResolver
+final readonly class SshAuthResolver
 {
     public function __construct(
         private SshAgent $agent = new SshAgent(),
+        private Sshpass $sshpass = new Sshpass(),
+        private RunnerFactory $runners = new RunnerFactory(),
     ) {}
 
     /**
@@ -54,7 +56,42 @@ final readonly class SshPasswordResolver
             $target = $target->withPassword($ask($this->describe($target)));
         }
 
-        return $config->withClients($origin, $target);
+        // After the questions: an endpoint may have just gained the password that
+        // makes sshpass necessary.
+        return $this->adoptSshpass($config->withClients($origin, $target));
+    }
+
+    /**
+     * rsync takes no password of its own, so a password-authenticated transfer
+     * needs `sshpass` to feed it one. Without this the transfer got a plain
+     * `ssh` and stopped at a prompt: a hang in automation, a failure without a
+     * terminal.
+     *
+     * The probe is skipped whenever nothing would use the answer. Note that a
+     * configured `use_sshpass: false` cannot be told apart from an unset one, so
+     * it does not opt out; key or agent authentication is the way to keep sshpass
+     * out of the command.
+     */
+    private function adoptSshpass(SyncConfig $config): SyncConfig
+    {
+        if ($config->useSshpass || !$config->useRsync || !$this->hasPasswordAuthenticatedRemote($config)) {
+            return $config;
+        }
+
+        return $this->sshpass->isAvailable($this->runners->local())
+            ? $config->withSshpass(true)
+            : $config;
+    }
+
+    private function hasPasswordAuthenticatedRemote(SyncConfig $config): bool
+    {
+        foreach ([$config->origin, $config->target] as $client) {
+            if ($client->isRemote() && null === $client->sshKey && null !== $client->password && '' !== $client->password) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -21,7 +21,7 @@ use KonradMichalik\SyncTool\Logging\LogWriter;
 use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncPlan, SyncSteps};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
 use KonradMichalik\SyncTool\Output\Progress\NullSyncProgress;
-use KonradMichalik\SyncTool\Remote\SshPasswordResolver;
+use KonradMichalik\SyncTool\Remote\SshAuthResolver;
 use KonradMichalik\SyncTool\Sync;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -59,7 +59,7 @@ class SyncCommand extends Command
         private readonly SyncModeResolver $modeResolver = new SyncModeResolver(),
         private readonly SyncSteps $steps = new SyncSteps(),
         ?EnvironmentAssembler $environments = null,
-        private readonly SshPasswordResolver $passwords = new SshPasswordResolver(),
+        private readonly SshAuthResolver $sshAuth = new SshAuthResolver(),
     ) {
         $this->environments = $environments ?? new EnvironmentAssembler($resolver);
         parent::__construct();
@@ -169,7 +169,7 @@ class SyncCommand extends Command
             // After the confirmation and after the dry-run exit: a run that is about
             // to be called off, or that never connects, has no business asking for
             // a password.
-            $syncConfig = $this->passwords->resolve($syncConfig, $plan, $this->passwordPrompt($io, $input->isInteractive()));
+            $syncConfig = $this->sshAuth->resolve($syncConfig, $plan, $this->passwordPrompt($io, $input->isInteractive()));
 
             $fileLog = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, static function (string $l): void {});
 
