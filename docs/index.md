@@ -6,7 +6,7 @@ hero:
   text: Database & File Synchronization for PHP
   tagline: Sync MySQL, MariaDB or PostgreSQL databases and files between systems over SSH/rsync/SFTP — with automatic framework credential detection
   image:
-    src: /logo.svg
+    src: /logo.png
     alt: php-sync-tool
   actions:
     - theme: brand

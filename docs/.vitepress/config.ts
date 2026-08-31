@@ -9,7 +9,7 @@ export default defineConfig({
   srcExclude: ['superpowers/**'],
 
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/php-sync-tool/logo.svg' }],
+    ['link', { rel: 'icon', type: 'image/png', href: '/php-sync-tool/logo.png' }],
     ['meta', { name: 'theme-color', content: '#777bb3' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'php-sync-tool' }],
@@ -17,7 +17,7 @@ export default defineConfig({
   ],
 
   themeConfig: {
-    logo: '/logo.svg',
+    logo: '/logo.png',
 
     nav: [
       { text: 'Guide', link: '/getting-started/' },
