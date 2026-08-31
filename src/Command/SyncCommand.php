@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Command;
 
+use Closure;
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, EnvironmentAssembler, SyncConfig};
 use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode};
 use KonradMichalik\SyncTool\Exception\{ConfigException, SyncToolException};
@@ -20,6 +21,7 @@ use KonradMichalik\SyncTool\Logging\LogWriter;
 use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncPlan, SyncSteps};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
 use KonradMichalik\SyncTool\Output\Progress\NullSyncProgress;
+use KonradMichalik\SyncTool\Remote\SshPasswordResolver;
 use KonradMichalik\SyncTool\Sync;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -34,6 +36,7 @@ use function array_keys;
 use function is_array;
 use function is_string;
 use function sprintf;
+use function trim;
 
 /**
  * SyncCommand.
@@ -56,6 +59,7 @@ class SyncCommand extends Command
         private readonly SyncModeResolver $modeResolver = new SyncModeResolver(),
         private readonly SyncSteps $steps = new SyncSteps(),
         ?EnvironmentAssembler $environments = null,
+        private readonly SshPasswordResolver $passwords = new SshPasswordResolver(),
     ) {
         $this->environments = $environments ?? new EnvironmentAssembler($resolver);
         parent::__construct();
@@ -161,6 +165,11 @@ class SyncCommand extends Command
 
                 return Command::SUCCESS;
             }
+
+            // After the confirmation and after the dry-run exit: a run that is about
+            // to be called off, or that never connects, has no business asking for
+            // a password.
+            $syncConfig = $this->passwords->resolve($syncConfig, $plan, $this->passwordPrompt($io, $input->isInteractive()));
 
             $fileLog = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, static function (string $l): void {});
 
@@ -508,6 +517,34 @@ class SyncCommand extends Command
     private function describeClient(bool $isRemote, string $host): string
     {
         return $isRemote ? sprintf('remote (%s)', $host) : 'local';
+    }
+
+    /**
+     * Asking only works with someone there to answer. A non-interactive run keeps
+     * the error it always had, which names the endpoint and what it is missing,
+     * instead of blocking a deploy on a prompt nobody will see.
+     *
+     * @return Closure(string): string
+     */
+    private function passwordPrompt(SymfonyStyle $io, bool $isInteractive): Closure
+    {
+        return static function (string $endpoint) use ($io, $isInteractive): string {
+            if (!$isInteractive) {
+                throw new ConfigException(sprintf('No SSH authentication configured for %s. Set ssh_key, password or ssh_agent, or run interactively to be asked for a password.', $endpoint));
+            }
+
+            do {
+                /** @var string|null $password */
+                $password = $io->askHidden(sprintf('SSH password for %s', $endpoint));
+                $password = null === $password ? '' : trim($password);
+
+                if ('' === $password) {
+                    $io->warning('The password cannot be empty.');
+                }
+            } while ('' === $password);
+
+            return $password;
+        };
     }
 
     /**
