@@ -79,6 +79,17 @@ final class WitherCompletenessTest extends TestCase
         );
     }
 
+    public function testWithSshAgentPreservesEveryPropertyButTheFlag(): void
+    {
+        $config = self::populatedConfig();
+
+        $this->assertPreserved(
+            $config,
+            $config->withSshAgent(!$config->sshAgent),
+            ['sshAgent'],
+        );
+    }
+
     /**
      * Guards the guard: every constructor promoted property must be reachable as
      * a public property, otherwise the comparison above would silently skip it.

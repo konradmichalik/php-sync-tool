@@ -16,7 +16,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Mode\SyncPlan;
 use KonradMichalik\SyncTool\Remote\SshPasswordResolver;
-use KonradMichalik\SyncTool\Tests\Fixture\Plans;
+use KonradMichalik\SyncTool\Tests\Fixture\{FakeSshAgent, Plans};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -141,6 +141,67 @@ final class SshPasswordResolverTest extends TestCase
     }
 
     /**
+     * A loaded agent is a working way in, so there is nothing to ask about. It
+     * used to be ignored unless the configuration named it.
+     */
+    #[Test]
+    public function aLoadedAgentIsUsedWithoutBeingConfigured(): void
+    {
+        $config = $this->resolve(
+            $this->config(['origin' => ['host' => 'o.example.com', 'user' => 'deploy']]),
+            Plans::receiver(),
+            agentHasKeys: true,
+        );
+
+        self::assertSame([], $this->asked);
+        self::assertTrue($config->sshAgent);
+    }
+
+    #[Test]
+    public function anEmptyAgentStillLeadsToTheQuestion(): void
+    {
+        $config = $this->resolve(
+            $this->config(['origin' => ['host' => 'o.example.com', 'user' => 'deploy']]),
+            Plans::receiver(),
+            agentHasKeys: false,
+        );
+
+        self::assertSame(['deploy@o.example.com'], $this->asked);
+        self::assertFalse($config->sshAgent);
+    }
+
+    #[Test]
+    public function forcePasswordNeverConsultsTheAgent(): void
+    {
+        $agent = new FakeSshAgent(true);
+
+        (new SshPasswordResolver($agent))->resolve(
+            $this->config([
+                'force_password' => true,
+                'origin' => ['host' => 'o.example.com', 'user' => 'deploy'],
+            ]),
+            Plans::receiver(),
+            static fn (string $endpoint): string => 'typed',
+        );
+
+        self::assertSame(0, $agent->probes);
+    }
+
+    #[Test]
+    public function anAllLocalRunNeverConsultsTheAgent(): void
+    {
+        $agent = new FakeSshAgent(true);
+
+        (new SshPasswordResolver($agent))->resolve(
+            $this->config(['origin' => ['path' => '/srv/a'], 'target' => ['path' => '/srv/b']]),
+            Plans::syncLocal(),
+            static fn (string $endpoint): string => 'typed',
+        );
+
+        self::assertSame(0, $agent->probes);
+    }
+
+    /**
      * @param array<string, mixed> $overrides
      */
     private function config(array $overrides): SyncConfig
@@ -151,9 +212,9 @@ final class SshPasswordResolverTest extends TestCase
         ]);
     }
 
-    private function resolve(SyncConfig $config, SyncPlan $plan): SyncConfig
+    private function resolve(SyncConfig $config, SyncPlan $plan, bool $agentHasKeys = false): SyncConfig
     {
-        return (new SshPasswordResolver())->resolve($config, $plan, function (string $endpoint): string {
+        return (new SshPasswordResolver(new FakeSshAgent($agentHasKeys)))->resolve($config, $plan, function (string $endpoint): string {
             $this->asked[] = $endpoint;
 
             return 'typed-for-'.$endpoint;

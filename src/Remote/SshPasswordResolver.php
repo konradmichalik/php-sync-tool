@@ -31,11 +31,16 @@ use function sprintf;
  */
 final readonly class SshPasswordResolver
 {
+    public function __construct(
+        private SshAgent $agent = new SshAgent(),
+    ) {}
+
     /**
      * @param Closure(string): string $ask receives `user@host`, returns the password
      */
     public function resolve(SyncConfig $config, SyncPlan $plan, Closure $ask): SyncConfig
     {
+        $config = $this->adoptRunningAgent($config);
         $origin = $config->origin;
         $target = $config->target;
 
@@ -53,6 +58,39 @@ final readonly class SshPasswordResolver
     }
 
     /**
+     * A loaded agent is a working way in, so it is used without having to be named
+     * in the configuration. `ssh_agent: true` stays meaningful as the way to
+     * insist on the agent when the probe cannot reach it.
+     *
+     * The probe is skipped whenever it could not change anything: with
+     * `--force-password` the password wins regardless, and an endpoint that has a
+     * key or a password of its own never reaches the agent either.
+     */
+    private function adoptRunningAgent(SyncConfig $config): SyncConfig
+    {
+        if ($config->sshAgent || $config->forcePassword) {
+            return $config;
+        }
+
+        foreach ([$config->origin, $config->target] as $client) {
+            if ($client->isRemote() && !$this->hasOwnCredentials($client)) {
+                return $this->agent->hasKeys() ? $config->withSshAgent(true) : $config;
+            }
+        }
+
+        return $config;
+    }
+
+    /**
+     * A key or a password on the endpoint itself, which is what both the agent and
+     * the prompt stand back for.
+     */
+    private function hasOwnCredentials(ClientConfig $client): bool
+    {
+        return null !== $client->sshKey || (null !== $client->password && '' !== $client->password);
+    }
+
+    /**
      * `--force-password` overrides a configured key on purpose, which is what it
      * is for. Otherwise an endpoint is only asked when it has no other way in.
      */
@@ -66,7 +104,7 @@ final readonly class SshPasswordResolver
             return true;
         }
 
-        if (null !== $client->sshKey || (null !== $client->password && '' !== $client->password)) {
+        if ($this->hasOwnCredentials($client)) {
             return false;
         }
 
