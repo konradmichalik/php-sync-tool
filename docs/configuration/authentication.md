@@ -13,9 +13,10 @@ php-sync-tool supports several SSH authentication methods:
 | Password | Low | No | `password` |
 | Interactive prompt | Low | No | `--force-password` |
 
-The endpoint's own `ssh_key` and `password` are tried first, in that order; the
-agent is used when neither is configured. A `ssh_key` that is set therefore wins
-over `ssh_agent: true`, so remove it when you want the agent.
+The endpoint's own `ssh_key` and `password` are tried first, in that order; a
+loaded agent is used when neither is configured, whether or not `ssh_agent` says
+so. A `ssh_key` that is set therefore wins over the agent, so remove it when you
+want the agent.
 
 When an endpoint has none of them, the tool asks for a password on a terminal.
 Without one, which is the normal case in CI and on a deploy host, it stops
@@ -34,9 +35,13 @@ tunnel through the system `ssh` client.
 
 ## SSH Agent (Recommended)
 
-Set `ssh_agent: true` at the root of the configuration to authenticate with your
-running SSH agent. This is the way to use a passphrase-protected key: phpseclib
-cannot decrypt one itself, the agent holds it unlocked.
+An agent that is running and holds at least one key is used on its own, as long
+as the endpoint has no `ssh_key` and no `password` of its own. This is the way to
+use a passphrase-protected key: phpseclib cannot decrypt one itself, the agent
+holds it unlocked.
+
+Set `ssh_agent: true` at the root of the configuration to insist on the agent,
+for instance when the tool cannot reach the socket to see it for itself.
 
 ```yaml
 # config.yaml
@@ -57,8 +62,8 @@ ssh-add -l
 bin/sync-tool -f config.yaml
 ```
 
-Without `ssh_agent: true` and without `ssh_key`/`password`, the run stops with
-`No SSH authentication method configured for host …`.
+With no agent, no `ssh_key` and no `password`, the tool asks for a password on a
+terminal and stops with `No SSH authentication configured for …` without one.
 
 ## SSH Key
 
