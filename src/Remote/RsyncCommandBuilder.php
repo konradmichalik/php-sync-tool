@@ -30,6 +30,18 @@ use function str_replace;
 final class RsyncCommandBuilder
 {
     /**
+     * Modes are written symbolically, not as `D2770,F660`. macOS ships openrsync,
+     * which implements `--chmod` for symbolic modes only and rejects an octal one
+     * outright: `rsync: --chmod=F660: invalid argument`. rsync understands both,
+     * so the symbolic form is the one that works on every platform.
+     *
+     * `Dg=rwxs` carries the setgid bit the octal `2` stood for, so a synced tree
+     * keeps inheriting its group.
+     */
+    private const DIRECTORY_MODES = '--chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo=';
+    private const FILE_MODES = '--chmod=Fu=rw,Fg=rw,Fo=';
+
+    /**
      * Directory trees: mirror the source, compress on the wire, normalise
      * filename encoding and set group-readable modes on dirs and files.
      *
@@ -42,7 +54,7 @@ final class RsyncCommandBuilder
         '--stats',
         '--human-readable',
         '--iconv=UTF-8',
-        '--chmod=D2770,F660',
+        self::DIRECTORY_MODES,
     ];
 
     /**
@@ -56,7 +68,7 @@ final class RsyncCommandBuilder
         '-a',
         '--stats',
         '--human-readable',
-        '--chmod=F660',
+        self::FILE_MODES,
     ];
 
     public function passwordEnvironment(ClientConfig $client, bool $useSshpass): string

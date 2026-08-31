@@ -131,7 +131,24 @@ final class RsyncCommandBuilderTest extends TestCase
         self::assertStringNotContainsString('-z', $singleFile);
         self::assertStringNotContainsString('--delete', $singleFile);
         self::assertStringNotContainsString('--iconv', $singleFile);
-        self::assertStringContainsString('--chmod=F660', $singleFile);
+        self::assertStringContainsString('--chmod=Fu=rw,Fg=rw,Fo=', $singleFile);
+    }
+
+    #[Test]
+    public function chmodModesAreSymbolicSoOpenrsyncAcceptsThem(): void
+    {
+        // macOS ships openrsync, which implements --chmod for symbolic modes only
+        // and rejects an octal one: "rsync: --chmod=F660: invalid argument".
+        // Symbolic modes are understood by both openrsync and rsync 3.x.
+        $directory = $this->builder->options(null);
+        $singleFile = $this->builder->options(null, [], false, true);
+
+        self::assertStringContainsString('--chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo=', $directory);
+        self::assertStringContainsString('--chmod=Fu=rw,Fg=rw,Fo=', $singleFile);
+
+        self::assertStringNotContainsString('D2770', $directory, 'no octal mode reaches the command line');
+        self::assertStringNotContainsString('F660', $directory);
+        self::assertStringNotContainsString('F660', $singleFile);
     }
 
     #[Test]
@@ -145,11 +162,11 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsAppendAdditionalWithoutSeparator(): void
     {
         self::assertSame(
-            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660',
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo=',
             $this->builder->options(null),
         );
         self::assertSame(
-            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --progress',
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --progress',
             $this->builder->options(' --progress'),
         );
     }
@@ -158,7 +175,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsRequestMachineReadableProgressWhenAskedFor(): void
     {
         self::assertSame(
-            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --info=progress2 --no-i-r',
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --info=progress2 --no-i-r',
             $this->builder->options(null, withProgress: true),
         );
     }
@@ -167,7 +184,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsInsertsASeparatingSpaceEvenWithoutOne(): void
     {
         self::assertSame(
-            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 -z',
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= -z',
             $this->builder->options('-z'),
         );
     }
@@ -176,7 +193,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsAppendsExcludePatternsBeforeAdditional(): void
     {
         self::assertSame(
-            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --exclude='*.log' --exclude='cache/' --progress",
+            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --exclude='*.log' --exclude='cache/' --progress",
             $this->builder->options(' --progress', ['*.log', 'cache/']),
         );
     }
@@ -185,7 +202,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsWithExcludePatternsAndNoAdditional(): void
     {
         self::assertSame(
-            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --exclude='*.log'",
+            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --exclude='*.log'",
             $this->builder->options(null, ['*.log']),
         );
     }
@@ -194,7 +211,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsEscapesSingleQuotesInExcludePatterns(): void
     {
         self::assertSame(
-            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 --exclude='it'\\''s/*'",
+            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --exclude='it'\\''s/*'",
             $this->builder->options(null, ["it's/*"]),
         );
     }
@@ -237,7 +254,7 @@ final class RsyncCommandBuilderTest extends TestCase
         );
 
         self::assertSame(
-            'rsync --delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=D2770,F660 '
+            'rsync --delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= '
             .'-e "ssh -p22 -o StrictHostKeyChecking=no" deploy@server:/var/www/fileadmin/ /local/fileadmin/',
             $command,
         );
