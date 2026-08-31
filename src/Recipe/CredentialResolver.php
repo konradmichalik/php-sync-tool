@@ -63,10 +63,7 @@ final readonly class CredentialResolver
             $creds = self::extract($framework, $file, $content);
         }
 
-        $clientLabel = '' !== $client->host ? $client->host : 'local';
-        $this->validator->validate($clientLabel, $creds);
-
-        return new DatabaseConfig(
+        $detected = new DatabaseConfig(
             name: (string) ($creds['name'] ?? ''),
             host: (string) ($creds['host'] ?? ''),
             user: (string) ($creds['user'] ?? ''),
@@ -75,6 +72,21 @@ final readonly class CredentialResolver
             sslDisabled: false,
             type: DatabaseSystem::fromDriver((string) ($creds['db_type'] ?? '')),
         );
+
+        // An explicitly configured value stands in for one the application's own
+        // configuration does not carry, so the check has to see the merged result
+        // rather than what was read from the file.
+        $db = $detected->overriddenBy($client->db);
+
+        $clientLabel = '' !== $client->host ? $client->host : 'local';
+        $this->validator->validate($clientLabel, [
+            'name' => $db->name,
+            'host' => $db->host,
+            'user' => $db->user,
+            'password' => $db->password,
+        ]);
+
+        return $db;
     }
 
     public function readStrategy(Framework $framework, string $file): ReadStrategy

@@ -49,4 +49,62 @@ final class DatabaseConfigTest extends TestCase
             DatabaseConfig::fromArray(['name' => 'app', 'type' => 'oracle'])->type,
         );
     }
+
+    #[Test]
+    public function everyExplicitlyConfiguredValueWinsOverTheDetectedOne(): void
+    {
+        $detected = new DatabaseConfig('detected_db', 'postgres', 'detected_user', 'detected_pw', 5432);
+        $explicit = DatabaseConfig::fromArray([
+            'name' => 'other_db',
+            'host' => '127.0.0.1',
+            'user' => 'other_user',
+            'password' => 'other_pw',
+            'port' => 6543,
+        ]);
+
+        $merged = $detected->overriddenBy($explicit);
+
+        self::assertSame('other_db', $merged->name);
+        self::assertSame('127.0.0.1', $merged->host);
+        self::assertSame('other_user', $merged->user);
+        self::assertSame('other_pw', $merged->password);
+        self::assertSame(6543, $merged->port);
+    }
+
+    #[Test]
+    public function unconfiguredValuesFallBackToTheDetectedOnes(): void
+    {
+        $detected = new DatabaseConfig('detected_db', 'postgres', 'detected_user', 'detected_pw', 5432);
+
+        $merged = $detected->overriddenBy(DatabaseConfig::fromArray(['host' => '127.0.0.1']));
+
+        self::assertSame('127.0.0.1', $merged->host, 'the one configured value is applied');
+        self::assertSame('detected_db', $merged->name);
+        self::assertSame('detected_user', $merged->user);
+        self::assertSame('detected_pw', $merged->password);
+        self::assertSame(5432, $merged->port);
+    }
+
+    #[Test]
+    public function theDetectedDatabaseTypeStaysAuthoritative(): void
+    {
+        $detected = new DatabaseConfig('app', 'postgres', 'u', 'p', 5432, type: DatabaseSystem::PostgreSQL);
+
+        // An unset type is indistinguishable from an explicit "mysql", so a
+        // configured type must not silently downgrade the detected driver.
+        $merged = $detected->overriddenBy(DatabaseConfig::fromArray(['host' => '127.0.0.1']));
+
+        self::assertSame(DatabaseSystem::PostgreSQL, $merged->type);
+    }
+
+    #[Test]
+    public function tlsSettingsComeFromTheConfigurationNotFromDetection(): void
+    {
+        $detected = new DatabaseConfig('app', 'db', 'u', 'p', 3306);
+
+        $merged = $detected->overriddenBy(DatabaseConfig::fromArray(['ssl_skip_verify' => true, 'ssl_ca' => '/ca.pem']));
+
+        self::assertTrue($merged->sslSkipVerify);
+        self::assertSame('/ca.pem', $merged->sslCa);
+    }
 }
