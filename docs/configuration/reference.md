@@ -35,7 +35,7 @@ stays a command.
 | `ignore_table` | array | Tables to exclude from the dump. A `table*` entry is expanded against the origin. |
 | `truncate_tables` | array | Tables to empty on the target before the import. A `table*` entry is expanded against the target. |
 | `backup_before_import` | boolean | Dump the target database before anything overwrites it (default: off). |
-| `check_dump` | boolean | Verify the dump has content before importing it (default: on). |
+| `check_dump` | boolean | Verify the dump was written to the end before importing it (default: on). |
 | `additional_dump_options` | string | Extra options for the dump binary. `additional_mysqldump_options`, the name the Python tool used, is still read. |
 | `log_file` | string | Path to a log file. |
 | `json_log` | boolean | Write the log file as JSON lines. |
