@@ -73,8 +73,12 @@ to, the run stops and says so rather than synchronizing nothing.
 
 - File transfers use the same endpoint roles and modes as the database sync
   (receiver, sender, proxy, etc.), so the direction follows origin → target.
-- The default transport is rsync. If rsync is unavailable, transfers fall back
-  to SFTP; pass `--no-rsync` to force SFTP explicitly.
+- The default transport is rsync. If no rsync is installed, the tool says so and
+  falls back to SFTP; pass `--no-rsync` to choose SFTP explicitly.
+- Between two paths on the same machine there is no host to reach, so SFTP is no
+  fallback. A database dump is copied with `cp`, but synchronizing directories
+  needs rsync and the run stops with a message naming it, because `cp` honors
+  neither `exclude` nor rsync's mirroring.
 - For proxy mode (remote → remote), files are relayed via the local machine in
   two hops, mirroring the database transfer.
 
