@@ -87,7 +87,7 @@ Under `origin.db` / `target.db`:
 | `ssl_cert` | string | Path to the client certificate. |
 | `ssl_key` | string | Path to the client key. |
 | `ssl_cipher` | string | Allowed cipher list. |
-| `type` | enum | Database system: `mysql`, `mariadb`, `postgres` (default: `mysql`). See [PostgreSQL](/configuration/postgresql). |
+| `type` | enum | Database system: `mysql`, `mariadb`, `postgres` (default: `mysql`). The MySQL and MariaDB binary names are detected on the endpoint, so this rarely needs setting for either. See [PostgreSQL](/configuration/postgresql). |
 
 The `ssl_*` keys configure a MySQL or MariaDB client and are written into the same
 temporary credential file as the password, so no path reaches the process list. A
