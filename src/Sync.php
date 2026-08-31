@@ -156,6 +156,7 @@ final readonly class Sync
             $runner->run($command);
             $this->progress->advance();
 
+            $this->reportTableCount($runner, $this->dumpDir($client).$dumpName.'.gz');
             $this->pruneDumps($client, $runner);
         } finally {
             $this->cleanupCredentials($client, $runner, $credentialsPath);
@@ -279,7 +280,6 @@ final readonly class Sync
     private function checkDump(CommandRunner $runner, DatabaseDriver $driver, string $dumpPath): void
     {
         $safePath = escapeshellarg($dumpPath);
-        $compressed = str_ends_with($dumpPath, '.gz');
 
         if ('OK' !== trim($runner->run(sprintf('test -s %s && echo OK', $safePath), true))) {
             throw new SyncException(sprintf('Dump validation failed: %s is missing or empty', $dumpPath));
@@ -295,12 +295,11 @@ final readonly class Sync
         // buys the difference between a dump that looks finished and one that is
         // intact, on the step whose whole job is to tell those apart. `check_dump`
         // turns the pair off together.
-        if ($compressed && 'OK' !== trim($runner->run(sprintf('gunzip -t %s && echo OK', $safePath), true))) {
+        if (str_ends_with($dumpPath, '.gz') && 'OK' !== trim($runner->run(sprintf('gunzip -t %s && echo OK', $safePath), true))) {
             throw new SyncException(sprintf('Dump validation failed: %s is not a valid gzip archive, it was damaged in writing or transfer', $dumpPath));
         }
 
-        $read = $compressed ? 'gunzip -c '.$safePath : 'cat '.$safePath;
-        $trailer = $runner->run(sprintf('%s | tail -n 5', $read), true);
+        $trailer = $runner->run(sprintf('%s | tail -n 5', $this->readDumpCommand($dumpPath)), true);
 
         if (!$this->hasCompletionLine($trailer, $driver->dumpCompletionMarker())) {
             throw new SyncException(sprintf('Dump validation failed: %s is incomplete, the dump tool did not finish writing it. Set check_dump to false if the dump is intentionally written without comments.', $dumpPath));
@@ -325,6 +324,37 @@ final readonly class Sync
         }
 
         return false;
+    }
+
+    /**
+     * How many tables the dump carries, counted in the file itself rather than
+     * asked of the database, so it describes what was actually exported after
+     * `tables`, `ignore_table` and any `where` clause have had their say.
+     *
+     * Reported rather than checked: only the person running the sync knows how
+     * many tables to expect, and a dump that is valid but unexpectedly small is
+     * otherwise invisible.
+     */
+    private function reportTableCount(CommandRunner $runner, string $dumpPath): void
+    {
+        // grep exits 1 on no match, which the runner is told to tolerate: zero
+        // tables is an answer, not a failure.
+        $count = trim($runner->run(sprintf('%s | grep -c "CREATE TABLE"', $this->readDumpCommand($dumpPath)), true));
+
+        if ('' !== $count) {
+            ($this->log)(sprintf('%s table(s) exported', $count));
+        }
+    }
+
+    /**
+     * Writes the dump to stdout, whether it is gzipped (everything this tool
+     * produces) or a plain `.sql` handed in through `--import-file`.
+     */
+    private function readDumpCommand(string $dumpPath): string
+    {
+        $safePath = escapeshellarg($dumpPath);
+
+        return str_ends_with($dumpPath, '.gz') ? 'gunzip -c '.$safePath : 'cat '.$safePath;
     }
 
     private function importAfterDump(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
