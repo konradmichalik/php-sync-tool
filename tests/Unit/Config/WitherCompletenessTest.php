@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Config;
 
 use KonradMichalik\SyncTool\Config\{AnonymizationRule, ClientConfig, DatabaseConfig, FileTransferConfig, JumpHostConfig, SyncConfig};
-use KonradMichalik\SyncTool\Enum\AnonymizationStrategy;
+use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -29,6 +29,7 @@ use function sprintf;
  * @license GPL-3.0-or-later
  */
 #[CoversClass(ClientConfig::class)]
+#[CoversClass(DatabaseConfig::class)]
 #[CoversClass(SyncConfig::class)]
 final class WitherCompletenessTest extends TestCase
 {
@@ -40,6 +41,19 @@ final class WitherCompletenessTest extends TestCase
             $client,
             $client->withDb(new DatabaseConfig(name: 'replaced', user: 'replaced')),
             ['db'],
+        );
+    }
+
+    public function testOverriddenByCarriesEveryConfiguredPropertyOver(): void
+    {
+        $explicit = self::populatedDatabase();
+
+        // `type` is the documented exception: an unset type is indistinguishable
+        // from an explicit `mysql`, so the detected driver stays authoritative.
+        $this->assertPreserved(
+            $explicit,
+            (new DatabaseConfig())->overriddenBy($explicit),
+            ['type'],
         );
     }
 
@@ -60,7 +74,7 @@ final class WitherCompletenessTest extends TestCase
      */
     public function testEveryConstructorParameterIsAPublicProperty(): void
     {
-        foreach ([ClientConfig::class, SyncConfig::class] as $class) {
+        foreach ([ClientConfig::class, DatabaseConfig::class, SyncConfig::class] as $class) {
             $reflection = new ReflectionClass($class);
             $constructor = $reflection->getConstructor();
             self::assertNotNull($constructor);
@@ -117,6 +131,25 @@ final class WitherCompletenessTest extends TestCase
      * Every property set to something distinguishable from its default, so a
      * dropped field shows up as a difference rather than an accidental match.
      */
+    private static function populatedDatabase(): DatabaseConfig
+    {
+        return new DatabaseConfig(
+            name: 'app',
+            host: '127.0.0.1',
+            user: 'deploy',
+            password: 'secret',
+            port: 6543,
+            sslDisabled: true,
+            sslSkipVerify: true,
+            sslCa: '/etc/ssl/ca.pem',
+            sslCapath: '/etc/ssl/certs',
+            sslCert: '/etc/ssl/client.pem',
+            sslKey: '/etc/ssl/client.key',
+            sslCipher: 'TLS_AES_256_GCM_SHA384',
+            type: DatabaseSystem::PostgreSQL,
+        );
+    }
+
     private static function populatedClient(): ClientConfig
     {
         return new ClientConfig(

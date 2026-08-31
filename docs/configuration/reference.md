@@ -39,6 +39,7 @@ stays a command.
 | `additional_dump_options` | string | Extra options for the dump binary. `additional_mysqldump_options`, the name the Python tool used, is still read. |
 | `log_file` | string | Path to a log file. |
 | `json_log` | boolean | Write the log file as JSON lines. |
+| `ssh_agent` | boolean | Authenticate through the running SSH agent (default: off). Required for passphrase-protected keys, see [Authentication](/configuration/authentication). |
 | `ssh_strict_host_key_checking` | boolean | Toggle SSH host-key verification (default: enabled). |
 | `files` | array | File-transfer entries (see [File Synchronization](/configuration/file-sync)). |
 
@@ -91,6 +92,37 @@ The `ssl_*` keys configure a MySQL or MariaDB client and are written into the sa
 temporary credential file as the password, so no path reaches the process list. A
 `postgres` endpoint that sets any of them aborts the run rather than connecting
 without them: `psql` takes its TLS settings from the environment instead.
+
+#### Overriding single detected values
+
+An endpoint that carries a `path` reads its credentials from the application's own
+configuration. Anything you also write under `db` wins over the detected value,
+field by field, so you can correct one of them and leave the rest auto-detected:
+
+```yaml
+type: Symfony
+origin:
+  host: prod.example.com
+  user: deploy
+  path: /var/www/html/shared/.env
+  db:
+    host: 127.0.0.1   # name, user, password and port still come from DATABASE_URL
+```
+
+The case this exists for is a containerised application: in a Docker Compose
+deployment `DATABASE_URL` names the compose service (`postgres`, `db`, `mysql`),
+which resolves inside the container network but not on the host that runs the
+dump. Published ports make the same database reachable on `127.0.0.1` there.
+
+Three details:
+
+- Detection still only runs when `db.name` is empty. A `db` block that names a
+  database is treated as complete and nothing is read from `path`.
+- The credential check sees the merged result, so a configured value also stands
+  in for one the application's own configuration does not carry: a `DATABASE_URL`
+  without a password plus `db.password` in the sync configuration is accepted.
+- `type` is not overridable this way. An unset type is indistinguishable from an
+  explicit `mysql`, so the detected driver stays authoritative.
 
 ::: tip DDEV
 DDEV 1.25 moved to a Trixie image whose MySQL server presents a self-signed

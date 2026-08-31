@@ -346,6 +346,49 @@ final class SyncTest extends TestCase
     }
 
     #[Test]
+    public function explicitDatabaseHostOverridesTheOneDetectedFromClientPath(): void
+    {
+        $config = SyncConfig::fromArray([
+            'type' => 'symfony',
+            // The app reaches its database under a Docker service name that only
+            // resolves inside the container network. The dump runs on the host, so
+            // the host has to be overridden while the rest stays auto-detected.
+            'origin' => ['path' => '/app/.env', 'db' => ['host' => '127.0.0.1']],
+            'target' => ['db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres', 'host' => '10.9.9.9']],
+        ]);
+
+        $recorder = new RecordingCommandRunner(
+            self::DEFAULT_RESPONSES + ['cat ' => 'DATABASE_URL=postgresql://u:p@postgres:5432/resolved_db'],
+        );
+
+        $this->syncWith($recorder)->run($config, Plans::syncLocal());
+
+        self::assertTrue($recorder->ran('resolved_db'), 'name still comes from the detected DATABASE_URL');
+        self::assertTrue($recorder->ran('-h 127.0.0.1'), 'the explicitly configured host wins');
+        self::assertFalse($recorder->ran('-h postgres'), 'the detected host is discarded');
+    }
+
+    #[Test]
+    public function anExplicitValueSatisfiesACredentialTheDetectedConfigDoesNotCarry(): void
+    {
+        $config = SyncConfig::fromArray([
+            'type' => 'symfony',
+            'origin' => ['path' => '/app/.env', 'db' => ['password' => 'from-config']],
+            'target' => ['db' => ['name' => 'app', 'user' => 'u', 'password' => 'p', 'type' => 'postgres', 'host' => '10.9.9.9']],
+        ]);
+
+        // Empty password in the application's own configuration. The credential
+        // check has to see the configured one, otherwise the override is pointless.
+        $recorder = new RecordingCommandRunner(
+            self::DEFAULT_RESPONSES + ['cat ' => 'DATABASE_URL=postgresql://u:@postgres:5432/resolved_db'],
+        );
+
+        $this->syncWith($recorder)->run($config, Plans::syncLocal());
+
+        self::assertTrue($recorder->ran('resolved_db'), 'the sync runs instead of failing the credential check');
+    }
+
+    #[Test]
     public function errorPhaseScriptsRunWhenSyncFails(): void
     {
         $config = SyncConfig::fromArray([

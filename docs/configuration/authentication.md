@@ -8,24 +8,50 @@ php-sync-tool supports several SSH authentication methods:
 
 | Method | Security | CI/CD | Config Key |
 |--------|----------|-------|------------|
-| SSH Agent | High | Varies | (automatic) |
+| SSH Agent | High | Varies | `ssh_agent` (root level) |
 | SSH Key | High | Yes | `ssh_key` |
 | Password | Low | No | `password` |
 | Interactive prompt | Low | No | `--force-password` |
 
+The endpoint's own `ssh_key` and `password` are tried first, in that order; the
+agent is used when neither is configured. A `ssh_key` that is set therefore wins
+over `ssh_agent: true`, so remove it when you want the agent.
+
+::: warning ~/.ssh/config is not read
+The primary connection to `origin` and `target` runs through phpseclib, not the
+system SSH client, so `~/.ssh/config` does not apply: `host` must be a real
+hostname or IP, not a `Host` alias, and `user`, `port` and `IdentityFile` from
+that file are not picked up either. Only [jump hosts](/configuration/advanced#jump-host)
+tunnel through the system `ssh` client.
+:::
+
 ## SSH Agent (Recommended)
 
-With no key or password configured, php-sync-tool authenticates using your
-running SSH agent:
+Set `ssh_agent: true` at the root of the configuration to authenticate with your
+running SSH agent. This is the way to use a passphrase-protected key: phpseclib
+cannot decrypt one itself, the agent holds it unlocked.
+
+```yaml
+# config.yaml
+ssh_agent: true
+
+origin:
+  host: prod.example.com
+  user: deploy
+```
 
 ```bash
 # Start the agent and add your key
 eval "$(ssh-agent)"
-ssh-add ~/.ssh/id_ed25519
+ssh-add ~/.ssh/id_ed25519   # macOS: ssh-add --apple-use-keychain ~/.ssh/id_ed25519
 
-# Run the sync — the agent is used automatically
+# Confirm the key is loaded, then sync
+ssh-add -l
 bin/sync-tool -f config.yaml
 ```
+
+Without `ssh_agent: true` and without `ssh_key`/`password`, the run stops with
+`No SSH authentication method configured for host …`.
 
 ## SSH Key
 
