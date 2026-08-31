@@ -435,6 +435,39 @@ final class SyncTest extends TestCase
         self::assertFalse($recorder->ran('stat -c "%y %n" /tmp/* '), 'never globs the whole dump directory');
     }
 
+    /**
+     * The dialect belongs to the host the command runs on, not to the one running
+     * the tool. A remote macOS endpoint used to be handed GNU syntax, the listing
+     * failed, and retention quietly stopped removing anything.
+     */
+    #[Test]
+    public function retentionUsesTheStatDialectOfTheHostItRunsOn(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['path' => '/o', 'keep_dumps' => 1, 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+        ]);
+
+        $recorder = $this->runSync($config, Plans::dumpLocal(), ['uname -s' => 'Darwin']);
+
+        self::assertTrue($recorder->ran('stat -f "%m %N"'), 'BSD stat for a Darwin host');
+        self::assertFalse($recorder->ran('stat -c'));
+    }
+
+    #[Test]
+    public function retentionUsesGnuStatOnLinux(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['path' => '/o', 'keep_dumps' => 1, 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+        ]);
+
+        $recorder = $this->runSync($config, Plans::dumpLocal(), ['uname -s' => 'Linux']);
+
+        self::assertTrue($recorder->ran('stat -c "%Y %n"'));
+        self::assertFalse($recorder->ran('stat -f'));
+    }
+
     #[Test]
     public function filesOnlySyncsFilesAndSkipsDatabase(): void
     {

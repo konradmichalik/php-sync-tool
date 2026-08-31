@@ -419,7 +419,12 @@ final readonly class Sync
             return;
         }
 
-        $isDarwin = !$client->isRemote() && 'Darwin' === \PHP_OS_FAMILY;
+        // Asked of the host the command will run on. Reading PHP_OS_FAMILY answers
+        // for the machine the tool runs on instead, so a remote macOS endpoint was
+        // handed GNU `stat` syntax, the listing failed, and retention silently
+        // stopped removing anything.
+        $isDarwin = 'Darwin' === trim($runner->run('uname -s', true));
+
         // Only dumps this tool wrote. The glob used to be `*`, which made every
         // foreign .sql or .gz in the dump directory a deletion candidate.
         $listing = $runner->run(
