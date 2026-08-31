@@ -116,9 +116,11 @@ The flag needs a terminal. An empty answer is rejected rather than sent as a
 password.
 
 ::: warning rsync + password
-Password-based **rsync** transfers require `sshpass` on the executing host. If
-it is unavailable, use key/agent authentication or fall back to SFTP with
-`--no-rsync`.
+rsync takes no password of its own, so a password-authenticated transfer needs
+`sshpass` on the executing host. When a password is in play and the binary is
+installed, it is used without further configuration. Without it the transfer
+stops at a prompt, so use key or agent authentication instead, or fall back to
+SFTP with `--no-rsync`.
 :::
 
 ## Host Key Verification
