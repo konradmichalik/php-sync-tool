@@ -16,10 +16,12 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\LogChannel;
-use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RunnerFactory};
+use KonradMichalik\SyncTool\Remote\{CommandRunner, RsyncCommandBuilder, RunnerFactory};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 
 use function basename;
+use function bin2hex;
+use function random_bytes;
 use function rtrim;
 use function sprintf;
 use function sys_get_temp_dir;
@@ -50,7 +52,9 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
 
     public function transfer(SyncConfig $config, TransferPayload $payload): void
     {
-        $localTemp = sys_get_temp_dir().'/php-sync-tool-'.basename(rtrim($payload->targetPath, '/'));
+        $local = $this->runners->local();
+        $staging = $this->createStagingDirectory($local);
+        $localTemp = $staging.'/'.basename(rtrim($payload->targetPath, '/'));
         $options = $this->rsync->options($payload->extraRsyncOptions, $payload->excludePatterns, singleFile: $payload->singleFile);
 
         $pull = $this->rsync->build(
@@ -73,15 +77,37 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
             $payload->targetPath,
         );
 
-        $local = $this->runners->local();
-
         try {
             ($this->log)('  $ '.LogSanitizer::sanitize($pull), LogChannel::Command);
             $local->run($pull);
             ($this->log)('  $ '.LogSanitizer::sanitize($push), LogChannel::Command);
             $local->run($push);
         } finally {
-            $local->run(sprintf('rm -rf %s', escapeshellarg($localTemp)), true);
+            $local->run(sprintf('rm -rf %s', escapeshellarg($staging)), true);
         }
+    }
+
+    /**
+     * A private directory to stage the payload in on its way between the two
+     * remote hosts.
+     *
+     * The name used to be derived from the target path, so it was predictable from
+     * the configuration alone and created with default permissions. On a shared
+     * machine that let another user read the database dump passing through it, or
+     * pre-create the path as a symlink pointing somewhere else.
+     *
+     * A random name closes the first, and `mkdir` closes the second by failing
+     * outright when the path already exists. `-m 700` states the mode rather than
+     * leaving it to the umask.
+     */
+    private function createStagingDirectory(CommandRunner $local): string
+    {
+        $path = sprintf('%s/php-sync-tool-%s', sys_get_temp_dir(), bin2hex(random_bytes(8)));
+
+        // Not tolerated: a staging directory that is not there, or was already
+        // there, means the transfer cannot be trusted to be private.
+        $local->run(sprintf('mkdir -m 700 %s', escapeshellarg($path)));
+
+        return $path;
     }
 }

@@ -43,7 +43,16 @@ final class ProxyTransferStrategyTest extends TestCase
 
         self::assertTrue($recorder->ran('deploy@o.example.com:/o/dump.gz'), 'pulls from origin');
         self::assertTrue($recorder->ran('deploy@t.example.com:/t/dump.gz'), 'pushes to target');
-        self::assertTrue($recorder->ran('php-sync-tool-dump.gz'), 'uses a local temp path derived from the target basename');
+        self::assertMatchesRegularExpression(
+            "#mkdir -m 700 '[^']*/php-sync-tool-[0-9a-f]{16}'#",
+            implode("\n", $recorder->commands),
+            'stages in a private directory whose name cannot be guessed from the configuration',
+        );
+        self::assertMatchesRegularExpression(
+            '#/php-sync-tool-[0-9a-f]{16}/dump\.gz#',
+            implode("\n", $recorder->commands),
+            'the payload keeps its name inside that directory',
+        );
         self::assertTrue($recorder->ran('rm -rf'), 'cleans up the local temp path');
     }
 
@@ -61,7 +70,10 @@ final class ProxyTransferStrategyTest extends TestCase
             new TransferPayload('/srv/app/fileadmin', '/srv/web/fileadmin', ['*.log']),
         );
 
-        self::assertTrue($recorder->ran('php-sync-tool-fileadmin'));
+        self::assertMatchesRegularExpression(
+            '#/php-sync-tool-[0-9a-f]{16}/fileadmin#',
+            implode("\n", $recorder->commands),
+        );
         self::assertTrue($recorder->ran("--exclude='*.log'"));
     }
 
