@@ -93,6 +93,11 @@ target:
 **Flow:** dump on origin → transfer to local → transfer to target → import on
 target.
 
+The dump passes through a staging directory the tool creates under the system
+temporary directory with mode `700` and an unguessable name, and removes when the
+transfer ends. On a machine several people have accounts on, that keeps the data
+in transit out of their reach.
+
 **Use cases:** syncing isolated environments, cross-datacenter transfers.
 
 ## Dump Local {#dump-local}
