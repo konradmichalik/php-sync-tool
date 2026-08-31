@@ -165,8 +165,8 @@ final readonly class SftpTransferStrategy implements TransferStrategy
 
     private function ensureLocalDirectory(string $path): void
     {
-        // Same modes the rsync path sets with `--chmod=D2770`: the tree can hold a
-        // production copy, which is nobody else's business on this machine.
+        // Same modes the rsync path sets with `--chmod=Du=rwx,Dg=rwxs,Do=`: the tree
+        // can hold a production copy, which is nobody else's business on this machine.
         if (!is_dir($path) && !mkdir($path, 0o770, true) && !is_dir($path)) {
             throw new SyncException(sprintf('Could not create local directory: %s', $path));
         }
