@@ -1,8 +1,14 @@
+<div align="center">
+
+![icon](icon.png)
+
 # php-sync-tool
 
 [![Tests](https://github.com/konradmichalik/php-sync-tool/actions/workflows/tests.yml/badge.svg)](https://github.com/konradmichalik/php-sync-tool/actions/workflows/tests.yml)
 [![Packagist Version](https://img.shields.io/packagist/v/konradmichalik/php-sync-tool)](https://packagist.org/packages/konradmichalik/php-sync-tool)
 [![License](https://img.shields.io/github/license/konradmichalik/php-sync-tool)](LICENSE)
+
+</div>
 
 PHP port of [`db-sync-tool`](https://github.com/jackd248/db-sync-tool) — synchronize databases
 (and optionally files) between local and remote systems over SSH/rsync/SFTP, with framework
