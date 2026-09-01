@@ -30,6 +30,12 @@ use function sprintf;
 final class ConfigResolver
 {
     private const PROJECT_CONFIG_DIR = '.sync-tool';
+
+    /**
+     * The directory name the Python db-sync-tool used. Read as a fallback so
+     * existing setups keep working in place; never merged with the current one.
+     */
+    private const LEGACY_CONFIG_DIR = '.db-sync-tool';
     private const HOSTS_FILE = 'hosts.yaml';
     private const DEFAULTS_FILE = 'defaults.yaml';
 
@@ -44,6 +50,9 @@ final class ConfigResolver
 
     /** @var array<string, ProjectConfig> */
     private array $projectConfigs = [];
+
+    /** @var list<string> */
+    private array $deprecations = [];
 
     private bool $loaded = false;
 
@@ -87,6 +96,17 @@ final class ConfigResolver
         $this->load();
 
         return $this->projectConfigs;
+    }
+
+    /**
+     * Compatibility notices collected while loading, for the caller to surface.
+     * Reports only what was actually read, so it stays empty until something loads.
+     *
+     * @return list<string>
+     */
+    public function getDeprecations(): array
+    {
+        return $this->deprecations;
     }
 
     /**
@@ -274,6 +294,8 @@ final class ConfigResolver
             return;
         }
 
+        $this->noteLegacyDir($dir);
+
         $hostsFile = $dir.'/'.self::HOSTS_FILE;
         if (is_file($hostsFile)) {
             foreach ($this->loader->load($hostsFile) as $name => $hostData) {
@@ -295,6 +317,8 @@ final class ConfigResolver
         if (null === $dir) {
             return;
         }
+
+        $this->noteLegacyDir($dir);
 
         $defaultsFile = $dir.'/'.self::DEFAULTS_FILE;
         if (is_file($defaultsFile)) {
@@ -337,10 +361,18 @@ final class ConfigResolver
     private function globalConfigDir(): string
     {
         $home = $this->homeDir ?? (getenv('HOME') ?: sys_get_temp_dir());
+        $current = $home.'/'.self::PROJECT_CONFIG_DIR;
 
-        return $home.'/'.self::PROJECT_CONFIG_DIR;
+        return !is_dir($current) && is_dir($home.'/'.self::LEGACY_CONFIG_DIR)
+            ? $home.'/'.self::LEGACY_CONFIG_DIR
+            : $current;
     }
 
+    /**
+     * A current directory anywhere up the tree outranks a legacy one closer
+     * to the working directory, so each name gets its own full walk before
+     * the other is tried.
+     */
     private function projectConfigDir(): ?string
     {
         $dir = $this->workingDir ?? getcwd();
@@ -348,8 +380,14 @@ final class ConfigResolver
             return null;
         }
 
+        return $this->ancestorDirNamed($dir, self::PROJECT_CONFIG_DIR)
+            ?? $this->ancestorDirNamed($dir, self::LEGACY_CONFIG_DIR);
+    }
+
+    private function ancestorDirNamed(string $dir, string $name): ?string
+    {
         while (true) {
-            $candidate = $dir.'/'.self::PROJECT_CONFIG_DIR;
+            $candidate = $dir.'/'.$name;
             if (is_dir($candidate)) {
                 return $candidate;
             }
@@ -360,6 +398,35 @@ final class ConfigResolver
             }
 
             $dir = $parent;
+        }
+    }
+
+    /**
+     * Say something whenever the old directory name is in play: either it is
+     * what we just read, or it sits next to the one we read and is therefore
+     * invisible. The second case is the dangerous one, because a `sync-tool
+     * init` next to an old directory would otherwise retire it in silence.
+     */
+    private function noteLegacyDir(string $dir): void
+    {
+        if (str_ends_with($dir, '/'.self::LEGACY_CONFIG_DIR)) {
+            $this->deprecations[] = sprintf(
+                '%s is the directory name db-sync-tool used. Rename it to %s, reading the old name is a transitional convenience.',
+                $dir,
+                self::PROJECT_CONFIG_DIR,
+            );
+
+            return;
+        }
+
+        $shadowed = dirname($dir).'/'.self::LEGACY_CONFIG_DIR;
+        if (is_dir($shadowed)) {
+            $this->deprecations[] = sprintf(
+                '%s is ignored because %s exists beside it. Move whatever you still need into %s.',
+                $shadowed,
+                $dir,
+                self::PROJECT_CONFIG_DIR,
+            );
         }
     }
 
