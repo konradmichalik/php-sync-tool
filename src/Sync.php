@@ -112,6 +112,7 @@ final readonly class Sync
 
         if ('' === $origin->db->name && '' !== $origin->path) {
             $runner = $this->runners->forClient($origin, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+            ($this->log)('Reading database credentials from '.$origin->path);
             $db = $this->credentialResolver->resolve($config, $origin, $runner);
             if (null !== $db) {
                 $origin = $origin->withDb($db);
@@ -120,6 +121,7 @@ final readonly class Sync
 
         if ('' === $target->db->name && '' !== $target->path) {
             $runner = $this->runners->forClient($target, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+            ($this->log)('Reading database credentials from '.$target->path);
             $db = $this->credentialResolver->resolve($config, $target, $runner);
             if (null !== $db) {
                 $target = $target->withDb($db);
