@@ -218,12 +218,22 @@ delete it like any other. Give a target you rely on this for either no
 
 ## Dump Check
 
-Before the import, the tool reads the end of the dump it is about to load and
-looks for the line the dump tool writes once it has finished (`-- Dump completed
-on` for MySQL and MariaDB, `-- PostgreSQL database dump complete` for
-PostgreSQL). A dump that was cut short by a full disk or a killed process is not
-empty, so only that trailer tells it apart from a complete one, and importing it
-into a target that `clear_database` has just emptied loses data.
+Before the import, the tool checks the dump it is about to load in three steps. A
+dump that was cut short by a full disk, a killed process or a broken transfer is
+not empty, and importing it into a target that `clear_database` has just emptied
+loses data.
+
+1. **It exists and has content.** The cheapest way to catch a dump that was never
+   written.
+2. **The archive is intact.** For a gzipped dump, gzip's own checksum is verified.
+   It is the only thing that separates a stream which decompressed correctly from
+   one that merely decompressed: a damaged archive still yields its last lines.
+   This reads the dump a second time, which is real work on a large one.
+3. **The dump tool finished.** One of the last lines must open with the line that
+   tool writes at the end (`-- Dump completed on` for MySQL and MariaDB,
+   `-- PostgreSQL database dump complete` for PostgreSQL). The line has to open
+   with it, not merely contain it somewhere, so a row that happens to carry the
+   same text cannot vouch for a dump that stops mid-statement.
 
 The check is on by default and can be turned off for a run:
 

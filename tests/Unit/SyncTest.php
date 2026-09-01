@@ -38,6 +38,9 @@ final class SyncTest extends TestCase
     private const DEFAULT_RESPONSES = [
         'LIKE' => "col\ncache_pages\ncache_hash",
         'SHOW TABLES;' => "Tables_in_app\nusers\nposts",
+        // Answers both dump-check probes: the file is there, and the archive is
+        // intact. A test about either failing overrides its own command.
+        'echo OK' => 'OK',
         'tail -n 5' => "--\n-- Dump completed on 2026-08-31 12:00:00",
         'stat ' => "d1 /tmp/_app_a.gz\nd2 /tmp/_app_b.gz\nd3 /tmp/_app_c.gz",
     ];
@@ -175,12 +178,65 @@ final class SyncTest extends TestCase
     #[Test]
     public function truncatedDumpAborts(): void
     {
-        $recorder = new RecordingCommandRunner(['tail -n 5' => "INSERT INTO `users` VALUES (1,'a'),(2,'b"]);
+        $recorder = new RecordingCommandRunner(
+            ['tail -n 5' => "INSERT INTO `users` VALUES (1,'a'),(2,'b"] + self::DEFAULT_RESPONSES,
+        );
 
         $this->expectException(SyncException::class);
         $this->expectExceptionMessage('is incomplete');
 
         $this->syncWith($recorder)->run($this->localConfig(), Plans::syncLocal());
+    }
+
+    /**
+     * gzip's checksum is the only thing that separates a stream that decompressed
+     * correctly from one that merely decompressed. Reading the trailer cannot see
+     * it: `gunzip -c | tail` reports tail's status, so a damaged archive still
+     * produced its last lines, marker included.
+     */
+    #[Test]
+    public function aDamagedGzipArchiveAbortsEvenThoughItsTrailerLooksRight(): void
+    {
+        $recorder = new RecordingCommandRunner(['gunzip -t' => ''] + self::DEFAULT_RESPONSES);
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('is not a valid gzip archive');
+
+        $this->syncWith($recorder)->run($this->localConfig(), Plans::syncLocal());
+    }
+
+    /**
+     * A row carrying the marker text would satisfy a substring match over the
+     * whole trailer and validate a dump that stops mid-statement.
+     */
+    #[Test]
+    public function markerTextInsideARowDoesNotValidateATruncatedDump(): void
+    {
+        $recorder = new RecordingCommandRunner(
+            ['tail -n 5' => "INSERT INTO `pages` VALUES (7,'log: -- Dump completed on 2020-01-01'),(8,'par"]
+            + self::DEFAULT_RESPONSES,
+        );
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('is incomplete');
+
+        $this->syncWith($recorder)->run($this->localConfig(), Plans::syncLocal());
+    }
+
+    /**
+     * The completion line carries a timestamp after the marker, so it is matched
+     * by how it opens rather than by equality.
+     */
+    #[Test]
+    public function theCompletionLineIsRecognisedWithItsTimestamp(): void
+    {
+        $recorder = $this->runSync(
+            $this->localConfig(),
+            Plans::syncLocal(),
+            ['tail -n 5' => "UNLOCK TABLES;\n\n-- Dump completed on 2026-09-01  9:15:02"],
+        );
+
+        self::assertTrue($recorder->ran('| mysql'), 'the import goes ahead');
     }
 
     #[Test]
