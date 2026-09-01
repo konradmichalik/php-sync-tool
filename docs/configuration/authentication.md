@@ -18,12 +18,13 @@ loaded agent is used when neither is configured, whether or not `ssh_agent` says
 so. A `ssh_key` that is set therefore wins over the agent, so remove it when you
 want the agent.
 
-When an endpoint has none of them, the tool asks for a password on a terminal.
-Without one, which is the normal case in CI and on a deploy host, it stops
-instead and names the endpoint and what it is missing, rather than waiting on a
-question nobody will answer. Only endpoints the run actually connects to are
-asked about: an import-only run never reaches the origin, a dump-only run never
-reaches the target.
+When an endpoint has none of them, the tool asks for a password on a terminal,
+unless `ssh_agent: true` says the agent is the way in. Without a terminal, which
+is the normal case in CI and on a deploy host, it stops instead and names the
+endpoint and what it is missing, rather than waiting on a question nobody will
+answer. Only endpoints the run actually connects to are asked about: an
+import-only run never reaches the origin, a dump-only run never reaches the
+target.
 
 ::: warning ~/.ssh/config is not read
 The primary connection to `origin` and `target` runs through phpseclib, not the
@@ -62,8 +63,14 @@ ssh-add -l
 bin/sync-tool -f config.yaml
 ```
 
-With no agent, no `ssh_key` and no `password`, the tool asks for a password on a
-terminal and stops with `No SSH authentication configured for …` without one.
+With no agent running, no `ssh_key` and no `password`, the tool asks for a
+password on a terminal and stops with `No SSH authentication configured for …`
+without one.
+
+`ssh_agent: true` opts out of that fallback. It states that the agent is the way
+in, so an agent that cannot be reached ends the run with `No SSH agent available
+for …` rather than quietly asking for a password instead. Leave it unset to get
+the agent when it is there and the prompt when it is not.
 
 ## SSH Key
 
