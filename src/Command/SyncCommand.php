@@ -21,7 +21,7 @@ use KonradMichalik\SyncTool\Logging\LogWriter;
 use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncPlan, SyncSteps};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
 use KonradMichalik\SyncTool\Output\Progress\NullSyncProgress;
-use KonradMichalik\SyncTool\Remote\SshAuthResolver;
+use KonradMichalik\SyncTool\Remote\{RunnerFactory, SshAuthResolver};
 use KonradMichalik\SyncTool\Sync;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -173,13 +173,16 @@ class SyncCommand extends Command
 
             $fileLog = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, static function (string $l): void {});
 
+            $log = static function (string $m, LogChannel $channel = LogChannel::Step) use ($reporter, $fileLog): void {
+                $reporter->step($m, $channel);
+                $fileLog->log($m);
+            };
+
             $progress = $reporter->progress($this->steps->count($syncConfig, $plan));
 
             $sync = new Sync(
-                log: static function (string $m, LogChannel $channel = LogChannel::Step) use ($reporter, $fileLog): void {
-                    $reporter->step($m, $channel);
-                    $fileLog->log($m);
-                },
+                runners: new RunnerFactory(log: $log),
+                log: $log,
                 progress: $progress,
             );
 
