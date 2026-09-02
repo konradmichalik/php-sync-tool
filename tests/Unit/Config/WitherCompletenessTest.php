@@ -44,6 +44,17 @@ final class WitherCompletenessTest extends TestCase
         );
     }
 
+    public function testWithPasswordPreservesEveryPropertyButThePassword(): void
+    {
+        $client = self::populatedClient();
+
+        $this->assertPreserved(
+            $client,
+            $client->withPassword('typed-at-the-prompt'),
+            ['password'],
+        );
+    }
+
     public function testOverriddenByCarriesEveryConfiguredPropertyOver(): void
     {
         $explicit = self::populatedDatabase();

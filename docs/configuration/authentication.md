@@ -17,6 +17,13 @@ The endpoint's own `ssh_key` and `password` are tried first, in that order; the
 agent is used when neither is configured. A `ssh_key` that is set therefore wins
 over `ssh_agent: true`, so remove it when you want the agent.
 
+When an endpoint has none of them, the tool asks for a password on a terminal.
+Without one, which is the normal case in CI and on a deploy host, it stops
+instead and names the endpoint and what it is missing, rather than waiting on a
+question nobody will answer. Only endpoints the run actually connects to are
+asked about: an import-only run never reaches the origin, a dump-only run never
+reaches the target.
+
 ::: warning ~/.ssh/config is not read
 The primary connection to `origin` and `target` runs through phpseclib, not the
 system SSH client, so `~/.ssh/config` does not apply: `host` must be a real
@@ -86,11 +93,15 @@ Passwords are masked in log output.
 ### Force Interactive Password
 
 Use `--force-password` to always prompt for the SSH password instead of using a
-key or agent:
+key or agent. This is the way in when a configured key is the wrong one, or is
+protected by a passphrase and no agent is running:
 
 ```bash
 bin/sync-tool -f config.yaml --force-password
 ```
+
+The flag needs a terminal. An empty answer is rejected rather than sent as a
+password.
 
 ::: warning rsync + password
 Password-based **rsync** transfers require `sshpass` on the executing host. If

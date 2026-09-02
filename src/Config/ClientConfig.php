@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Config;
 
+use function get_object_vars;
 use function is_array;
 
 /**
@@ -85,31 +86,32 @@ final readonly class ClientConfig
 
     public function withDb(DatabaseConfig $db): self
     {
-        return new self(
-            path: $this->path,
-            name: $this->name,
-            host: $this->host,
-            user: $this->user,
-            password: $this->password,
-            sshKey: $this->sshKey,
-            port: $this->port,
-            dumpDir: $this->dumpDir,
-            keepDumps: $this->keepDumps,
-            db: $db,
-            jumpHost: $this->jumpHost,
-            afterDump: $this->afterDump,
-            postSql: $this->postSql,
-            console: $this->console,
-            scripts: $this->scripts,
-            protect: $this->protect,
-            link: $this->link,
-            anonymize: $this->anonymize,
-        );
+        return $this->with(['db' => $db]);
+    }
+
+    public function withPassword(string $password): self
+    {
+        return $this->with(['password' => $password]);
     }
 
     public function isRemote(): bool
     {
         return '' !== $this->host;
+    }
+
+    /**
+     * Every property carried over except the named ones. Re-listing all of them
+     * per wither meant a property added to the constructor was silently reset by
+     * every wither that had not been updated with it.
+     *
+     * The constructor parameters and the properties share their names, so the
+     * spread arrives as named arguments.
+     *
+     * @param array<string, mixed> $overrides
+     */
+    private function with(array $overrides): self
+    {
+        return new self(...[...get_object_vars($this), ...$overrides]);
     }
 
     /**
