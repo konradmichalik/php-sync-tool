@@ -280,7 +280,9 @@ final class SyncTest extends TestCase
 
         $recorder = $this->runSync($config, Plans::importLocal());
 
-        self::assertTrue($recorder->ran("cat '/dumps/plain.sql' | tail -n 5"));
+        self::assertTrue($recorder->ran("cat '/dumps/plain.sql' | tail -n 5"), 'the dump trailer is read without gunzip');
+        self::assertTrue($recorder->ran('< /dumps/plain.sql'), 'the import reads the file directly');
+        self::assertFalse($recorder->ran('gunzip'), 'gunzip is never invoked for a plain file');
     }
 
     #[Test]
