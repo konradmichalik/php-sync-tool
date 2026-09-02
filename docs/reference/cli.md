@@ -116,7 +116,7 @@ everything.
 | `--where` | | WHERE clause for mysqldump |
 | `--additional-dump-options` | | Extra options for the dump binary |
 | `--backup-before-import` | | Dump the target database before it is overwritten |
-| `--no-check-dump` | | Import without checking the dump was written to the end |
+| `--no-check-dump` | | Import without checking the dump is complete (present, intact, fully written) |
 | `--target-after-dump` | | Additional dump to import on the target after the main import |
 
 ## Transfer Options
