@@ -252,6 +252,28 @@ final class SyncTest extends TestCase
         self::assertFalse($recorder->ran('mysqldump --defaults-extra-file'));
     }
 
+    /**
+     * Counted in the dump rather than asked of the database, so it reflects what
+     * the export filters actually let through.
+     */
+    #[Test]
+    public function reportsHowManyTablesTheDumpCarries(): void
+    {
+        $this->runSync($this->localConfig(), Plans::syncLocal(), ['grep -c "CREATE TABLE"' => '17']);
+
+        self::assertContains('17 table(s) exported', $this->logs);
+    }
+
+    #[Test]
+    public function saysNothingAboutTablesWhenTheCountCannotBeRead(): void
+    {
+        $this->runSync($this->localConfig(), Plans::syncLocal(), ['grep -c "CREATE TABLE"' => '']);
+
+        self::assertEmpty(
+            array_filter($this->logs, static fn (string $line): bool => str_contains($line, 'table(s) exported')),
+        );
+    }
+
     #[Test]
     public function reportsTheDatabaseVersionItFound(): void
     {
