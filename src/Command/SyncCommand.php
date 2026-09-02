@@ -536,12 +536,12 @@ class SyncCommand extends Command
             do {
                 /** @var string|null $password */
                 $password = $io->askHidden(sprintf('SSH password for %s', $endpoint));
-                $password = null === $password ? '' : trim($password);
+                $password ??= '';
 
-                if ('' === $password) {
+                if ('' === trim($password)) {
                     $io->warning('The password cannot be empty.');
                 }
-            } while ('' === $password);
+            } while ('' === trim($password));
 
             return $password;
         };
