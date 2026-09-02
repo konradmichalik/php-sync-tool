@@ -35,7 +35,10 @@ final class Pure
      */
     public static function outputLines(string $output): array
     {
-        return array_values(array_filter(array_map(trim(...), explode("\n", $output))));
+        return array_values(array_filter(
+            array_map(trim(...), explode("\n", $output)),
+            static fn (string $line): bool => '' !== $line,
+        ));
     }
 
     /**
