@@ -49,15 +49,31 @@ final readonly class ClientBinaries
      */
     public static function resolve(DatabaseSystem $system, array $console = []): self
     {
-        [$client, $dump] = match ($system) {
-            DatabaseSystem::MySQL => ['mysql', 'mysqldump'],
-            DatabaseSystem::MariaDB => ['mariadb', 'mariadb-dump'],
-            DatabaseSystem::PostgreSQL => ['psql', 'pg_dump'],
-        };
+        [$client, $dump] = self::namesFor($system);
 
         return new self(
             Shell::quote($console[$client] ?? $client),
             Shell::quote($console[$dump] ?? $dump),
         );
+    }
+
+    /**
+     * The unquoted dump-binary name, for asking an endpoint whether it has one.
+     */
+    public static function dumpBinaryFor(DatabaseSystem $system): string
+    {
+        return self::namesFor($system)[1];
+    }
+
+    /**
+     * @return array{0: string, 1: string} client and dump binary
+     */
+    private static function namesFor(DatabaseSystem $system): array
+    {
+        return match ($system) {
+            DatabaseSystem::MySQL => ['mysql', 'mysqldump'],
+            DatabaseSystem::MariaDB => ['mariadb', 'mariadb-dump'],
+            DatabaseSystem::PostgreSQL => ['psql', 'pg_dump'],
+        };
     }
 }

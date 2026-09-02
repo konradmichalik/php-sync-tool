@@ -145,7 +145,7 @@ final class SyncTest extends TestCase
 
         $recorder = $this->runSync($config, Plans::importLocal());
 
-        self::assertFalse($recorder->ran('mysqldump'), 'import mode never dumps origin');
+        self::assertFalse($recorder->ran('mysqldump --defaults-extra-file'), 'import mode never dumps origin');
         self::assertTrue($recorder->ran('/backups/manual.sql.gz'), 'imports the provided file');
     }
 
@@ -239,6 +239,27 @@ final class SyncTest extends TestCase
         self::assertTrue($recorder->ran('| mysql'), 'the import goes ahead');
     }
 
+    /**
+     * A MariaDB 11 endpoint has no `mysqldump`, so a configuration that never
+     * mentioned `type` used to name a binary that is not there.
+     */
+    #[Test]
+    public function usesMariadbBinariesWhenTheEndpointHasNoMysqlOnes(): void
+    {
+        $recorder = $this->runSync($this->localConfig(), Plans::syncLocal(), ['command -v' => 'other']);
+
+        self::assertTrue($recorder->ran('mariadb-dump --defaults-extra-file'), 'dumps with mariadb-dump');
+        self::assertFalse($recorder->ran('mysqldump --defaults-extra-file'));
+    }
+
+    #[Test]
+    public function reportsTheDatabaseVersionItFound(): void
+    {
+        $this->runSync($this->localConfig(), Plans::syncLocal(), ['SELECT VERSION()' => "VERSION()\n11.4.2-MariaDB"]);
+
+        self::assertContains('Database version: MariaDB 11.4.2', $this->logs);
+    }
+
     #[Test]
     public function completeDumpPassesTheCheck(): void
     {
@@ -259,7 +280,9 @@ final class SyncTest extends TestCase
 
         $recorder = $this->runSync($config, Plans::importLocal());
 
-        self::assertTrue($recorder->ran("cat '/dumps/plain.sql' | tail -n 5"));
+        self::assertTrue($recorder->ran("cat '/dumps/plain.sql' | tail -n 5"), 'the dump trailer is read without gunzip');
+        self::assertTrue($recorder->ran('< /dumps/plain.sql'), 'the import reads the file directly');
+        self::assertFalse($recorder->ran('gunzip'), 'gunzip is never invoked for a plain file');
     }
 
     #[Test]
@@ -498,7 +521,8 @@ final class SyncTest extends TestCase
             'target' => ['path' => '/t', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
         ]);
 
-        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: 'mysqldump');
+        // The dump itself, not the `command -v mysqldump` probe that precedes it.
+        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: 'mysqldump --defaults-extra-file');
         $sync = $this->syncWith($recorder);
 
         try {
@@ -530,7 +554,8 @@ final class SyncTest extends TestCase
     public function countsNoStepForWorkThatFailed(): void
     {
         $progress = new RecordingSyncProgress();
-        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: 'mysqldump');
+        // The dump itself, not the `command -v mysqldump` probe that precedes it.
+        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: 'mysqldump --defaults-extra-file');
 
         try {
             $this->syncWith($recorder, $progress)->run($this->localConfig(), Plans::syncLocal());

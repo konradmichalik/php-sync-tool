@@ -14,8 +14,9 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Database\Driver;
 
 use KonradMichalik\SyncTool\Config\DatabaseConfig;
-use KonradMichalik\SyncTool\Database\ClientBinaries;
+use KonradMichalik\SyncTool\Database\{ClientBinaries, ServerProbe};
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
+use KonradMichalik\SyncTool\Remote\CommandRunner;
 
 /**
  * DriverFactory.
@@ -25,14 +26,22 @@ use KonradMichalik\SyncTool\Enum\DatabaseSystem;
  */
 final readonly class DriverFactory
 {
+    public function __construct(
+        private ServerProbe $probe = new ServerProbe(),
+    ) {}
+
     /**
+     * Given a runner, the endpoint is asked which binaries it actually has rather
+     * than being taken at the configuration's word.
+     *
      * @param array<string, string> $console per-endpoint binary path overrides
      */
-    public function forDatabase(DatabaseConfig $db, array $console = []): DatabaseDriver
+    public function forDatabase(DatabaseConfig $db, array $console = [], ?CommandRunner $runner = null): DatabaseDriver
     {
-        $binaries = ClientBinaries::resolve($db->type, $console);
+        $system = null === $runner ? $db->type : $this->probe->clientFamily($db->type, $console, $runner);
+        $binaries = ClientBinaries::resolve($system, $console);
 
-        return match ($db->type) {
+        return match ($system) {
             DatabaseSystem::MySQL, DatabaseSystem::MariaDB => new MysqlDriver(binaries: $binaries),
             DatabaseSystem::PostgreSQL => new PostgresDriver(binaries: $binaries),
         };

@@ -297,9 +297,16 @@ Which names apply follows the database system, because MariaDB 11 deprecated the
 | `mariadb` | `mariadb` | `mariadb-dump` |
 | `postgres` | `psql` | `pg_dump` |
 
-An endpoint left at the default `mysql` type keeps using the `mysql` names, so
-existing configurations are unaffected. Set `db.type: mariadb` to address a
-MariaDB server by its own binaries.
+The endpoint is asked which of the two MySQL-family sets it actually has, so a
+MariaDB 11 host is addressed by its own names even when nothing set `db.type`.
+A configured name that is present always wins, so MariaDB 10, which ships both
+sets, keeps whatever was asked for. Naming a binary under `console` skips the
+question entirely.
+
+The tool also asks the server for its version, reports it under `-v`, and leaves
+`--no-tablespaces` off the dump for a MySQL older than 5.6, which does not know
+the option. A server that will not answer is not an error; the dump then uses
+the options every supported release understands.
 
 ## SSH Port
 

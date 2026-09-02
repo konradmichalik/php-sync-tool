@@ -17,7 +17,7 @@ use Closure;
 use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
 use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\Driver\{DatabaseDriver, DriverFactory};
-use KonradMichalik\SyncTool\Database\{DumpRequest, RemoteFileWriter, TableStatements};
+use KonradMichalik\SyncTool\Database\{DumpRequest, RemoteFileWriter, ServerProbe, TableStatements};
 use KonradMichalik\SyncTool\Enum\{LifecyclePhase, LogChannel};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
@@ -27,6 +27,7 @@ use KonradMichalik\SyncTool\Recipe\CredentialResolver;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, RunnerFactory};
 use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
+use KonradMichalik\SyncTool\Util\Pure;
 use Throwable;
 
 use function explode;
@@ -59,6 +60,7 @@ final readonly class Sync
         private FileSync $fileSync = new FileSync(),
         private ScriptRunner $scripts = new ScriptRunner(),
         private DumpManager $dumps = new DumpManager(),
+        private ServerProbe $serverProbe = new ServerProbe(),
         private CredentialResolver $credentialResolver = new CredentialResolver(),
         ?Closure $log = null,
         private SyncProgress $progress = new NullSyncProgress(),
@@ -131,7 +133,7 @@ final readonly class Sync
     {
         $client = $config->origin;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
-        $driver = $this->drivers->forDatabase($client->db, $client->console);
+        $driver = $this->drivers->forDatabase($client->db, $client->console, $runner);
         $this->assertSupported($driver, $config, $client->db);
 
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
@@ -145,6 +147,7 @@ final readonly class Sync
                 ignoreTables: $this->resolveIgnoreTables($config, $runner, $driver, $credentialsPath),
                 where: $config->where,
                 additionalOptions: $config->additionalDumpOptions,
+                serverVersion: $this->reportServerVersion($driver, $client->db, $credentialsPath, $runner),
             ));
 
             ($this->log)('Creating origin dump '.$dumpName);
@@ -157,6 +160,23 @@ final readonly class Sync
         } finally {
             $this->cleanupCredentials($client, $runner, $credentialsPath);
         }
+    }
+
+    /**
+     * Asks the endpoint what it is running, reports it, and hands the answer back
+     * so the dump options can be matched to it. A server that will not answer is
+     * not an error: the options fall back to what every supported release
+     * understands.
+     */
+    private function reportServerVersion(DatabaseDriver $driver, DatabaseConfig $db, string $credentialsPath, CommandRunner $runner): ?string
+    {
+        $version = $this->serverProbe->version($driver, $db, $credentialsPath, $runner);
+
+        if (null !== $version) {
+            ($this->log)('Database version: '.$this->serverProbe->describe($driver->system(), $version));
+        }
+
+        return $version;
     }
 
     private function transferDump(SyncConfig $config, SyncPlan $plan, string $dumpName): void
@@ -183,7 +203,7 @@ final readonly class Sync
     {
         $client = $config->target;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
-        $driver = $this->drivers->forDatabase($client->db, $client->console);
+        $driver = $this->drivers->forDatabase($client->db, $client->console, $runner);
         $this->assertSupported($driver, $config, $client->db);
 
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
@@ -377,7 +397,7 @@ final readonly class Sync
             true,
         );
 
-        $lines = array_values(array_filter(array_map(trim(...), explode("\n", $listing))));
+        $lines = Pure::outputLines($listing);
         $files = array_map($this->dumps->extractFilename(...), $lines);
         $obsolete = $this->dumps->filesToRemove($files, $client->keepDumps);
 

@@ -35,5 +35,6 @@ final readonly class DumpRequest
         public array $ignoreTables = [],
         public string $where = '',
         public string $additionalOptions = '',
+        public ?string $serverVersion = null,
     ) {}
 }

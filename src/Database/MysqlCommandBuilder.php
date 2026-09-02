@@ -17,7 +17,9 @@ use KonradMichalik\SyncTool\Security\{Shell, SqlLiteral};
 
 use function array_map;
 use function implode;
+use function preg_match;
 use function sprintf;
+use function version_compare;
 
 /**
  * MysqlCommandBuilder.
@@ -27,15 +29,30 @@ use function sprintf;
  */
 final class MysqlCommandBuilder
 {
-    private const BASE_DUMP_OPTIONS = '--single-transaction --quick --extended-insert --no-tablespaces ';
+    private const BASE_DUMP_OPTIONS = '--single-transaction --quick --extended-insert ';
+
+    /**
+     * Avoids needing the PROCESS privilege, which MySQL 8 requires for tablespace
+     * information. The option itself only arrived in MySQL 5.6, so a server older
+     * than that rejects the command it was meant to make work.
+     */
+    private const NO_TABLESPACES = '--no-tablespaces ';
 
     /**
      * mysqldump option string. An optional WHERE clause and additional options
      * are appended verbatim.
+     *
+     * `$serverVersion` is what the server reported, or null when it could not be
+     * asked; an unknown version keeps the option, since every supported release
+     * understands it.
      */
-    public function dumpOptions(string $where = '', string $additional = ''): string
+    public function dumpOptions(string $where = '', string $additional = '', ?string $serverVersion = null): string
     {
         $options = self::BASE_DUMP_OPTIONS;
+
+        if ($this->supportsNoTablespaces($serverVersion)) {
+            $options .= self::NO_TABLESPACES;
+        }
 
         if ('' !== $where) {
             $options .= '--where='.Shell::quote($where).' ';
@@ -138,5 +155,18 @@ final class MysqlCommandBuilder
             SqlLiteral::quote($dbName),
             $conditions,
         );
+    }
+
+    /**
+     * MariaDB reports versions of its own (10.x, 11.x) that are all well past the
+     * MySQL 5.6 line, so the plain numeric comparison holds for both.
+     */
+    private function supportsNoTablespaces(?string $serverVersion): bool
+    {
+        if (null === $serverVersion || 1 !== preg_match('/^(\d+(?:\.\d+)*)/', $serverVersion, $matches)) {
+            return true;
+        }
+
+        return version_compare($matches[1], '5.6', '>=');
     }
 }
