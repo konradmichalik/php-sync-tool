@@ -13,9 +13,12 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use Closure;
 use KonradMichalik\SyncTool\Config\ClientConfig;
+use KonradMichalik\SyncTool\Enum\LogChannel;
 
 use function implode;
+use function sprintf;
 
 /**
  * RunnerFactory.
@@ -35,9 +38,15 @@ class RunnerFactory
      */
     private array $runners = [];
 
+    /** @var Closure(string, LogChannel=): void */
+    private readonly Closure $log;
+
     public function __construct(
         private readonly SshClientFactory $sshClientFactory = new SshClientFactory(),
-    ) {}
+        ?Closure $log = null,
+    ) {
+        $this->log = $log ?? static function (string $message, LogChannel $channel = LogChannel::Step): void {};
+    }
 
     public function forClient(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, bool $strictHostKeyChecking = true): CommandRunner
     {
@@ -55,8 +64,12 @@ class RunnerFactory
     {
         if ($client->isRemote()) {
             if (null !== $client->jumpHost) {
+                ($this->log)(sprintf('Connecting via SSH to %s@%s (via jump host %s)', $client->user, $client->host, $client->jumpHost->host));
+
                 return new SystemSshCommandRunner($client, $client->jumpHost);
             }
+
+            ($this->log)(sprintf('Connecting via SSH to %s@%s', $client->user, $client->host));
 
             return new SshCommandRunner($this->sshClientFactory->create($client, $useSshAgent, $forcePassword, $strictHostKeyChecking));
         }

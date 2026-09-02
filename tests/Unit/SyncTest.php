@@ -522,6 +522,8 @@ final class SyncTest extends TestCase
         $this->syncWith($recorder)->run($config, Plans::syncLocal());
 
         self::assertTrue($recorder->ran('resolved_db'), 'resolved db name flows into later commands');
+        self::assertContains('Reading database credentials from /app/.env', $this->logs);
+        self::assertContains('Reading database credentials from /app2/.env', $this->logs);
     }
 
     #[Test]
