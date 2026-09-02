@@ -398,6 +398,10 @@ final class SyncCommandTest extends TestCase
     /**
      * A deploy has nobody to answer a prompt, so the run has to fail with a
      * sentence naming the endpoint rather than block on a hidden question.
+     *
+     * Driven through `--force-password`, which needs a password by definition:
+     * without it the outcome would depend on whether the machine running the
+     * suite happens to have a loaded SSH agent.
      */
     #[Test]
     public function aNonInteractiveRunIsToldWhatAuthenticationIsMissing(): void
@@ -406,7 +410,10 @@ final class SyncCommandTest extends TestCase
         file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
 
         $tester = $this->tester();
-        $exit = $tester->execute(['--config-file' => $file, '--yes' => true], ['interactive' => false]);
+        $exit = $tester->execute(
+            ['--config-file' => $file, '--force-password' => true, '--yes' => true],
+            ['interactive' => false],
+        );
 
         self::assertSame(1, $exit);
         self::assertStringContainsString('No SSH authentication configured for deploy@o.example.com', $tester->getDisplay());

@@ -107,7 +107,17 @@ final readonly class SshClientFactory
         }
 
         if ($useSshAgent) {
-            return $ssh->login($client->user, new Agent());
+            // `ssh_agent: true` opts out of the password prompt, so an agent that
+            // cannot be reached ends the run here. phpseclib says so by throwing
+            // from its own hierarchy, which nothing above catches: the user got a
+            // stack trace instead of the one thing they need to know.
+            try {
+                $agent = new Agent();
+            } catch (Throwable $exception) {
+                throw new SyncException(sprintf('No SSH agent available for %s (%s). Start one and load a key, or configure ssh_key or password for this endpoint.', $client->host, $exception->getMessage()), 0, $exception);
+            }
+
+            return $ssh->login($client->user, $agent);
         }
 
         throw new SyncException(sprintf('No SSH authentication method configured for host %s', $client->host));

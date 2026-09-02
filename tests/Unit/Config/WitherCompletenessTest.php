@@ -79,6 +79,44 @@ final class WitherCompletenessTest extends TestCase
         );
     }
 
+    public function testWithSshAgentPreservesEveryPropertyButTheFlag(): void
+    {
+        $config = self::populatedConfig();
+
+        $this->assertPreserved(
+            $config,
+            $config->withSshAgent(!$config->sshAgent),
+            ['sshAgent'],
+        );
+    }
+
+    /**
+     * Guards the guard: a fixture value that happens to equal the constructor
+     * default makes every preservation check above vacuous for that property. A
+     * wither dropping it would produce the same default, the comparison would
+     * match, and the test would pass while the property was lost.
+     *
+     * This caught `backupBeforeImport`, which the fixture left at `false`.
+     */
+    public function testEveryFixturePropertyDiffersFromItsDefault(): void
+    {
+        foreach ([new ClientConfig(), new DatabaseConfig(), new SyncConfig()] as $default) {
+            $populated = match (true) {
+                $default instanceof ClientConfig => self::populatedClient(),
+                $default instanceof DatabaseConfig => self::populatedDatabase(),
+                default => self::populatedConfig(),
+            };
+
+            foreach (get_object_vars($populated) as $property => $value) {
+                self::assertNotEquals(
+                    $default->{$property},
+                    $value,
+                    sprintf('%s::$%s is left at its default in the fixture, so no preservation test can see it go missing', $default::class, $property),
+                );
+            }
+        }
+    }
+
     /**
      * Guards the guard: every constructor promoted property must be reachable as
      * a public property, otherwise the comparison above would silently skip it.
@@ -199,6 +237,7 @@ final class WitherCompletenessTest extends TestCase
             dumpName: 'custom-dump',
             checkDump: false,
             clearDatabase: true,
+            backupBeforeImport: true,
             importFile: '/tmp/import.sql',
             tables: 'pages,content',
             where: 'uid > 10',
