@@ -19,6 +19,7 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
+use Throwable;
 
 /**
  * SyncCommandTest.
@@ -392,6 +393,69 @@ final class SyncCommandTest extends TestCase
         self::assertSame(1, $exit, $output);
         self::assertStringNotContainsString('This overwrites', $output);
         self::assertStringNotContainsString('Aborted by user', $output);
+    }
+
+    /**
+     * A deploy has nobody to answer a prompt, so the run has to fail with a
+     * sentence naming the endpoint rather than block on a hidden question.
+     *
+     * Driven through `--force-password`, which needs a password by definition:
+     * without it the outcome would depend on whether the machine running the
+     * suite happens to have a loaded SSH agent.
+     */
+    #[Test]
+    public function aNonInteractiveRunIsToldWhatAuthenticationIsMissing(): void
+    {
+        $file = $this->dir.'/no-auth.yaml';
+        file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $exit = $tester->execute(
+            ['--config-file' => $file, '--force-password' => true, '--yes' => true],
+            ['interactive' => false],
+        );
+
+        self::assertSame(1, $exit);
+        self::assertStringContainsString('No SSH authentication configured for deploy@o.example.com', $tester->getDisplay());
+    }
+
+    /**
+     * The prompt is the point of the flag. Without it, --force-password could only
+     * work when a password was already configured.
+     */
+    #[Test]
+    public function forcePasswordAsksForAPasswordOnATerminal(): void
+    {
+        $file = $this->dir.'/force-password.yaml';
+        file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  ssh_key: /dev/null\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $tester->setInputs(['s3cret']);
+
+        try {
+            $tester->execute(
+                ['--config-file' => $file, '--force-password' => true, '--yes' => true],
+                ['interactive' => true],
+            );
+        } catch (Throwable) {
+            // The answer is accepted and the run goes on to connect, which this host
+            // cannot do. The prompt having happened is what is under test.
+        }
+
+        self::assertStringContainsString('SSH password for deploy@o.example.com', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function aDryRunIsNeverAskedForAPassword(): void
+    {
+        $file = $this->dir.'/dry-run-auth.yaml';
+        file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $exit = $tester->execute(['--config-file' => $file, '--dry-run' => true], ['interactive' => false]);
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+        self::assertStringNotContainsString('No SSH authentication', $tester->getDisplay());
     }
 
     private function tester(): CommandTester

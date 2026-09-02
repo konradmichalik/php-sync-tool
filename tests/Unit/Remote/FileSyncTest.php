@@ -93,7 +93,11 @@ final class FileSyncTest extends TestCase
         $recorder = new RecordingCommandRunner();
         (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, Plans::proxy());
 
-        self::assertTrue($recorder->ran('php-sync-tool-fileadmin'), 'pulls and pushes through a local temp path');
+        self::assertMatchesRegularExpression(
+            '#/php-sync-tool-[0-9a-f]{16}/fileadmin#',
+            implode("\n", $recorder->commands),
+            'pulls and pushes through a private local staging directory',
+        );
         self::assertTrue($recorder->ran('rm -rf'), 'cleans up the local temp path');
     }
 

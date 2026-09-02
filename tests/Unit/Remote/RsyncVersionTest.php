@@ -50,7 +50,19 @@ final class RsyncVersionTest extends TestCase
     #[Test]
     public function deniesProgressSupportWhenTheVersionCannotBeRead(): void
     {
-        self::assertFalse((new RsyncVersion())->supportsProgress2(new RecordingCommandRunner()));
+        self::assertFalse((new RsyncVersion())->supportsProgress2($this->withoutRsync()));
+    }
+
+    #[Test]
+    public function reportsRsyncAsMissingWhenTheProbeSaysNothing(): void
+    {
+        self::assertFalse((new RsyncVersion())->isAvailable($this->withoutRsync()));
+    }
+
+    #[Test]
+    public function reportsRsyncAsAvailableWhenTheProbeNamesAVersion(): void
+    {
+        self::assertTrue((new RsyncVersion())->isAvailable(new RecordingCommandRunner()));
     }
 
     /**
@@ -70,5 +82,14 @@ final class RsyncVersionTest extends TestCase
         $version->supportsProgress2($runner);
 
         self::assertSame(['rsync --version'], $runner->commands);
+    }
+
+    /**
+     * A machine where the binary is absent: the shell writes to stderr and the
+     * runner hands back nothing.
+     */
+    private function withoutRsync(): RecordingCommandRunner
+    {
+        return new RecordingCommandRunner(['rsync --version' => '']);
     }
 }

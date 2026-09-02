@@ -25,6 +25,23 @@ use function is_string;
 final class Pure
 {
     /**
+     * The non-empty lines of a command's output, trimmed and renumbered.
+     *
+     * Every reader of command output wants exactly this, because a client pads
+     * its result with a trailing newline and, depending on the client, a header
+     * row and surrounding whitespace.
+     *
+     * @return list<string>
+     */
+    public static function outputLines(string $output): array
+    {
+        return array_values(array_filter(
+            array_map(trim(...), explode("\n", $output)),
+            static fn (string $line): bool => '' !== $line,
+        ));
+    }
+
+    /**
      * Extract the first version-like token from a tool's --version output.
      * The regex is intentionally identical to the Python original (including
      * its `=?` quirks) to keep extraction byte-compatible.

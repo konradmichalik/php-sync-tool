@@ -30,4 +30,11 @@ enum LogChannel
      * The masked command it runs to do it.
      */
     case Command;
+
+    /**
+     * The run continues, but not the way the configuration asked for. Unlike a
+     * step, this is worth seeing without `-v`, because the alternative is finding
+     * out from the result.
+     */
+    case Warning;
 }

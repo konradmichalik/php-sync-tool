@@ -50,6 +50,31 @@ final class MysqlCommandBuilderTest extends TestCase
         );
     }
 
+    /**
+     * The option only arrived in MySQL 5.6, so on anything older mysqldump rejects
+     * the very command it was added to make work.
+     */
+    #[Test]
+    public function dumpOptionsDropNoTablespacesForAServerTooOldToKnowIt(): void
+    {
+        self::assertSame(
+            '--single-transaction --quick --extended-insert ',
+            $this->builder->dumpOptions(serverVersion: '5.5.62-log'),
+        );
+    }
+
+    #[Test]
+    public function dumpOptionsKeepNoTablespacesForAModernServer(): void
+    {
+        self::assertStringContainsString('--no-tablespaces', $this->builder->dumpOptions(serverVersion: '8.0.36'));
+    }
+
+    #[Test]
+    public function dumpOptionsKeepNoTablespacesForMariadb(): void
+    {
+        self::assertStringContainsString('--no-tablespaces', $this->builder->dumpOptions(serverVersion: '11.4.2-MariaDB'));
+    }
+
     #[Test]
     public function dumpCommandStreamsToGzip(): void
     {

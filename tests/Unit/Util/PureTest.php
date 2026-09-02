@@ -142,4 +142,15 @@ final class PureTest extends TestCase
         yield 'trailing slash' => ['/var/www/', 'www'];
         yield 'simple' => ['/home/user/documents/file.txt', 'file.txt'];
     }
+
+    /**
+     * A bare `array_filter()` treats `"0"` as falsy and drops it along with the
+     * empty lines it is meant to remove, a table or row literally named `0`
+     * would silently disappear from a listing.
+     */
+    #[Test]
+    public function outputLinesKeepsALineThatIsLiterallyZero(): void
+    {
+        self::assertSame(['a', '0', 'b'], Pure::outputLines("a\n0\n\nb\n"));
+    }
 }

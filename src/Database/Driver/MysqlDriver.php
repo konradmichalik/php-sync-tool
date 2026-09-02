@@ -17,15 +17,12 @@ use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\{ClientBinaries, DumpRequest, MysqlCommandBuilder, MysqlDefaultsFile, TableStatements};
 use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
 use KonradMichalik\SyncTool\Security\{SqlLiteral, TableName};
+use KonradMichalik\SyncTool\Util\Pure;
 
-use function array_filter;
 use function array_map;
 use function array_slice;
-use function array_values;
-use function explode;
 use function implode;
 use function sprintf;
-use function trim;
 
 /**
  * MysqlDriver.
@@ -67,7 +64,7 @@ final readonly class MysqlDriver implements DatabaseDriver
         return $this->commands->dumpCommand(
             $this->binaries->dump,
             $this->argument($request->credentialsPath),
-            $this->commands->dumpOptions($request->where, $request->additionalOptions),
+            $this->commands->dumpOptions($request->where, $request->additionalOptions, $request->serverVersion),
             $request->db->name,
             $ignoreOptions,
             $request->exportTables,
@@ -86,6 +83,21 @@ final readonly class MysqlDriver implements DatabaseDriver
         return $this->commands->execCommand($this->binaries->client, $this->argument($credentialsPath), $db->name, $sql);
     }
 
+    public function versionQuery(): string
+    {
+        return 'SELECT VERSION();';
+    }
+
+    /**
+     * mysqldump writes this as its very last line. `--skip-comments` in
+     * `additional_dump_options` suppresses it, which is why the check it feeds is
+     * switchable through `check_dump`.
+     */
+    public function dumpCompletionMarker(): string
+    {
+        return '-- Dump completed on';
+    }
+
     /**
      * `mysql` already runs with the database selected.
      */
@@ -102,7 +114,7 @@ final readonly class MysqlDriver implements DatabaseDriver
     public function parseTableList(string $output): array
     {
         // `mysql -e` prints a header row for every result set.
-        $lines = array_values(array_filter(array_map(trim(...), explode("\n", $output))));
+        $lines = Pure::outputLines($output);
 
         return array_slice($lines, 1);
     }

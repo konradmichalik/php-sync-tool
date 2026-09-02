@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Config;
 use InvalidArgumentException;
 
 use function array_key_exists;
+use function get_object_vars;
 use function is_array;
 use function is_scalar;
 use function sprintf;
@@ -121,43 +122,17 @@ final readonly class SyncConfig
 
     public function withClients(ClientConfig $origin, ClientConfig $target): self
     {
-        return new self(
-            verbose: $this->verbose,
-            mute: $this->mute,
-            dryRun: $this->dryRun,
-            yes: $this->yes,
-            reverse: $this->reverse,
-            keepDump: $this->keepDump,
-            dumpName: $this->dumpName,
-            checkDump: $this->checkDump,
-            clearDatabase: $this->clearDatabase,
-            backupBeforeImport: $this->backupBeforeImport,
-            importFile: $this->importFile,
-            tables: $this->tables,
-            where: $this->where,
-            additionalDumpOptions: $this->additionalDumpOptions,
-            ignoreTables: $this->ignoreTables,
-            truncateTables: $this->truncateTables,
-            useRsync: $this->useRsync,
-            useRsyncOptions: $this->useRsyncOptions,
-            useSshpass: $this->useSshpass,
-            files: $this->files,
-            filesOptions: $this->filesOptions,
-            withFiles: $this->withFiles,
-            filesOnly: $this->filesOnly,
-            sshAgent: $this->sshAgent,
-            forcePassword: $this->forcePassword,
-            strictHostKeyChecking: $this->strictHostKeyChecking,
-            sshPasswordOrigin: $this->sshPasswordOrigin,
-            sshPasswordTarget: $this->sshPasswordTarget,
-            configFilePath: $this->configFilePath,
-            logFile: $this->logFile,
-            jsonLog: $this->jsonLog,
-            type: $this->type,
-            scripts: $this->scripts,
-            origin: $origin,
-            target: $target,
-        );
+        return $this->with(['origin' => $origin, 'target' => $target]);
+    }
+
+    public function withSshAgent(bool $sshAgent): self
+    {
+        return $this->with(['sshAgent' => $sshAgent]);
+    }
+
+    public function withSshpass(bool $useSshpass): self
+    {
+        return $this->with(['useSshpass' => $useSshpass]);
     }
 
     public function getClient(string $client): ClientConfig
@@ -167,6 +142,21 @@ final readonly class SyncConfig
             'target' => $this->target,
             default => throw new InvalidArgumentException(sprintf('Unknown client: %s', $client)),
         };
+    }
+
+    /**
+     * Every property carried over except the named ones. Re-listing all forty per
+     * wither meant a property added to the constructor was silently reset by every
+     * wither that had not been updated with it.
+     *
+     * The constructor parameters and the properties share their names, so the
+     * spread arrives as named arguments.
+     *
+     * @param array<string, mixed> $overrides
+     */
+    private function with(array $overrides): self
+    {
+        return new self(...[...get_object_vars($this), ...$overrides]);
     }
 
     /**

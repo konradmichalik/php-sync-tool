@@ -17,7 +17,7 @@ use Closure;
 use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
 use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\Driver\{DatabaseDriver, DriverFactory};
-use KonradMichalik\SyncTool\Database\{DumpRequest, RemoteFileWriter, TableStatements};
+use KonradMichalik\SyncTool\Database\{DumpRequest, RemoteFileWriter, ServerProbe, TableStatements};
 use KonradMichalik\SyncTool\Enum\{LifecyclePhase, LogChannel};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
@@ -27,12 +27,17 @@ use KonradMichalik\SyncTool\Recipe\CredentialResolver;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, FileSync, RunnerFactory};
 use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
 use KonradMichalik\SyncTool\Security\LogSanitizer;
+use KonradMichalik\SyncTool\Util\Pure;
 use Throwable;
 
+use function explode;
 use function implode;
 use function sprintf;
 use function str_contains;
+use function str_ends_with;
 use function str_replace;
+use function str_starts_with;
+use function trim;
 
 /**
  * Sync.
@@ -55,6 +60,7 @@ final readonly class Sync
         private FileSync $fileSync = new FileSync(),
         private ScriptRunner $scripts = new ScriptRunner(),
         private DumpManager $dumps = new DumpManager(),
+        private ServerProbe $serverProbe = new ServerProbe(),
         private CredentialResolver $credentialResolver = new CredentialResolver(),
         ?Closure $log = null,
         private SyncProgress $progress = new NullSyncProgress(),
@@ -106,6 +112,7 @@ final readonly class Sync
 
         if ('' === $origin->db->name && '' !== $origin->path) {
             $runner = $this->runners->forClient($origin, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+            ($this->log)('Reading database credentials from '.$origin->path);
             $db = $this->credentialResolver->resolve($config, $origin, $runner);
             if (null !== $db) {
                 $origin = $origin->withDb($db);
@@ -114,6 +121,7 @@ final readonly class Sync
 
         if ('' === $target->db->name && '' !== $target->path) {
             $runner = $this->runners->forClient($target, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+            ($this->log)('Reading database credentials from '.$target->path);
             $db = $this->credentialResolver->resolve($config, $target, $runner);
             if (null !== $db) {
                 $target = $target->withDb($db);
@@ -127,7 +135,7 @@ final readonly class Sync
     {
         $client = $config->origin;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
-        $driver = $this->drivers->forDatabase($client->db, $client->console);
+        $driver = $this->drivers->forDatabase($client->db, $client->console, $runner);
         $this->assertSupported($driver, $config, $client->db);
 
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
@@ -141,6 +149,7 @@ final readonly class Sync
                 ignoreTables: $this->resolveIgnoreTables($config, $runner, $driver, $credentialsPath),
                 where: $config->where,
                 additionalOptions: $config->additionalDumpOptions,
+                serverVersion: $this->reportServerVersion($driver, $client->db, $credentialsPath, $runner),
             ));
 
             ($this->log)('Creating origin dump '.$dumpName);
@@ -149,10 +158,28 @@ final readonly class Sync
             $runner->run($command);
             $this->progress->advance();
 
+            $this->reportTableCount($runner, $this->dumpDir($client).$dumpName.'.gz');
             $this->pruneDumps($client, $runner);
         } finally {
             $this->cleanupCredentials($client, $runner, $credentialsPath);
         }
+    }
+
+    /**
+     * Asks the endpoint what it is running, reports it, and hands the answer back
+     * so the dump options can be matched to it. A server that will not answer is
+     * not an error: the options fall back to what every supported release
+     * understands.
+     */
+    private function reportServerVersion(DatabaseDriver $driver, DatabaseConfig $db, string $credentialsPath, CommandRunner $runner): ?string
+    {
+        $version = $this->serverProbe->version($driver, $db, $credentialsPath, $runner);
+
+        if (null !== $version) {
+            ($this->log)('Database version: '.$this->serverProbe->describe($driver->system(), $version));
+        }
+
+        return $version;
     }
 
     private function transferDump(SyncConfig $config, SyncPlan $plan, string $dumpName): void
@@ -179,7 +206,7 @@ final readonly class Sync
     {
         $client = $config->target;
         $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
-        $driver = $this->drivers->forDatabase($client->db, $client->console);
+        $driver = $this->drivers->forDatabase($client->db, $client->console, $runner);
         $this->assertSupported($driver, $config, $client->db);
 
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
@@ -190,7 +217,7 @@ final readonly class Sync
                 : $this->dumpDir($client).$dumpName.'.gz';
 
             if ($config->checkDump) {
-                $this->checkDump($runner, $dumpPath);
+                $this->checkDump($runner, $driver, $dumpPath);
             }
 
             if ($config->backupBeforeImport) {
@@ -243,13 +270,93 @@ final readonly class Sync
         $this->progress->advance();
     }
 
-    private function checkDump(CommandRunner $runner, string $dumpPath): void
+    /**
+     * A dump is only trustworthy if the dump tool got to the end of it. Checking
+     * the file size alone accepts the half-written file a mysqldump killed by a
+     * full disk leaves behind, and the import that follows may already have
+     * dropped the target's tables.
+     *
+     * The trailer is read rather than the last line alone, because pg_dump closes
+     * its marker with a comment rule while mysqldump does not.
+     */
+    private function checkDump(CommandRunner $runner, DatabaseDriver $driver, string $dumpPath): void
     {
-        $result = $runner->run(sprintf('test -s %s && echo VALID', escapeshellarg($dumpPath)), true);
+        $safePath = escapeshellarg($dumpPath);
 
-        if ('VALID' !== trim($result)) {
+        if ('OK' !== trim($runner->run(sprintf('test -s %s && echo OK', $safePath), true))) {
             throw new SyncException(sprintf('Dump validation failed: %s is missing or empty', $dumpPath));
         }
+
+        // gzip carries its own checksum, and it is the only thing that can tell a
+        // stream that decompressed correctly from one that merely decompressed.
+        // Reading the trailer cannot: `gunzip -c | tail` reports tail's exit
+        // status, so an archive whose footer or CRC is damaged still produced its
+        // last lines, marker included, and was accepted.
+        //
+        // This decompresses a second time, which is real work on a large dump. It
+        // buys the difference between a dump that looks finished and one that is
+        // intact, on the step whose whole job is to tell those apart. `check_dump`
+        // turns the pair off together.
+        if (str_ends_with($dumpPath, '.gz') && 'OK' !== trim($runner->run(sprintf('gunzip -t %s && echo OK', $safePath), true))) {
+            throw new SyncException(sprintf('Dump validation failed: %s is not a valid gzip archive, it was damaged in writing or transfer', $dumpPath));
+        }
+
+        $trailer = $runner->run(sprintf('%s | tail -n 5', $this->readDumpCommand($dumpPath)), true);
+
+        if (!$this->hasCompletionLine($trailer, $driver->dumpCompletionMarker())) {
+            throw new SyncException(sprintf('Dump validation failed: %s is incomplete, the dump tool did not finish writing it. Set check_dump to false if the dump is intentionally written without comments.', $dumpPath));
+        }
+    }
+
+    /**
+     * Whether one of the trailing lines *is* the completion line, rather than
+     * merely containing the marker somewhere.
+     *
+     * A row that happens to carry the marker text would satisfy a substring match
+     * over the whole trailer and validate a truncated dump. It cannot open a line:
+     * both dump tools escape newlines inside values, so data never reaches a line
+     * start of its own.
+     */
+    private function hasCompletionLine(string $trailer, string $marker): bool
+    {
+        foreach (explode("\n", $trailer) as $line) {
+            if (str_starts_with(trim($line), $marker)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * How many tables the dump carries, counted in the file itself rather than
+     * asked of the database, so it describes what was actually exported after
+     * `tables`, `ignore_table` and any `where` clause have had their say.
+     *
+     * Reported rather than checked: only the person running the sync knows how
+     * many tables to expect, and a dump that is valid but unexpectedly small is
+     * otherwise invisible.
+     */
+    private function reportTableCount(CommandRunner $runner, string $dumpPath): void
+    {
+        // grep exits 1 on no match, which the runner is told to tolerate: zero
+        // tables is an answer, not a failure.
+        $count = trim($runner->run(sprintf('%s | grep -c "CREATE TABLE"', $this->readDumpCommand($dumpPath)), true));
+
+        if ('' !== $count) {
+            ($this->log)(sprintf('%s table(s) exported', $count));
+        }
+    }
+
+    /**
+     * Writes the dump to stdout, whether it is gzipped (everything this tool
+     * produces) or a plain `.sql` handed in through `--import-file`.
+     */
+    private function readDumpCommand(string $dumpPath): string
+    {
+        $safePath = escapeshellarg($dumpPath);
+
+        return str_ends_with($dumpPath, '.gz') ? 'gunzip -c '.$safePath : 'cat '.$safePath;
     }
 
     private function importAfterDump(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
@@ -314,7 +421,12 @@ final readonly class Sync
             return;
         }
 
-        $isDarwin = !$client->isRemote() && 'Darwin' === \PHP_OS_FAMILY;
+        // Asked of the host the command will run on. Reading PHP_OS_FAMILY answers
+        // for the machine the tool runs on instead, so a remote macOS endpoint was
+        // handed GNU `stat` syntax, the listing failed, and retention silently
+        // stopped removing anything.
+        $isDarwin = 'Darwin' === trim($runner->run('uname -s', true));
+
         // Only dumps this tool wrote. The glob used to be `*`, which made every
         // foreign .sql or .gz in the dump directory a deletion candidate.
         $listing = $runner->run(
@@ -322,7 +434,7 @@ final readonly class Sync
             true,
         );
 
-        $lines = array_values(array_filter(array_map(trim(...), explode("\n", $listing))));
+        $lines = Pure::outputLines($listing);
         $files = array_map($this->dumps->extractFilename(...), $lines);
         $obsolete = $this->dumps->filesToRemove($files, $client->keepDumps);
 

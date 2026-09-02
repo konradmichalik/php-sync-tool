@@ -47,6 +47,43 @@ final class RunnerFactoryTest extends TestCase
         self::assertInstanceOf(SystemSshCommandRunner::class, (new RunnerFactory())->forClient($client));
     }
 
+    #[Test]
+    public function connectingToAJumpHostedClientIsLogged(): void
+    {
+        $logs = [];
+        $factory = new RunnerFactory(log: static function (string $message) use (&$logs): void {
+            $logs[] = $message;
+        });
+        $client = new ClientConfig(
+            host: 'remote.example.com',
+            user: 'deploy',
+            jumpHost: new JumpHostConfig(host: 'jump.example.com', user: 'proxy'),
+        );
+
+        $factory->forClient($client);
+
+        self::assertContains('Connecting via SSH to deploy@remote.example.com (via jump host jump.example.com)', $logs);
+    }
+
+    #[Test]
+    public function reusingACachedConnectionIsLoggedOnlyOnce(): void
+    {
+        $logs = [];
+        $factory = new RunnerFactory(log: static function (string $message) use (&$logs): void {
+            $logs[] = $message;
+        });
+        $client = new ClientConfig(
+            host: 'remote.example.com',
+            user: 'deploy',
+            jumpHost: new JumpHostConfig(host: 'jump.example.com', user: 'proxy'),
+        );
+
+        $factory->forClient($client);
+        $factory->forClient($client);
+
+        self::assertCount(1, $logs);
+    }
+
     /**
      * A run asks for the same endpoint in several phases. Handing out a fresh
      * runner each time meant a fresh SSH handshake each time.

@@ -27,21 +27,33 @@ use function str_contains;
  */
 final class RecordingCommandRunner implements CommandRunner
 {
+    /**
+     * The machine a test runs on is assumed to have rsync, the way nearly every
+     * machine does. A test about its absence overrides the key with an empty
+     * string; without a default here, every unrelated test would silently take
+     * the no-rsync path.
+     */
+    private const AMBIENT_RESPONSES = ['rsync --version' => 'rsync  version 3.2.7  protocol version 31'];
     /** @var list<string> */
     public array $commands = [];
 
     /** @var list<bool> */
     public array $allowFail = [];
 
+    /** @var array<string, string> */
+    private readonly array $responses;
+
     /**
      * @param array<string, string> $responses substring => canned stdout
      * @param array<string, string> $streams   substring => chunk handed to the output callback
      */
     public function __construct(
-        private readonly array $responses = [],
+        array $responses = [],
         private readonly ?string $throwOn = null,
         private readonly array $streams = [],
-    ) {}
+    ) {
+        $this->responses = $responses + self::AMBIENT_RESPONSES;
+    }
 
     public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {

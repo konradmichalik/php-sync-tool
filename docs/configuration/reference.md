@@ -36,10 +36,11 @@ stays a command.
 | `truncate_tables` | array | Tables to empty on the target before the import. A `table*` entry is expanded against the target. |
 | `backup_before_import` | boolean | Dump the target database before anything overwrites it (default: off). |
 | `check_dump` | boolean | Verify the dump was written to the end before importing it (default: on). |
-| `additional_dump_options` | string | Extra options for the dump binary. The older name `additional_mysqldump_options` is still read. |
+| `additional_dump_options` | string | Extra options for the dump binary. `additional_mysqldump_options`, the name the Python tool used, is still read. |
 | `log_file` | string | Path to a log file. |
 | `json_log` | boolean | Write the log file as JSON lines. |
-| `ssh_agent` | boolean | Authenticate through the running SSH agent (default: off). Required for passphrase-protected keys, see [Authentication](/configuration/authentication). |
+| `ssh_agent` | boolean | Insist on the running SSH agent. A loaded agent is used on its own when an endpoint has no key and no password, see [Authentication](/configuration/authentication). |
+| `use_sshpass` | boolean | Hand rsync a password through `sshpass`. Set on its own when a password is in play and the binary is installed, so it rarely needs configuring. |
 | `ssh_strict_host_key_checking` | boolean | Toggle SSH host-key verification (default: enabled). |
 | `files` | array | File-transfer entries (see [File Synchronization](/configuration/file-sync)). |
 
@@ -86,7 +87,7 @@ Under `origin.db` / `target.db`:
 | `ssl_cert` | string | Path to the client certificate. |
 | `ssl_key` | string | Path to the client key. |
 | `ssl_cipher` | string | Allowed cipher list. |
-| `type` | enum | Database system: `mysql`, `mariadb`, `postgres` (default: `mysql`). See [PostgreSQL](/configuration/postgresql). |
+| `type` | enum | Database system: `mysql`, `mariadb`, `postgres` (default: `mysql`). The MySQL and MariaDB binary names are detected on the endpoint, so this rarely needs setting for either. See [PostgreSQL](/configuration/postgresql). |
 
 The `ssl_*` keys configure a MySQL or MariaDB client and are written into the same
 temporary credential file as the password, so no path reaches the process list. A

@@ -81,7 +81,10 @@ as one plain line instead. A failure keeps its own error block, because an error
 worth interrupting for.
 
 Add `-v` for what the tool is doing and `-vv` for the commands it runs; both are printed
-above the live line. `-v` also names the sync mode on the heading:
+above the live line. `-v` also reports the database version each endpoint runs and how
+many tables the dump ended up carrying, counted in the dump itself, so it reflects what
+`tables`, `ignore_table` and `where` let through. `-v` also names the sync mode on the
+heading:
 
 ```
 php-sync-tool  RECEIVER  remote (www1) ➔ local
@@ -116,14 +119,14 @@ everything.
 | `--where` | | WHERE clause for mysqldump |
 | `--additional-dump-options` | | Extra options for the dump binary |
 | `--backup-before-import` | | Dump the target database before it is overwritten |
-| `--no-check-dump` | | Import without checking the dump for content first |
+| `--no-check-dump` | | Import without checking the dump is complete (present, intact, fully written) |
 | `--target-after-dump` | | Additional dump to import on the target after the main import |
 
 ## Transfer Options
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--no-rsync` | | Disable rsync and use the SFTP fallback |
+| `--no-rsync` | | Disable rsync and use the SFTP fallback (a local-to-local dump is copied instead) |
 | `--use-rsync-options` | | Additional rsync options |
 
 ## File Transfer Options

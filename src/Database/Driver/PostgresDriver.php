@@ -17,15 +17,12 @@ use KonradMichalik\SyncTool\Config\{DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\{ClientBinaries, DumpRequest, PgpassFile};
 use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
 use KonradMichalik\SyncTool\Security\{Shell, SqlLiteral, TableName};
+use KonradMichalik\SyncTool\Util\Pure;
 
-use function array_filter;
 use function array_map;
-use function array_values;
-use function explode;
 use function implode;
 use function sprintf;
 use function str_ends_with;
-use function trim;
 
 /**
  * PostgresDriver.
@@ -90,12 +87,32 @@ final readonly class PostgresDriver implements DatabaseDriver
         return $psql.' < '.$safeFilepath;
     }
 
+    /**
+     * pg_dump closes a plain-format dump with this line, wrapped in the `--`
+     * rules that make it a comment block, so it is near the end rather than on
+     * the very last line.
+     */
+    public function dumpCompletionMarker(): string
+    {
+        return '-- PostgreSQL database dump complete';
+    }
+
     public function execCommand(DatabaseConfig $db, string $credentialsPath, string $sql): string
     {
         return $this->environment($credentialsPath)
             .$this->binaries->client.' -v ON_ERROR_STOP=1 -t -A'
             .$this->connection($db)
             .' -c '.Shell::quote($sql);
+    }
+
+    /**
+     * `SELECT VERSION();` reads like "PostgreSQL 15.4 on x86_64-pc-linux-gnu,
+     * compiled by …", which never matches a version number anchored at the start
+     * of the line. `SHOW server_version;` reports the bare number instead.
+     */
+    public function versionQuery(): string
+    {
+        return 'SHOW server_version;';
     }
 
     public function listTablesSql(): string
@@ -119,7 +136,7 @@ final readonly class PostgresDriver implements DatabaseDriver
     public function parseTableList(string $output): array
     {
         // `psql -t -A` prints one bare value per line, no header.
-        return array_values(array_filter(array_map(trim(...), explode("\n", $output))));
+        return Pure::outputLines($output);
     }
 
     public function dropTablesStatement(array $tables): ?string
