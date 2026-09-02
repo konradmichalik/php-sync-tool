@@ -29,10 +29,14 @@ use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyRe
 use KonradMichalik\SyncTool\Security\LogSanitizer;
 use Throwable;
 
+use function explode;
 use function implode;
 use function sprintf;
 use function str_contains;
+use function str_ends_with;
 use function str_replace;
+use function str_starts_with;
+use function trim;
 
 /**
  * Sync.
@@ -190,7 +194,7 @@ final readonly class Sync
                 : $this->dumpDir($client).$dumpName.'.gz';
 
             if ($config->checkDump) {
-                $this->checkDump($runner, $dumpPath);
+                $this->checkDump($runner, $driver, $dumpPath);
             }
 
             if ($config->backupBeforeImport) {
@@ -243,13 +247,64 @@ final readonly class Sync
         $this->progress->advance();
     }
 
-    private function checkDump(CommandRunner $runner, string $dumpPath): void
+    /**
+     * A dump is only trustworthy if the dump tool got to the end of it. Checking
+     * the file size alone accepts the half-written file a mysqldump killed by a
+     * full disk leaves behind, and the import that follows may already have
+     * dropped the target's tables.
+     *
+     * The trailer is read rather than the last line alone, because pg_dump closes
+     * its marker with a comment rule while mysqldump does not.
+     */
+    private function checkDump(CommandRunner $runner, DatabaseDriver $driver, string $dumpPath): void
     {
-        $result = $runner->run(sprintf('test -s %s && echo VALID', escapeshellarg($dumpPath)), true);
+        $safePath = escapeshellarg($dumpPath);
+        $compressed = str_ends_with($dumpPath, '.gz');
 
-        if ('VALID' !== trim($result)) {
+        if ('OK' !== trim($runner->run(sprintf('test -s %s && echo OK', $safePath), true))) {
             throw new SyncException(sprintf('Dump validation failed: %s is missing or empty', $dumpPath));
         }
+
+        // gzip carries its own checksum, and it is the only thing that can tell a
+        // stream that decompressed correctly from one that merely decompressed.
+        // Reading the trailer cannot: `gunzip -c | tail` reports tail's exit
+        // status, so an archive whose footer or CRC is damaged still produced its
+        // last lines, marker included, and was accepted.
+        //
+        // This decompresses a second time, which is real work on a large dump. It
+        // buys the difference between a dump that looks finished and one that is
+        // intact, on the step whose whole job is to tell those apart. `check_dump`
+        // turns the pair off together.
+        if ($compressed && 'OK' !== trim($runner->run(sprintf('gunzip -t %s && echo OK', $safePath), true))) {
+            throw new SyncException(sprintf('Dump validation failed: %s is not a valid gzip archive, it was damaged in writing or transfer', $dumpPath));
+        }
+
+        $read = $compressed ? 'gunzip -c '.$safePath : 'cat '.$safePath;
+        $trailer = $runner->run(sprintf('%s | tail -n 5', $read), true);
+
+        if (!$this->hasCompletionLine($trailer, $driver->dumpCompletionMarker())) {
+            throw new SyncException(sprintf('Dump validation failed: %s is incomplete, the dump tool did not finish writing it. Set check_dump to false if the dump is intentionally written without comments.', $dumpPath));
+        }
+    }
+
+    /**
+     * Whether one of the trailing lines *is* the completion line, rather than
+     * merely containing the marker somewhere.
+     *
+     * A row that happens to carry the marker text would satisfy a substring match
+     * over the whole trailer and validate a truncated dump. It cannot open a line:
+     * both dump tools escape newlines inside values, so data never reaches a line
+     * start of its own.
+     */
+    private function hasCompletionLine(string $trailer, string $marker): bool
+    {
+        foreach (explode("\n", $trailer) as $line) {
+            if (str_starts_with(trim($line), $marker)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function importAfterDump(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void

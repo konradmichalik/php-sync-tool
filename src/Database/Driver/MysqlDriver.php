@@ -87,6 +87,16 @@ final readonly class MysqlDriver implements DatabaseDriver
     }
 
     /**
+     * mysqldump writes this as its very last line. `--skip-comments` in
+     * `additional_dump_options` suppresses it, which is why the check it feeds is
+     * switchable through `check_dump`.
+     */
+    public function dumpCompletionMarker(): string
+    {
+        return '-- Dump completed on';
+    }
+
+    /**
      * `mysql` already runs with the database selected.
      */
     public function listTablesSql(): string

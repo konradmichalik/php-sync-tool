@@ -90,6 +90,16 @@ final readonly class PostgresDriver implements DatabaseDriver
         return $psql.' < '.$safeFilepath;
     }
 
+    /**
+     * pg_dump closes a plain-format dump with this line, wrapped in the `--`
+     * rules that make it a comment block, so it is near the end rather than on
+     * the very last line.
+     */
+    public function dumpCompletionMarker(): string
+    {
+        return '-- PostgreSQL database dump complete';
+    }
+
     public function execCommand(DatabaseConfig $db, string $credentialsPath, string $sql): string
     {
         return $this->environment($credentialsPath)

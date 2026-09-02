@@ -41,6 +41,13 @@ interface DatabaseDriver
 
     public function importCommand(DatabaseConfig $db, string $credentialsPath, string $filepath): string;
 
+    /**
+     * The line this system's dump tool writes once it has finished. Its absence
+     * from the end of a dump is what tells a truncated file apart from a complete
+     * one, which a size check cannot do.
+     */
+    public function dumpCompletionMarker(): string;
+
     public function execCommand(DatabaseConfig $db, string $credentialsPath, string $sql): string;
 
     public function listTablesSql(): string;
