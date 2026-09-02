@@ -103,7 +103,7 @@ final class SshPasswordResolverTest extends TestCase
             $this->config([
                 'force_password' => true,
                 'origin' => ['host' => 'o.example.com', 'user' => 'deploy'],
-                'target' => ['host' => 'o.example.com', 'user' => 'deploy'],
+                'target' => ['host' => 't.example.com', 'user' => 'deploy'],
             ]),
             Plans::dumpRemote(),
         );
