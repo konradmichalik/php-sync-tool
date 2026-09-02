@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Remote\Transfer;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\SyncConfig;
+use KonradMichalik\SyncTool\Enum\LogChannel;
 use KonradMichalik\SyncTool\Mode\SyncPlan;
 use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\{RsyncCommandBuilder, RsyncVersion, RunnerFactory, SshClientFactory};
@@ -42,17 +43,22 @@ final readonly class TransferStrategyResolver
         ?Closure $log = null,
         SyncProgress $progress = new NullSyncProgress(),
     ): TransferStrategy {
-        $originRemote = $config->origin->isRemote();
-        $targetRemote = $config->target->isRemote();
+        $anyRemote = $config->origin->isRemote() || $config->target->isRemote();
+        $rsyncUsable = $config->useRsync && $this->rsyncVersion->isAvailable($this->runners->local());
 
-        if (!$originRemote && !$targetRemote) {
-            return new RsyncTransferStrategy($this->runners, $this->rsync, $log, $progress, $this->rsyncVersion);
+        // A machine without rsync used to reach the command anyway and fail there,
+        // while the documentation promised a fallback.
+        if ($config->useRsync && !$rsyncUsable && null !== $log) {
+            $log('rsync not found, falling back to a transfer without it', LogChannel::Warning);
         }
 
-        if (!$config->useRsync) {
+        if (!$rsyncUsable) {
             // The SFTP fallback has no progress line: phpseclib transfers block without
             // a byte callback, and its client factory cannot be faked in a unit test.
-            return new SftpTransferStrategy($this->sshClientFactory);
+            // Between two local paths there is no host to reach, so the file is copied.
+            return $anyRemote
+                ? new SftpTransferStrategy($this->sshClientFactory)
+                : new LocalCopyTransferStrategy($this->runners, $log);
         }
 
         if ($plan->isProxied()) {

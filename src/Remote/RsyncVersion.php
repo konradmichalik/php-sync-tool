@@ -28,7 +28,19 @@ final class RsyncVersion
      * The local rsync does not change while a sync runs, but every transferred
      * entry used to ask it for its version again — one process per file entry.
      */
-    private ?bool $supportsProgress2 = null;
+    private bool $probed = false;
+
+    private ?string $version = null;
+
+    /**
+     * Whether a local rsync exists at all. A machine without one, a slim container
+     * most often, cannot run any rsync-based transfer, and the caller has to pick
+     * another way of moving the dump rather than let the command fail.
+     */
+    public function isAvailable(CommandRunner $local): bool
+    {
+        return null !== $this->version($local);
+    }
 
     /**
      * `--info=progress2` arrived in rsync 3.1.0. Older builds abort on the unknown
@@ -37,17 +49,28 @@ final class RsyncVersion
      */
     public function supportsProgress2(CommandRunner $local): bool
     {
-        return $this->supportsProgress2 ??= $this->detect($local);
+        $version = $this->version($local);
+
+        return null !== $version && version_compare($version, '3.1.0', '>=');
     }
 
-    private function detect(CommandRunner $local): bool
+    /**
+     * Null when rsync is absent, or present but too odd to name a version. Both
+     * cases rule out the options that depend on one.
+     */
+    private function version(CommandRunner $local): ?string
     {
-        $output = $local->run('rsync --version', true);
-
-        if (1 !== preg_match('/version\s+(\d+(?:\.\d+)+)/', $output, $matches)) {
-            return false;
+        if ($this->probed) {
+            return $this->version;
         }
 
-        return version_compare($matches[1], '3.1.0', '>=');
+        $this->probed = true;
+        $output = $local->run('rsync --version', true);
+
+        if (1 === preg_match('/version\s+(\d+(?:\.\d+)+)/', $output, $matches)) {
+            $this->version = $matches[1];
+        }
+
+        return $this->version;
     }
 }

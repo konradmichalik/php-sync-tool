@@ -139,10 +139,15 @@ final class ConsoleReporter
         $wanted = match ($channel) {
             LogChannel::Step => $this->output->isVerbose(),
             LogChannel::Command => $this->output->isVeryVerbose(),
+            LogChannel::Warning => true,
         };
 
         if (!$wanted) {
             return;
+        }
+
+        if (LogChannel::Warning === $channel) {
+            $message = sprintf('<comment>[warning]</comment> %s', $message);
         }
 
         if (null !== $this->progress && $this->progress->enabled()) {
