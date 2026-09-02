@@ -90,6 +90,17 @@ final class WitherCompletenessTest extends TestCase
         );
     }
 
+    public function testWithSshpassPreservesEveryPropertyButTheFlag(): void
+    {
+        $config = self::populatedConfig();
+
+        $this->assertPreserved(
+            $config,
+            $config->withSshpass(!$config->useSshpass),
+            ['useSshpass'],
+        );
+    }
+
     /**
      * Guards the guard: a fixture value that happens to equal the constructor
      * default makes every preservation check above vacuous for that property. A
