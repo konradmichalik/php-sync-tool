@@ -50,6 +50,12 @@ interface DatabaseDriver
 
     public function execCommand(DatabaseConfig $db, string $credentialsPath, string $sql): string;
 
+    /**
+     * The statement that reports this system's version as a bare number, rather
+     * than the descriptive sentence some systems prepend it with.
+     */
+    public function versionQuery(): string;
+
     public function listTablesSql(): string;
 
     /**

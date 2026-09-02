@@ -83,6 +83,11 @@ final readonly class MysqlDriver implements DatabaseDriver
         return $this->commands->execCommand($this->binaries->client, $this->argument($credentialsPath), $db->name, $sql);
     }
 
+    public function versionQuery(): string
+    {
+        return 'SELECT VERSION();';
+    }
+
     /**
      * mysqldump writes this as its very last line. `--skip-comments` in
      * `additional_dump_options` suppresses it, which is why the check it feeds is

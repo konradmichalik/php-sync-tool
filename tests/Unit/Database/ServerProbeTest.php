@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Database;
 
 use KonradMichalik\SyncTool\Config\DatabaseConfig;
-use KonradMichalik\SyncTool\Database\Driver\MysqlDriver;
+use KonradMichalik\SyncTool\Database\Driver\{MysqlDriver, PostgresDriver};
 use KonradMichalik\SyncTool\Database\ServerProbe;
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use KonradMichalik\SyncTool\Tests\Fixture\RecordingCommandRunner;
@@ -105,6 +105,24 @@ final class ServerProbeTest extends TestCase
     public function reportsNoVersionWhenTheServerSaysNothingUsable(): void
     {
         self::assertNull($this->version("VERSION()\n"));
+    }
+
+    /**
+     * `SELECT VERSION();` reads like "PostgreSQL 15.4 on x86_64-pc-linux-gnu,
+     * compiled by …", which never matches a version number anchored at the start
+     * of the line, so Postgres uses `SHOW server_version;` instead.
+     */
+    #[Test]
+    public function readsThePostgresVersionFromServerVersion(): void
+    {
+        $version = (new ServerProbe())->version(
+            new PostgresDriver(),
+            new DatabaseConfig(name: 'app'),
+            '/tmp/.pgpass_x',
+            new RecordingCommandRunner(['SHOW server_version' => '15.4']),
+        );
+
+        self::assertSame('15.4', $version);
     }
 
     #[Test]

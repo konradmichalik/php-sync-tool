@@ -105,6 +105,16 @@ final readonly class PostgresDriver implements DatabaseDriver
             .' -c '.Shell::quote($sql);
     }
 
+    /**
+     * `SELECT VERSION();` reads like "PostgreSQL 15.4 on x86_64-pc-linux-gnu,
+     * compiled by …", which never matches a version number anchored at the start
+     * of the line. `SHOW server_version;` reports the bare number instead.
+     */
+    public function versionQuery(): string
+    {
+        return 'SHOW server_version;';
+    }
+
     public function listTablesSql(): string
     {
         return "SELECT tablename FROM pg_tables WHERE schemaname = 'public';";

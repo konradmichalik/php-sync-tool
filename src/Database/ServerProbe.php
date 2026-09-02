@@ -77,7 +77,7 @@ final readonly class ServerProbe
     public function version(DatabaseDriver $driver, DatabaseConfig $db, string $credentialsPath, CommandRunner $runner): ?string
     {
         try {
-            $output = $runner->run($driver->execCommand($db, $credentialsPath, 'SELECT VERSION();'), true);
+            $output = $runner->run($driver->execCommand($db, $credentialsPath, $driver->versionQuery()), true);
         } catch (Throwable) {
             return null;
         }
