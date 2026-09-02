@@ -38,7 +38,25 @@ final class LocalCopyTransferStrategyTest extends TestCase
             new TransferPayload('/srv/a/dump.sql.gz', '/srv/b/dump.sql.gz', singleFile: true),
         );
 
-        self::assertTrue($recorder->ran("cp '/srv/a/dump.sql.gz' '/srv/b/dump.sql.gz'"));
+        self::assertTrue($recorder->ran("cp -- '/srv/a/dump.sql.gz' '/srv/b/dump.sql.gz'"));
+    }
+
+    /**
+     * Without `--`, a path starting with `-` would be parsed by `cp` itself as
+     * an option rather than an operand, `escapeshellarg()` only protects against
+     * the shell, not against `cp`'s own argument parsing.
+     */
+    #[Test]
+    public function separatesOptionsFromPathsStartingWithADash(): void
+    {
+        $recorder = new RecordingCommandRunner();
+
+        $this->strategy($recorder)->transfer(
+            SyncConfig::fromArray([]),
+            new TransferPayload('-rf.sql.gz', '/srv/b/dump.sql.gz', singleFile: true),
+        );
+
+        self::assertTrue($recorder->ran("cp -- '-rf.sql.gz' '/srv/b/dump.sql.gz'"));
     }
 
     /**

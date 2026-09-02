@@ -60,7 +60,7 @@ final readonly class LocalCopyTransferStrategy implements TransferStrategy
         }
 
         $command = sprintf(
-            'cp %s %s',
+            'cp -- %s %s',
             escapeshellarg($payload->originPath),
             escapeshellarg($payload->targetPath),
         );
