@@ -5,9 +5,6 @@ databases — and optionally files — between systems over SSH. It automaticall
 extracts database credentials from popular PHP frameworks and supports a range
 of sync modes for different use cases.
 
-It is a PHP port of the Python [`db-sync-tool`](https://github.com/konradmichalik/db-sync-tool),
-designed to run wherever PHP already runs, without an additional Python runtime.
-
 ## Features
 
 - **Database sync** from and to remote systems

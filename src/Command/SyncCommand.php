@@ -139,6 +139,11 @@ class SyncCommand extends Command
             $reporter = new ConsoleReporter($mode, $io, $output);
 
             $config = $this->buildConfig($input, $output);
+
+            foreach ($this->resolver->getDeprecations() as $deprecation) {
+                $reporter->step($deprecation);
+            }
+
             $this->validator->validate($config);
 
             $syncConfig = SyncConfig::fromArray($config);

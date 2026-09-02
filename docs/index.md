@@ -31,7 +31,7 @@ features:
     link: /configuration/file-sync
   - icon: 📦
     title: Composer or PHAR
-    details: Install via Composer as a library dependency, or ship the single-file PHAR. PHP 8.2+, no Python runtime required.
+    details: Install via Composer as a library dependency, or ship the single-file PHAR. PHP 8.2+, using the database and transfer tools already on your hosts.
     link: /getting-started/installation
   - icon: 🛡️
     title: Secure by Default
@@ -69,10 +69,12 @@ Point `path` at a framework's config file and credentials are detected automatic
 
 ## About This Project
 
-php-sync-tool is a PHP port of the Python
-[`db-sync-tool`](https://github.com/konradmichalik/db-sync-tool), built for
-teams that want database synchronization without a Python runtime on their
-build and deploy hosts. It targets feature parity with the original while
-integrating naturally into Composer-based PHP projects. See
-[Coming from db-sync-tool](/getting-started/from-db-sync-tool) if you already
-use the Python tool.
+php-sync-tool exists so that copying a database between environments is a
+one-line command that runs on the PHP already installed on your build and
+deploy hosts. It integrates with Composer-based projects, reads credentials
+straight out of your framework's configuration, and refuses to overwrite a
+target you did not mean to touch.
+
+It succeeds the Python [`db-sync-tool`](https://github.com/konradmichalik/db-sync-tool)
+by the same author. Existing config files keep working:
+[Coming from db-sync-tool](/getting-started/from-db-sync-tool) covers the move.

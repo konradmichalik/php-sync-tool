@@ -27,7 +27,7 @@ export default defineConfig({
         text: 'Links',
         items: [
           { text: 'Packagist', link: 'https://packagist.org/packages/konradmichalik/php-sync-tool' },
-          { text: 'db-sync-tool (Python)', link: 'https://github.com/konradmichalik/db-sync-tool' },
+          { text: 'db-sync-tool (predecessor)', link: 'https://github.com/konradmichalik/db-sync-tool' },
         ]
       }
     ],

@@ -10,9 +10,9 @@
 
 </div>
 
-PHP port of [`db-sync-tool`](https://github.com/jackd248/db-sync-tool) — synchronize databases
-(and optionally files) between local and remote systems over SSH/rsync/SFTP, with framework
-credential auto-detection for **TYPO3, Symfony, Drupal, WordPress and Laravel**.
+Synchronize databases (and optionally files) between local and remote systems over
+SSH/rsync/SFTP, with framework credential auto-detection for **TYPO3, Symfony, Drupal,
+WordPress and Laravel**.
 
 📖 **[Read the documentation](https://konradmichalik.github.io/php-sync-tool/)**
 
@@ -51,6 +51,12 @@ bin/sync-tool pull production # that environment's database into this project
 Called with no arguments on a terminal, the tool offers every sync it finds and runs the one
 you pick. See the [CLI Reference](https://konradmichalik.github.io/php-sync-tool/reference/cli)
 for explicit configuration files, named hosts and the full option list.
+
+## 📜 Predecessor
+
+This tool succeeds the Python [`db-sync-tool`](https://github.com/konradmichalik/db-sync-tool).
+Existing config files keep working unchanged, see
+[Coming from db-sync-tool](https://konradmichalik.github.io/php-sync-tool/getting-started/from-db-sync-tool).
 
 ## 🧑‍💻 Contributing
 

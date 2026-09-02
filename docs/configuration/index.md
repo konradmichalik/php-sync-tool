@@ -105,6 +105,11 @@ documented.
 The project `.sync-tool/` directory is searched from the current working
 directory upwards.
 
+Where a `.sync-tool` directory is missing, the db-sync-tool name `.db-sync-tool`
+is read in its place and the tool says so. The two are never merged: with both
+present, `.sync-tool` wins and the tool names the one it ignored. See
+[Coming from db-sync-tool](/getting-started/from-db-sync-tool#what-is-guaranteed).
+
 ### Resolution Order
 
 1. **Explicit file** — `-f config.yaml` is loaded directly.
