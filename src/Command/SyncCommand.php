@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Command;
 
 use Closure;
+use KonradMichalik\SyncTool\{Application, Sync};
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, EnvironmentAssembler, SyncConfig};
 use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode};
 use KonradMichalik\SyncTool\Exception\{ConfigException, SyncToolException};
@@ -22,7 +23,7 @@ use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncPlan, SyncSteps};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
 use KonradMichalik\SyncTool\Output\Progress\NullSyncProgress;
 use KonradMichalik\SyncTool\Remote\{RunnerFactory, SshAuthResolver};
-use KonradMichalik\SyncTool\Sync;
+use KonradMichalik\SyncTool\Update\UpdateChecker;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption};
@@ -60,6 +61,7 @@ class SyncCommand extends Command
         private readonly SyncSteps $steps = new SyncSteps(),
         ?EnvironmentAssembler $environments = null,
         private readonly SshAuthResolver $sshAuth = new SshAuthResolver(),
+        private readonly UpdateChecker $updateChecker = new UpdateChecker(),
     ) {
         $this->environments = $environments ?? new EnvironmentAssembler($resolver);
         parent::__construct();
@@ -102,6 +104,7 @@ class SyncCommand extends Command
             ->addOption('files-target', null, InputOption::VALUE_REQUIRED, 'Target path of the first files entry')
             ->addOption('log-file', 'l', InputOption::VALUE_REQUIRED, 'Write log output to a file')
             ->addOption('json-log', null, InputOption::VALUE_NONE, 'Format log output as JSON lines')
+            ->addOption('check-for-updates', null, InputOption::VALUE_NONE, 'Check Packagist for a newer release')
             ->addOption('host-file', 'o', InputOption::VALUE_REQUIRED, 'Additional hosts file to merge')
             ->addOption('force-password', null, InputOption::VALUE_NONE, 'Force interactive password authentication')
             ->addOption('use-rsync-options', null, InputOption::VALUE_REQUIRED, 'Additional rsync options')
@@ -156,6 +159,10 @@ class SyncCommand extends Command
                 $this->describeClient($syncConfig->origin->isRemote(), $syncConfig->origin->host),
                 $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host),
             );
+
+            if ($syncConfig->checkForUpdates && OutputMode::Interactive === $mode) {
+                $this->reportAvailableUpdate($reporter);
+            }
 
             if ($syncConfig->dryRun) {
                 $reporter->success('Dry run: configuration resolved and validated, no changes made.');
@@ -329,6 +336,7 @@ class SyncCommand extends Command
             'files-only' => 'files_only',
             'json-log' => 'json_log',
             'force-password' => 'force_password',
+            'check-for-updates' => 'check_for_updates',
         ];
         foreach ($booleanFlags as $option => $key) {
             if (true === $input->getOption($option)) {
@@ -525,6 +533,24 @@ class SyncCommand extends Command
     private function describeClient(bool $isRemote, string $host): string
     {
         return $isRemote ? sprintf('remote (%s)', $host) : 'local';
+    }
+
+    /**
+     * Opt-in and best-effort: `UpdateChecker` already swallows every network
+     * failure and returns null for "nothing to report", so there is nothing
+     * here to catch or to let block the run.
+     */
+    private function reportAvailableUpdate(ConsoleReporter $reporter): void
+    {
+        $newerVersion = $this->updateChecker->newerVersion('konradmichalik/php-sync-tool', Application::VERSION);
+
+        if (null !== $newerVersion) {
+            $reporter->notice(sprintf(
+                'A newer php-sync-tool release is available: %s (you have %s). https://github.com/konradmichalik/php-sync-tool/releases',
+                $newerVersion,
+                Application::VERSION,
+            ));
+        }
     }
 
     /**

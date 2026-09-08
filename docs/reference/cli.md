@@ -51,6 +51,21 @@ Both are optional. When omitted, configuration comes from `-f` or discovery.
 | `--mute` | `-m` | Mute console output |
 | `--log-file` | `-l` | Write log output to a file |
 | `--json-log` | | Format log output as JSON lines |
+| `--check-for-updates` | | Check Packagist for a newer release, once, at the start of the run |
+
+### Update Notices
+
+Opt-in, on every run it is passed on: a single request to the public Packagist
+API, with a 2-second timeout. A network failure, a timeout, or no newer
+release available all look the same — nothing is printed, and the sync is
+never blocked or delayed beyond that timeout. Only shown in `interactive`
+mode; `--output ci`, `--output json` and `--quiet`/`--mute` never make the
+request at all. Persist the opt-in in the config file instead of passing the
+flag on every invocation:
+
+```yaml
+check_for_updates: true
+```
 
 ### Progress Display
 

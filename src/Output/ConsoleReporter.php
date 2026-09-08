@@ -102,6 +102,21 @@ final class ConsoleReporter
         };
     }
 
+    /**
+     * A rare, standalone notice (currently: a newer release is available),
+     * shown unconditionally in interactive mode rather than gated behind `-v`
+     * like step(). CI and JSON have their own fixed event vocabulary to parse
+     * and Quiet asked for silence, so both stay untouched.
+     */
+    public function notice(string $message): void
+    {
+        if (OutputMode::Interactive !== $this->mode) {
+            return;
+        }
+
+        $this->io->writeln(sprintf('<comment>%s</comment>', $message));
+    }
+
     public function error(string $message): void
     {
         match ($this->mode) {

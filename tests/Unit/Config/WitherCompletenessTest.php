@@ -270,6 +270,7 @@ final class WitherCompletenessTest extends TestCase
             configFilePath: '/etc/sync.yaml',
             logFile: '/var/log/sync.log',
             jsonLog: true,
+            checkForUpdates: true,
             type: 'TYPO3',
             scripts: ['after' => 'echo after'],
             origin: new ClientConfig(name: 'original-origin'),

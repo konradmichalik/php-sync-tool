@@ -97,6 +97,20 @@ final class ConfigValidatorTest extends TestCase
     }
 
     #[Test]
+    public function acceptsBooleanCheckForUpdates(): void
+    {
+        $this->expectNotToPerformAssertions();
+        (new ConfigValidator())->validate(['check_for_updates' => true]);
+    }
+
+    #[Test]
+    public function rejectsNonBooleanCheckForUpdates(): void
+    {
+        $this->expectException(ValidationException::class);
+        (new ConfigValidator())->validate(['check_for_updates' => 'yes']);
+    }
+
+    #[Test]
     public function acceptsJumpHostObjectAndLink(): void
     {
         $this->expectNotToPerformAssertions();

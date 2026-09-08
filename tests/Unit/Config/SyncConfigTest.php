@@ -38,9 +38,20 @@ final class SyncConfigTest extends TestCase
         self::assertTrue($config->useRsync);
         self::assertFalse($config->verbose);
         self::assertFalse($config->withFiles);
+        self::assertFalse($config->checkForUpdates);
         self::assertSame('', $config->dumpName);
         self::assertSame([], $config->files);
         self::assertSame(22, $config->origin->port);
+    }
+
+    /**
+     * A release check calls out to Packagist on every run it is enabled for,
+     * so it stays opt-in rather than silently defaulting to on.
+     */
+    #[Test]
+    public function checkForUpdatesIsReadFromConfig(): void
+    {
+        self::assertTrue(SyncConfig::fromArray(['check_for_updates' => true])->checkForUpdates);
     }
 
     #[Test]
@@ -239,6 +250,7 @@ final class SyncConfigTest extends TestCase
             configFilePath: '/tmp/config.yaml',
             logFile: '/tmp/sync.log',
             jsonLog: true,
+            checkForUpdates: true,
             type: 'TYPO3',
             scripts: ['before' => 'echo one'],
             origin: new ClientConfig(host: 'old-origin'),

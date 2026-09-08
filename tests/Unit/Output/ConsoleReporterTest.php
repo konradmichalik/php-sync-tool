@@ -60,6 +60,30 @@ final class ConsoleReporterTest extends TestCase
         self::assertStringContainsString('remote (h)', $line);
     }
 
+    /**
+     * A release notice is a rare, standalone event, not a routine step, so it
+     * shows unconditionally in interactive mode rather than only behind `-v`
+     * like step() — and stays out of CI/JSON/Quiet, which have their own
+     * fixed vocabularies to parse or asked for silence.
+     */
+    #[Test]
+    public function noticeShowsUnconditionallyInInteractiveMode(): void
+    {
+        $out = new BufferedOutput();
+        $this->reporter(OutputMode::Interactive, $out)->notice('A new release is available: 1.2.0');
+        self::assertStringContainsString('A new release is available: 1.2.0', $out->fetch());
+    }
+
+    #[Test]
+    public function noticeIsSuppressedOutsideInteractiveMode(): void
+    {
+        foreach ([OutputMode::Ci, OutputMode::Json, OutputMode::Quiet] as $mode) {
+            $out = new BufferedOutput();
+            $this->reporter($mode, $out)->notice('A new release is available: 1.2.0');
+            self::assertSame('', $out->fetch(), $mode->value.' must stay silent');
+        }
+    }
+
     #[Test]
     public function quietSuppressesEverythingButErrors(): void
     {
