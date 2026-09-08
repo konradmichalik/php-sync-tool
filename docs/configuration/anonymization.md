@@ -84,8 +84,6 @@ is equivalent to writing out:
 target:
   anonymize:
     fe_users:
-      username: hash
-      password: hash
       email: email
       name: {strategy: static, value: 'Redacted'}
       first_name: {strategy: static, value: 'Redacted'}
@@ -93,8 +91,6 @@ target:
       address: 'null'
       telephone: 'null'
     be_users:
-      username: hash
-      password: hash
       email: email
       realName: {strategy: static, value: 'Redacted'}
 ```

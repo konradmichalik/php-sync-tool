@@ -51,8 +51,6 @@ enum AnonymizationPreset: string
         return match ($this) {
             self::Typo3 => [
                 'fe_users' => [
-                    'username' => 'hash',
-                    'password' => 'hash',
                     'email' => 'email',
                     'name' => ['strategy' => 'static', 'value' => 'Redacted'],
                     'first_name' => ['strategy' => 'static', 'value' => 'Redacted'],
@@ -61,8 +59,6 @@ enum AnonymizationPreset: string
                     'telephone' => 'null',
                 ],
                 'be_users' => [
-                    'username' => 'hash',
-                    'password' => 'hash',
                     'email' => 'email',
                     'realName' => ['strategy' => 'static', 'value' => 'Redacted'],
                 ],
