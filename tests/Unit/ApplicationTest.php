@@ -88,6 +88,35 @@ final class ApplicationTest extends TestCase
         self::assertStringContainsString('sync', $this->execute('list'));
     }
 
+    /**
+     * db-sync-tool's `-kd <dir> -dn <name>` has no direct Symfony Console
+     * equivalent (a multi-character shortcut isn't parsed as one flag), so it
+     * is rewritten on the raw process argv before Symfony sees it. This only
+     * happens on the real argv path (`run(null, ...)`), which is why this
+     * test cannot use StringInput like the others.
+     */
+    #[Test]
+    public function legacyShortDumpFlagsFromDbSyncToolAreRewrittenBeforeParsing(): void
+    {
+        $originalArgv = $_SERVER['argv'] ?? null;
+        $_SERVER['argv'] = ['bin/sync-tool', '-f', '/definitely/missing/config.yaml', '-kd', '/tmp/dumps', '-dn', 'custom.sql'];
+
+        try {
+            $output = new BufferedOutput();
+            $this->application->run(null, $output);
+            $display = $output->fetch();
+        } finally {
+            if (null === $originalArgv) {
+                unset($_SERVER['argv']);
+            } else {
+                $_SERVER['argv'] = $originalArgv;
+            }
+        }
+
+        self::assertStringNotContainsString('option does not exist', $display);
+        self::assertStringContainsString('/definitely/missing/config.yaml', $display, 'legacy flags were rewritten and SyncCommand was reached');
+    }
+
     private function execute(string $command): string
     {
         $output = new BufferedOutput();

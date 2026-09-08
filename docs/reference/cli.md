@@ -122,6 +122,18 @@ everything.
 | `--no-check-dump` | | Import without checking the dump is complete (present, intact, fully written) |
 | `--target-after-dump` | | Additional dump to import on the target after the main import |
 
+### Legacy dump flags from db-sync-tool
+
+`-dn <name>` and `-kd [<dir>]` are accepted for db-sync-tool compatibility.
+They are rewritten before the options are parsed, not registered as regular
+Symfony Console shortcuts:
+
+- `-dn <name>` becomes `--dump-name <name>`.
+- `-kd` alone becomes `--keep-dump`. `-kd <dir>` becomes `--keep-dump
+  --target-dump-dir <dir>`, db-sync-tool's `-kd` having combined "keep the
+  dump" with "put it here". The directory is only consumed when the next
+  token does not itself look like an option.
+
 ## Transfer Options
 
 | Option | Short | Description |
