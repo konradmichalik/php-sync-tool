@@ -17,6 +17,8 @@ use KonradMichalik\SyncTool\Enum\AnonymizationStrategy;
 use PHPUnit\Framework\Attributes\{DataProvider, Test};
 use PHPUnit\Framework\TestCase;
 
+use function count;
+
 /**
  * AnonymizationStrategyTest.
  *
@@ -43,6 +45,8 @@ final class AnonymizationStrategyTest extends TestCase
         yield 'email' => ['email', AnonymizationStrategy::Email];
         yield 'mixed case' => ['Email', AnonymizationStrategy::Email];
         yield 'padded' => [' hash ', AnonymizationStrategy::Hash];
+        yield 'fake name' => ['fake:name', AnonymizationStrategy::FakeName];
+        yield 'fake phone' => ['fake:phone', AnonymizationStrategy::FakePhone];
     }
 
     #[Test]
@@ -58,5 +62,25 @@ final class AnonymizationStrategyTest extends TestCase
         self::assertFalse(AnonymizationStrategy::Nullify->requiresValue());
         self::assertFalse(AnonymizationStrategy::Hash->requiresValue());
         self::assertFalse(AnonymizationStrategy::Email->requiresValue());
+        self::assertFalse(AnonymizationStrategy::FakeName->requiresValue());
+        self::assertFalse(AnonymizationStrategy::FakePhone->requiresValue());
+    }
+
+    /**
+     * The pool must be large enough that a small table doesn't visibly repeat
+     * the same handful of names, and every entry must survive round-tripping
+     * through a single-quoted SQL literal unescaped (no apostrophes).
+     */
+    #[Test]
+    public function theFakeNamePoolIsPlainAndHasNoDuplicates(): void
+    {
+        $names = AnonymizationStrategy::FAKE_NAMES;
+
+        self::assertGreaterThanOrEqual(20, count($names));
+        self::assertCount(count($names), array_unique($names));
+
+        foreach ($names as $name) {
+            self::assertStringNotContainsString("'", $name);
+        }
     }
 }

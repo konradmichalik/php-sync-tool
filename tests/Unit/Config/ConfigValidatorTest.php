@@ -171,6 +171,21 @@ final class ConfigValidatorTest extends TestCase
     }
 
     #[Test]
+    public function acceptsTheFakeNameAndFakePhoneStrategies(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => [
+                'path' => '/t',
+                'db' => ['name' => 'app'],
+                'anonymize' => ['fe_users' => ['name' => 'fake:name', 'telephone' => 'fake:phone']],
+            ],
+        ]);
+    }
+
+    #[Test]
     public function acceptsAnAnonymizationPresetAlongsideExplicitTables(): void
     {
         $this->expectNotToPerformAssertions();

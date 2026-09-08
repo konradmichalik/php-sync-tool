@@ -191,6 +191,31 @@ final class MysqlDriverTest extends TestCase
     }
 
     #[Test]
+    public function buildsADeterministicFakeNameLookupFromTheExistingValue(): void
+    {
+        $statements = $this->driver->anonymizeStatements([
+            new AnonymizationRule('fe_users', 'name', AnonymizationStrategy::FakeName),
+        ]);
+
+        self::assertCount(1, $statements);
+        self::assertStringStartsWith('UPDATE `fe_users` SET `name` = ELT(1 + (CONV(SUBSTRING(MD5(`name`), 1, 8), 16, 10) MOD 20), ', $statements[0]);
+        self::assertStringContainsString("'Alice Johnson'", $statements[0]);
+        self::assertStringContainsString("'Tara Lewis'", $statements[0]);
+        self::assertStringEndsWith(');', $statements[0]);
+    }
+
+    #[Test]
+    public function buildsADeterministicFakePhoneNumberFromTheExistingValue(): void
+    {
+        self::assertSame(
+            ["UPDATE `fe_users` SET `telephone` = CONCAT('+1-202-555-01', LPAD(CONV(SUBSTRING(MD5(`telephone`), 1, 8), 16, 10) MOD 100, 2, '0'));"],
+            $this->driver->anonymizeStatements([
+                new AnonymizationRule('fe_users', 'telephone', AnonymizationStrategy::FakePhone),
+            ]),
+        );
+    }
+
+    #[Test]
     public function escapesASingleQuoteInAStaticValue(): void
     {
         self::assertSame(

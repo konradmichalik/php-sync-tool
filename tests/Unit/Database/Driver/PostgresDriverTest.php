@@ -202,6 +202,30 @@ final class PostgresDriverTest extends TestCase
     }
 
     #[Test]
+    public function buildsADeterministicFakeNameLookupFromTheExistingValue(): void
+    {
+        $statements = $this->driver->anonymizeStatements([
+            new AnonymizationRule('fe_users', 'name', AnonymizationStrategy::FakeName),
+        ]);
+
+        self::assertCount(1, $statements);
+        self::assertStringStartsWith("UPDATE fe_users SET name = (ARRAY['Alice Johnson', 'Bob Smith'", $statements[0]);
+        self::assertStringContainsString("'Tara Lewis'])[1 + (abs(('x' || substr(md5(name), 1, 16))::bit(64)::bigint) % 20)]", $statements[0]);
+        self::assertStringEndsWith(';', $statements[0]);
+    }
+
+    #[Test]
+    public function buildsADeterministicFakePhoneNumberFromTheExistingValue(): void
+    {
+        self::assertSame(
+            ["UPDATE fe_users SET telephone = '+1-202-555-01' || lpad((abs(('x' || substr(md5(telephone), 1, 16))::bit(64)::bigint) % 100)::text, 2, '0');"],
+            $this->driver->anonymizeStatements([
+                new AnonymizationRule('fe_users', 'telephone', AnonymizationStrategy::FakePhone),
+            ]),
+        );
+    }
+
+    #[Test]
     public function escapesASingleQuoteInAStaticValue(): void
     {
         self::assertSame(

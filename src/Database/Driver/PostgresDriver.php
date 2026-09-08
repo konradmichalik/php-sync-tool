@@ -20,6 +20,7 @@ use KonradMichalik\SyncTool\Security\{Shell, SqlLiteral, TableName};
 use KonradMichalik\SyncTool\Util\Pure;
 
 use function array_map;
+use function count;
 use function implode;
 use function sprintf;
 use function str_ends_with;
@@ -170,6 +171,8 @@ final readonly class PostgresDriver implements DatabaseDriver
                 AnonymizationStrategy::StaticValue => SqlLiteral::quote((string) $rule->value),
                 AnonymizationStrategy::Hash => sprintf('md5(%s)', $column),
                 AnonymizationStrategy::Email => sprintf('md5(%s) || %s', $column, SqlLiteral::quote(AnonymizationStrategy::MASKED_MAIL_DOMAIN)),
+                AnonymizationStrategy::FakeName => $this->fakeNameExpression($column),
+                AnonymizationStrategy::FakePhone => $this->fakePhoneExpression($column),
             });
         }
 
@@ -196,6 +199,41 @@ final readonly class PostgresDriver implements DatabaseDriver
         }
 
         return $unsupported;
+    }
+
+    /**
+     * A deterministic index into `AnonymizationStrategy::FAKE_NAMES`, derived
+     * from the existing value's md5 the same way Hash derives its own output
+     * from it: no primary key, no extra round trip. `bit(64)` matches the 16
+     * hex characters taken from the digest, and the cast to `bigint` (rather
+     * than a 32-bit `int`) keeps `abs()` from ever hitting that type's one
+     * unrepresentable magnitude.
+     */
+    private function fakeNameExpression(string $column): string
+    {
+        $names = implode(', ', array_map(SqlLiteral::quote(...), AnonymizationStrategy::FAKE_NAMES));
+
+        return sprintf(
+            "(ARRAY[%s])[1 + (abs(('x' || substr(md5(%s), 1, 16))::bit(64)::bigint) %% %d)]",
+            $names,
+            $column,
+            count(AnonymizationStrategy::FAKE_NAMES),
+        );
+    }
+
+    /**
+     * `555-0100` through `555-0199` is the line-number range the North
+     * American Numbering Plan reserves for fiction; unlike the rest of the
+     * `555` exchange, it is guaranteed never assigned to a real subscriber.
+     * `202` (Washington, D.C.) is any valid, unremarkable area code — the
+     * guarantee comes from the reserved line-number range, not from it.
+     */
+    private function fakePhoneExpression(string $column): string
+    {
+        return sprintf(
+            "'+1-202-555-01' || lpad((abs(('x' || substr(md5(%s), 1, 16))::bit(64)::bigint) %% 100)::text, 2, '0')",
+            $column,
+        );
     }
 
     /**

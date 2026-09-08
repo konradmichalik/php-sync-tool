@@ -113,11 +113,11 @@ final class ConfigValidator
                     "type": "object",
                     "additionalProperties": {
                         "oneOf": [
-                            {"enum": ["null", "static", "hash", "email"]},
+                            {"enum": ["null", "static", "hash", "email", "fake:name", "fake:phone"]},
                             {
                                 "type": "object",
                                 "properties": {
-                                    "strategy": {"enum": ["null", "static", "hash", "email"]},
+                                    "strategy": {"enum": ["null", "static", "hash", "email", "fake:name", "fake:phone"]},
                                     "value": {"type": "string"}
                                 },
                                 "required": ["strategy"]
