@@ -13,9 +13,11 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Config;
 
-use KonradMichalik\SyncTool\Enum\AnonymizationStrategy;
+use KonradMichalik\SyncTool\Enum\{AnonymizationPreset, AnonymizationStrategy};
 use KonradMichalik\SyncTool\Exception\ConfigException;
 
+use function array_map;
+use function implode;
 use function is_array;
 use function is_string;
 use function sprintf;
@@ -51,9 +53,14 @@ final readonly class AnonymizationRule
             return [];
         }
 
+        $preset = $data['preset'] ?? null;
+        unset($data['preset']);
+
+        $tables = null !== $preset ? self::mergePreset($preset, $data) : $data;
+
         $rules = [];
 
-        foreach ($data as $table => $columns) {
+        foreach ($tables as $table => $columns) {
             if (!is_array($columns)) {
                 throw new ConfigException(sprintf('Anonymization for "%s" must be a map of columns', $table));
             }
@@ -64,6 +71,40 @@ final readonly class AnonymizationRule
         }
 
         return $rules;
+    }
+
+    /**
+     * The preset's own tables are the base; an explicit table of the same
+     * name merges column by column on top of it, so a project can override
+     * or extend a single column without repeating the rest of the preset.
+     *
+     * @param array<string, mixed> $explicit
+     *
+     * @return array<string, mixed>
+     */
+    private static function mergePreset(mixed $preset, array $explicit): array
+    {
+        if (!is_string($preset)) {
+            throw new ConfigException('Anonymization "preset" must be a string');
+        }
+
+        $resolved = AnonymizationPreset::fromConfigValue($preset);
+
+        if (null === $resolved) {
+            throw new ConfigException(sprintf('Unknown anonymization preset "%s". Use one of: %s', $preset, implode(', ', array_map(static fn (AnonymizationPreset $case): string => $case->value, AnonymizationPreset::cases()))));
+        }
+
+        $merged = $resolved->rules();
+
+        foreach ($explicit as $table => $columns) {
+            if (!is_array($columns)) {
+                throw new ConfigException(sprintf('Anonymization for "%s" must be a map of columns', $table));
+            }
+
+            $merged[$table] = [...($merged[$table] ?? []), ...$columns];
+        }
+
+        return $merged;
     }
 
     private static function fromSpec(string $table, string $column, mixed $spec): self

@@ -105,6 +105,9 @@ final class ConfigValidator
             "scripts": %SCRIPT%,
             "anonymize": {
                 "type": "object",
+                "properties": {
+                    "preset": {"enum": ["typo3"]}
+                },
                 "additionalProperties": {
                     "type": "object",
                     "additionalProperties": {
