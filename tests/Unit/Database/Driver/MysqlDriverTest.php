@@ -208,7 +208,7 @@ final class MysqlDriverTest extends TestCase
     public function buildsADeterministicFakePhoneNumberFromTheExistingValue(): void
     {
         self::assertSame(
-            ["UPDATE `fe_users` SET `telephone` = CONCAT('+1-555-', LPAD(CONV(SUBSTRING(MD5(`telephone`), 1, 8), 16, 10) MOD 10000, 4, '0'));"],
+            ["UPDATE `fe_users` SET `telephone` = CONCAT('+1-202-555-01', LPAD(CONV(SUBSTRING(MD5(`telephone`), 1, 8), 16, 10) MOD 100, 2, '0'));"],
             $this->driver->anonymizeStatements([
                 new AnonymizationRule('fe_users', 'telephone', AnonymizationStrategy::FakePhone),
             ]),

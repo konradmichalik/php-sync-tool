@@ -174,14 +174,16 @@ final readonly class MysqlDriver implements DatabaseDriver
     }
 
     /**
-     * `555` is the North American exchange reserved for fiction: no such
-     * number is ever routable, so a value this strategy produces can never
-     * reach a real subscriber even by accident.
+     * `555-0100` through `555-0199` is the line-number range the North
+     * American Numbering Plan reserves for fiction; unlike the rest of the
+     * `555` exchange, it is guaranteed never assigned to a real subscriber.
+     * `202` (Washington, D.C.) is any valid, unremarkable area code — the
+     * guarantee comes from the reserved line-number range, not from it.
      */
     private function fakePhoneExpression(string $column): string
     {
         return sprintf(
-            "CONCAT('+1-555-', LPAD(CONV(SUBSTRING(MD5(%s), 1, 8), 16, 10) MOD 10000, 4, '0'))",
+            "CONCAT('+1-202-555-01', LPAD(CONV(SUBSTRING(MD5(%s), 1, 8), 16, 10) MOD 100, 2, '0'))",
             $column,
         );
     }

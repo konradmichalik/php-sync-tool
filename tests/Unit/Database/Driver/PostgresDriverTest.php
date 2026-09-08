@@ -218,7 +218,7 @@ final class PostgresDriverTest extends TestCase
     public function buildsADeterministicFakePhoneNumberFromTheExistingValue(): void
     {
         self::assertSame(
-            ["UPDATE fe_users SET telephone = '+1-555-' || lpad((abs(('x' || substr(md5(telephone), 1, 16))::bit(64)::bigint) % 10000)::text, 4, '0');"],
+            ["UPDATE fe_users SET telephone = '+1-202-555-01' || lpad((abs(('x' || substr(md5(telephone), 1, 16))::bit(64)::bigint) % 100)::text, 2, '0');"],
             $this->driver->anonymizeStatements([
                 new AnonymizationRule('fe_users', 'telephone', AnonymizationStrategy::FakePhone),
             ]),

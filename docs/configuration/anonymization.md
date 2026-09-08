@@ -42,7 +42,7 @@ tool rejects. Write `details: 'null'` with quotes.
 | `hash` | — | the MD5 of the previous value |
 | `email` | — | the MD5 of the previous address plus `@example.invalid` |
 | `fake:name` | — | one of a pool of ~20 plausible full names |
-| `fake:phone` | — | `+1-555-XXXX`, a reserved, never-routable number |
+| `fake:phone` | — | `+1-202-555-01XX`, a reserved, never-routable number |
 
 The `email` strategy hashes the existing address rather than numbering rows,
 which means it needs no primary-key column and works the same whether the table
@@ -62,8 +62,9 @@ reshuffle names between screenshots. `fake:name` draws from a small, fixed
 pool (`AnonymizationStrategy::FAKE_NAMES`), so a large table will visibly
 repeat names — it trades variety for staying inside a single SQL statement,
 with no new dependency and no per-row database round trip. `fake:phone`
-always uses the `555` exchange, reserved in North America and guaranteed
-never to reach a real subscriber.
+always lands in `555-0100`–`555-0199`, the line-number range the North
+American Numbering Plan reserves for fiction — unlike the rest of the `555`
+exchange, guaranteed never assigned to a real subscriber.
 
 ## Presets
 

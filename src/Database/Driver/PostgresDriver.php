@@ -222,14 +222,16 @@ final readonly class PostgresDriver implements DatabaseDriver
     }
 
     /**
-     * `555` is the North American exchange reserved for fiction: no such
-     * number is ever routable, so a value this strategy produces can never
-     * reach a real subscriber even by accident.
+     * `555-0100` through `555-0199` is the line-number range the North
+     * American Numbering Plan reserves for fiction; unlike the rest of the
+     * `555` exchange, it is guaranteed never assigned to a real subscriber.
+     * `202` (Washington, D.C.) is any valid, unremarkable area code — the
+     * guarantee comes from the reserved line-number range, not from it.
      */
     private function fakePhoneExpression(string $column): string
     {
         return sprintf(
-            "'+1-555-' || lpad((abs(('x' || substr(md5(%s), 1, 16))::bit(64)::bigint) %% 10000)::text, 4, '0')",
+            "'+1-202-555-01' || lpad((abs(('x' || substr(md5(%s), 1, 16))::bit(64)::bigint) %% 100)::text, 2, '0')",
             $column,
         );
     }
