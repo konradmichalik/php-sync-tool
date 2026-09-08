@@ -55,6 +55,17 @@ files:
 | `exclude` | array | Patterns to exclude from the transfer. |
 | `options` | string | Extra transfer options for this entry. |
 
+### Legacy `origin` globs
+
+file-sync-tool configs commonly synced a directory's contents with a trailing
+shell glob, e.g. `origin: /var/www/html/fileadmin/*`. php-sync-tool rewrites a
+trailing `/*` to a trailing `/` automatically, which rsync treats the same
+way (sync the directory's contents, not the directory itself), so these
+configs keep working unchanged. A partial pattern (`fileadmin/*.jpg`) is not
+a directory glob and is passed through literally; rsync will look for a file
+literally named `*.jpg` and fail to find it. Use `exclude` patterns instead
+for anything more specific than "the whole directory".
+
 ### Steering the target from outside
 
 A deployment path often carries a branch or release name that the configuration

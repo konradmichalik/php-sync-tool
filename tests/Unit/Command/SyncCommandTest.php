@@ -297,6 +297,35 @@ final class SyncCommandTest extends TestCase
     }
 
     /**
+     * db-sync-tool made rsync opt-in via `--use-rsync`. rsync is now the
+     * default, so the flag is a no-op, but callers built against the old CLI
+     * (e.g. move-elevator/deployer-tools) must not fail outright.
+     */
+    #[Test]
+    public function useRsyncFlagFromDbSyncToolIsAcceptedAsNoOp(): void
+    {
+        $file = $this->dir.'/use-rsync.yaml';
+        file_put_contents($file, <<<'YAML'
+            origin:
+              path: /var/www
+              db: {name: a, user: root, password: root}
+            target:
+              path: /var/www2
+              db: {name: b, user: root, password: root}
+            YAML);
+
+        $tester = $this->tester();
+        $exit = $tester->execute([
+            '--config-file' => $file,
+            '--mute' => true,
+            '--use-rsync' => true,
+            '--dry-run' => true,
+        ]);
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+    }
+
+    /**
      * `check_for_updates` is opt-in: no notice, and no reason to have made
      * the (fake, here) network call at all, unless the flag is set.
      */

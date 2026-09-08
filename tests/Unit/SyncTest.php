@@ -65,6 +65,36 @@ final class SyncTest extends TestCase
         self::assertContains('Transferring dump', $this->logs);
     }
 
+    /**
+     * db-sync-tool-style TYPO3 config: `db` names the `.env` variables to read,
+     * it carries no literal credentials. Regression test for a bug where a
+     * non-empty `db.name` made credential resolution skip entirely (its usual
+     * meaning is "the name is already known"), leaving the variable *name*
+     * itself ("TYPO3_DB_NAME") to be used as the actual database name.
+     */
+    #[Test]
+    public function typo3EnvVariableNameMappingResolvesActualCredentialsNotTheVariableNames(): void
+    {
+        $db = ['name' => 'TYPO3_DB_NAME', 'host' => 'TYPO3_DB_HOST', 'user' => 'TYPO3_DB_USER', 'password' => 'TYPO3_DB_PW'];
+        $config = SyncConfig::fromArray([
+            'type' => 'TYPO3',
+            'origin' => ['path' => '/o/.env', 'db' => $db],
+            'target' => ['path' => '/t/.env', 'db' => $db],
+        ]);
+        $env = <<<'ENV'
+            TYPO3_DB_NAME=typo3_db
+            TYPO3_DB_HOST=db.example.com
+            TYPO3_DB_USER=typo3user
+            TYPO3_DB_PW=secret
+            ENV;
+
+        $recorder = $this->runSync($config, Plans::syncLocal(), ['cat ' => $env]);
+
+        self::assertTrue($recorder->ran('mysqldump'), 'creates origin dump');
+        self::assertTrue($recorder->ran('typo3_db'), 'the mapped value is used as the actual database name');
+        self::assertFalse($recorder->ran('TYPO3_DB_NAME'), 'the variable name never leaks into a database command');
+    }
+
     #[Test]
     public function receiverPullsDumpViaRsync(): void
     {

@@ -142,6 +142,7 @@ everything.
 | Option | Short | Description |
 |--------|-------|-------------|
 | `--no-rsync` | | Disable rsync and use the SFTP fallback (a local-to-local dump is copied instead) |
+| `--use-rsync` | | No-op, kept for db-sync-tool compatibility: rsync is already enabled by default |
 | `--use-rsync-options` | | Additional rsync options |
 
 ## File Transfer Options

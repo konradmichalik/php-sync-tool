@@ -21,7 +21,9 @@ use KonradMichalik\SyncTool\Output\Progress\{NullSyncProgress, SyncProgress};
 use KonradMichalik\SyncTool\Remote\Transfer\{TransferPayload, TransferStrategyResolver};
 
 use function rtrim;
+use function str_ends_with;
 use function str_starts_with;
+use function substr;
 
 /**
  * FileSync.
@@ -63,6 +65,21 @@ final readonly class FileSync
         return rtrim($base, '/').'/'.$path;
     }
 
+    /**
+     * Legacy file-sync-tool configs commonly used a shell glob (`fileadmin/*`)
+     * to sync a directory's contents, relying on the *local* shell to expand
+     * it before invoking rsync. RsyncCommandBuilder quotes the whole path as
+     * one shell argument (closing a command-injection hole), so the shell
+     * never sees it and rsync receives a literal, nonexistent `*` entry
+     * instead. A trailing `/` already makes rsync sync the directory's
+     * contents, so a trailing `/*` is rewritten to `/` rather than left to
+     * fail.
+     */
+    private static function normalizeGlobSuffix(string $path): string
+    {
+        return str_ends_with($path, '/*') ? substr($path, 0, -1) : $path;
+    }
+
     private function transferEntry(
         SyncConfig $config,
         SyncPlan $plan,
@@ -71,8 +88,8 @@ final readonly class FileSync
         SyncProgress $progress,
     ): void {
         $payload = new TransferPayload(
-            self::resolvePath($entry->origin, $config->origin->path),
-            self::resolvePath($entry->target, $config->target->path),
+            self::normalizeGlobSuffix(self::resolvePath($entry->origin, $config->origin->path)),
+            self::normalizeGlobSuffix(self::resolvePath($entry->target, $config->target->path)),
             $entry->exclude,
             $entry->options ?? $config->filesOptions,
         );

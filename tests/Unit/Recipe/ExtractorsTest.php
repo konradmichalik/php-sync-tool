@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Recipe;
 
+use KonradMichalik\SyncTool\Config\DatabaseConfig;
 use KonradMichalik\SyncTool\Exception\ValidationException;
 use KonradMichalik\SyncTool\Recipe\{CredentialValidator, Extractors};
 use PHPUnit\Framework\Attributes\Test;
@@ -41,6 +42,51 @@ final class ExtractorsTest extends TestCase
             'name' => 'typo3_db', 'host' => 'localhost', 'user' => 'typo3user',
             'password' => 'secret', 'port' => '3306', 'db_type' => '',
         ], Extractors::typo3FromEnv($content));
+    }
+
+    #[Test]
+    public function typo3FromEnvReadsCustomVariableNamesGivenAsAMapping(): void
+    {
+        // A db-sync-tool-style config: the `db` block names the .env variables
+        // to read, it does not carry literal credential values.
+        $content = <<<'ENV'
+            TYPO3_DB_NAME=typo3_db
+            TYPO3_DB_HOST=db.example.com
+            TYPO3_DB_USER=typo3user
+            TYPO3_DB_PW=secret
+            ENV;
+
+        $mapping = new DatabaseConfig(
+            name: 'TYPO3_DB_NAME',
+            host: 'TYPO3_DB_HOST',
+            user: 'TYPO3_DB_USER',
+            password: 'TYPO3_DB_PW',
+        );
+
+        self::assertSame([
+            'name' => 'typo3_db', 'host' => 'db.example.com', 'user' => 'typo3user',
+            'password' => 'secret', 'port' => '3306', 'db_type' => '',
+        ], Extractors::typo3FromEnv($content, $mapping));
+    }
+
+    #[Test]
+    public function typo3FromEnvFallsBackToTheDefaultPrefixForUnmappedFields(): void
+    {
+        $content = <<<'ENV'
+            TYPO3_DB_NAME=typo3_db
+            TYPO3_CONF_VARS__DB__Connections__Default__host=localhost
+            TYPO3_CONF_VARS__DB__Connections__Default__user=typo3user
+            TYPO3_CONF_VARS__DB__Connections__Default__password=secret
+            ENV;
+
+        // Only `name` is remapped, host/user/password keep resolving from the
+        // default TYPO3_CONF_VARS__* prefix.
+        $mapping = new DatabaseConfig(name: 'TYPO3_DB_NAME');
+
+        self::assertSame([
+            'name' => 'typo3_db', 'host' => 'localhost', 'user' => 'typo3user',
+            'password' => 'secret', 'port' => '3306', 'db_type' => '',
+        ], Extractors::typo3FromEnv($content, $mapping));
     }
 
     #[Test]

@@ -18,7 +18,7 @@ use KonradMichalik\SyncTool\Backup\{DumpFileNamer, DumpManager};
 use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
 use KonradMichalik\SyncTool\Database\Driver\{DatabaseDriver, DriverFactory};
 use KonradMichalik\SyncTool\Database\{DumpRequest, RemoteFileWriter, ServerProbe, TableStatements};
-use KonradMichalik\SyncTool\Enum\{LifecyclePhase, LogChannel};
+use KonradMichalik\SyncTool\Enum\{Framework, LifecyclePhase, LogChannel};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Lifecycle\ScriptRunner;
 use KonradMichalik\SyncTool\Mode\SyncPlan;
@@ -30,6 +30,7 @@ use KonradMichalik\SyncTool\Security\LogSanitizer;
 use KonradMichalik\SyncTool\Util\Pure;
 use Throwable;
 
+use function basename;
 use function explode;
 use function implode;
 use function sprintf;
@@ -110,7 +111,7 @@ final readonly class Sync
         $origin = $config->origin;
         $target = $config->target;
 
-        if ('' === $origin->db->name && '' !== $origin->path) {
+        if ($this->needsCredentialResolution($config, $origin)) {
             $runner = $this->runners->forClient($origin, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
             ($this->log)('Reading database credentials from '.$origin->path);
             $db = $this->credentialResolver->resolve($config, $origin, $runner);
@@ -119,7 +120,7 @@ final readonly class Sync
             }
         }
 
-        if ('' === $target->db->name && '' !== $target->path) {
+        if ($this->needsCredentialResolution($config, $target)) {
             $runner = $this->runners->forClient($target, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
             ($this->log)('Reading database credentials from '.$target->path);
             $db = $this->credentialResolver->resolve($config, $target, $runner);
@@ -129,6 +130,39 @@ final readonly class Sync
         }
 
         return $config->withClients($origin, $target);
+    }
+
+    /**
+     * Whether the endpoint's database still needs to be read from its
+     * application config.
+     *
+     * Normally a non-empty `db.name` means the credentials were given
+     * literally, so detection is skipped. A TYPO3 `.env`, however, treats
+     * `db.*` as variable-name mappings rather than literal values (see
+     * `Extractors::typo3FromEnv()`), so a non-empty `db.name` there does not
+     * mean the name is already known, resolution always has to run to read
+     * the mapped variables from the file.
+     */
+    private function needsCredentialResolution(SyncConfig $config, ClientConfig $client): bool
+    {
+        if ('' === $client->path) {
+            return false;
+        }
+
+        if ('' !== $client->db->name && !$this->isTypo3Env($config, $client)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function isTypo3Env(SyncConfig $config, ClientConfig $client): bool
+    {
+        if ('.env' !== basename($client->path)) {
+            return false;
+        }
+
+        return null !== $config->type && '' !== $config->type && Framework::Typo3 === Framework::fromString($config->type);
     }
 
     private function createOriginDump(SyncConfig $config, string $dumpName): void

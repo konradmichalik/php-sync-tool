@@ -98,6 +98,7 @@ class SyncCommand extends Command
             ->addOption('additional-dump-options', null, InputOption::VALUE_REQUIRED, 'Extra options for the dump binary')
             ->addOption('type', 't', InputOption::VALUE_REQUIRED, 'Framework: TYPO3|Symfony|Drupal|WordPress|Laravel')
             ->addOption('no-rsync', null, InputOption::VALUE_NONE, 'Disable rsync (use SFTP fallback)')
+            ->addOption('use-rsync', null, InputOption::VALUE_NONE, 'No-op: rsync is enabled by default (db-sync-tool compatibility)')
             ->addOption('no-check-dump', null, InputOption::VALUE_NONE, 'Import without checking the dump for content first')
             ->addOption('with-files', null, InputOption::VALUE_NONE, 'Enable file synchronization alongside the database')
             ->addOption('files-only', null, InputOption::VALUE_NONE, 'Synchronize only files, skip the database')
