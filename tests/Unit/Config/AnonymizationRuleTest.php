@@ -107,9 +107,11 @@ final class AnonymizationRuleTest extends TestCase
 
         $targets = array_map(static fn (AnonymizationRule $rule): string => $rule->table.'.'.$rule->column, $rules);
         self::assertContains('fe_users.email', $targets);
-        self::assertContains('fe_users.password', $targets);
         self::assertContains('be_users.email', $targets);
-        self::assertContains('be_users.password', $targets);
+        self::assertNotContains('fe_users.username', $targets, 'a synced dev copy must stay usable, so the login identifier is left untouched');
+        self::assertNotContains('fe_users.password', $targets, 'rehashing an already one-way hash breaks TYPO3 login without any privacy upside');
+        self::assertNotContains('be_users.username', $targets, 'a synced dev copy must stay usable, so the login identifier is left untouched');
+        self::assertNotContains('be_users.password', $targets, 'rehashing an already one-way hash breaks TYPO3 login without any privacy upside');
     }
 
     #[Test]
@@ -117,12 +119,12 @@ final class AnonymizationRuleTest extends TestCase
     {
         $rules = AnonymizationRule::fromConfig([
             'preset' => 'typo3',
-            'fe_users' => ['password' => 'null'],
+            'fe_users' => ['email' => 'null'],
         ]);
 
-        $password = self::ruleFor($rules, 'fe_users', 'password');
-        self::assertNotNull($password);
-        self::assertSame(AnonymizationStrategy::Nullify, $password->strategy, 'the explicit rule wins over the preset default');
+        $email = self::ruleFor($rules, 'fe_users', 'email');
+        self::assertNotNull($email);
+        self::assertSame(AnonymizationStrategy::Nullify, $email->strategy, 'the explicit rule wins over the preset default');
     }
 
     #[Test]
