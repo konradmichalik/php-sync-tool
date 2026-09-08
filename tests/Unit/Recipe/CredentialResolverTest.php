@@ -103,6 +103,43 @@ final class CredentialResolverTest extends TestCase
         self::assertSame('secret', $db->password);
     }
 
+    /**
+     * `port` is never part of the variable-name mapping (see
+     * Extractors::typo3FromEnv()) — it is always a literal override, same as for
+     * every other framework's detection path. Alongside a mapping for the other
+     * fields, it must still take effect rather than being reset together with them.
+     */
+    #[Test]
+    public function resolveKeepsALiteralPortOverrideAlongsideTypo3EnvVariableNameMapping(): void
+    {
+        $config = SyncConfig::fromArray([
+            'type' => 'TYPO3',
+            'origin' => [
+                'path' => '/app/.env',
+                'db' => [
+                    'name' => 'TYPO3_DB_NAME',
+                    'host' => 'TYPO3_DB_HOST',
+                    'user' => 'TYPO3_DB_USER',
+                    'password' => 'TYPO3_DB_PW',
+                    'port' => 3307,
+                ],
+            ],
+        ]);
+        $env = <<<'ENV'
+            TYPO3_DB_NAME=typo3_db
+            TYPO3_DB_HOST=db.example.com
+            TYPO3_DB_USER=typo3user
+            TYPO3_DB_PW=secret
+            TYPO3_CONF_VARS__DB__Connections__Default__port=3306
+            ENV;
+        $runner = new RecordingCommandRunner(['cat ' => $env]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame(3307, $db->port, 'the configured override wins over the port read from .env');
+    }
+
     #[Test]
     public function resolveDetectsFrameworkFromPathWhenTypeAbsent(): void
     {
