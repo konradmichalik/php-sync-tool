@@ -20,6 +20,7 @@ use KonradMichalik\SyncTool\Security\{Shell, SqlLiteral, TableName};
 use KonradMichalik\SyncTool\Util\Pure;
 
 use function array_map;
+use function count;
 use function implode;
 use function sprintf;
 use function str_ends_with;
@@ -170,6 +171,8 @@ final readonly class PostgresDriver implements DatabaseDriver
                 AnonymizationStrategy::StaticValue => SqlLiteral::quote((string) $rule->value),
                 AnonymizationStrategy::Hash => sprintf('md5(%s)', $column),
                 AnonymizationStrategy::Email => sprintf('md5(%s) || %s', $column, SqlLiteral::quote(AnonymizationStrategy::MASKED_MAIL_DOMAIN)),
+                AnonymizationStrategy::FakeName => $this->fakeNameExpression($column),
+                AnonymizationStrategy::FakePhone => $this->fakePhoneExpression($column),
             });
         }
 
@@ -196,6 +199,39 @@ final readonly class PostgresDriver implements DatabaseDriver
         }
 
         return $unsupported;
+    }
+
+    /**
+     * A deterministic index into `AnonymizationStrategy::FAKE_NAMES`, derived
+     * from the existing value's md5 the same way Hash derives its own output
+     * from it: no primary key, no extra round trip. `bit(64)` matches the 16
+     * hex characters taken from the digest, and the cast to `bigint` (rather
+     * than a 32-bit `int`) keeps `abs()` from ever hitting that type's one
+     * unrepresentable magnitude.
+     */
+    private function fakeNameExpression(string $column): string
+    {
+        $names = implode(', ', array_map(SqlLiteral::quote(...), AnonymizationStrategy::FAKE_NAMES));
+
+        return sprintf(
+            "(ARRAY[%s])[1 + (abs(('x' || substr(md5(%s), 1, 16))::bit(64)::bigint) %% %d)]",
+            $names,
+            $column,
+            count(AnonymizationStrategy::FAKE_NAMES),
+        );
+    }
+
+    /**
+     * `555` is the North American exchange reserved for fiction: no such
+     * number is ever routable, so a value this strategy produces can never
+     * reach a real subscriber even by accident.
+     */
+    private function fakePhoneExpression(string $column): string
+    {
+        return sprintf(
+            "'+1-555-' || lpad((abs(('x' || substr(md5(%s), 1, 16))::bit(64)::bigint) %% 10000)::text, 4, '0')",
+            $column,
+        );
     }
 
     /**

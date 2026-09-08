@@ -77,6 +77,7 @@ final class AnonymizationRuleTest extends TestCase
     {
         $this->expectException(ConfigException::class);
         $this->expectExceptionMessageMatches('#fe_users\.email#');
+        $this->expectExceptionMessageMatches('#fake:name#');
 
         AnonymizationRule::fromConfig(['fe_users' => ['email' => 'shuffle']]);
     }

@@ -21,6 +21,7 @@ use KonradMichalik\SyncTool\Util\Pure;
 
 use function array_map;
 use function array_slice;
+use function count;
 use function implode;
 use function sprintf;
 
@@ -142,6 +143,8 @@ final readonly class MysqlDriver implements DatabaseDriver
                 AnonymizationStrategy::StaticValue => SqlLiteral::quote((string) $rule->value),
                 AnonymizationStrategy::Hash => sprintf('MD5(%s)', $column),
                 AnonymizationStrategy::Email => sprintf('CONCAT(MD5(%s), %s)', $column, SqlLiteral::quote(AnonymizationStrategy::MASKED_MAIL_DOMAIN)),
+                AnonymizationStrategy::FakeName => $this->fakeNameExpression($column),
+                AnonymizationStrategy::FakePhone => $this->fakePhoneExpression($column),
             });
         }
 
@@ -151,6 +154,36 @@ final readonly class MysqlDriver implements DatabaseDriver
     public function unsupportedFeatures(SyncConfig $config, DatabaseConfig $db): array
     {
         return [];
+    }
+
+    /**
+     * A deterministic index into `AnonymizationStrategy::FAKE_NAMES`, derived
+     * from the first 32 bits of the existing value's MD5 the same way Hash
+     * derives its own output from it: no primary key, no extra round trip.
+     */
+    private function fakeNameExpression(string $column): string
+    {
+        $names = implode(', ', array_map(SqlLiteral::quote(...), AnonymizationStrategy::FAKE_NAMES));
+
+        return sprintf(
+            'ELT(1 + (CONV(SUBSTRING(MD5(%s), 1, 8), 16, 10) MOD %d), %s)',
+            $column,
+            count(AnonymizationStrategy::FAKE_NAMES),
+            $names,
+        );
+    }
+
+    /**
+     * `555` is the North American exchange reserved for fiction: no such
+     * number is ever routable, so a value this strategy produces can never
+     * reach a real subscriber even by accident.
+     */
+    private function fakePhoneExpression(string $column): string
+    {
+        return sprintf(
+            "CONCAT('+1-555-', LPAD(CONV(SUBSTRING(MD5(%s), 1, 8), 16, 10) MOD 10000, 4, '0'))",
+            $column,
+        );
     }
 
     private function argument(string $credentialsPath): string

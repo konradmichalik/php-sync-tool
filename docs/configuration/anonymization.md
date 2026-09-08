@@ -41,6 +41,8 @@ tool rejects. Write `details: 'null'` with quotes.
 | `static` | `value` (required) | the configured value, the same for every row |
 | `hash` | — | the MD5 of the previous value |
 | `email` | — | the MD5 of the previous address plus `@example.invalid` |
+| `fake:name` | — | one of a pool of ~20 plausible full names |
+| `fake:phone` | — | `+1-555-XXXX`, a reserved, never-routable number |
 
 The `email` strategy hashes the existing address rather than numbering rows,
 which means it needs no primary-key column and works the same whether the table
@@ -52,11 +54,22 @@ address, so uniqueness constraints and joins on the address survive, and
 being readable, password hashes above all: the copy keeps a value in the column,
 but it is no longer the hash that protects the production account.
 
+`fake:name` and `fake:phone` exist for QA/demo data that should look real
+rather than obviously masked. Both pick deterministically from the existing
+value's hash, the same way `email` does: no primary key needed, and the same
+source value always produces the same fake one, so re-running a sync doesn't
+reshuffle names between screenshots. `fake:name` draws from a small, fixed
+pool (`AnonymizationStrategy::FAKE_NAMES`), so a large table will visibly
+repeat names — it trades variety for staying inside a single SQL statement,
+with no new dependency and no per-row database round trip. `fake:phone`
+always uses the `555` exchange, reserved in North America and guaranteed
+never to reach a real subscriber.
+
 ## Presets
 
 Every TYPO3 project ends up masking the same handful of `fe_users`/`be_users`
 columns. `preset: typo3` expands to that canned rule set, using nothing but
-the four strategies above:
+the strategies above:
 
 ```yaml
 target:
