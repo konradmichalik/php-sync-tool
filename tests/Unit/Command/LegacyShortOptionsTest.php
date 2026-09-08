@@ -85,4 +85,19 @@ final class LegacyShortOptionsTest extends TestCase
             LegacyShortOptions::rewrite(['bin/sync-tool', '-f', 'x.yaml', '-y', '-kd', '/tmp/dumps', '-dn', 'backup.sql']),
         );
     }
+
+    /**
+     * Symfony Console itself stops interpreting anything as an option once it
+     * sees a bare `--` (ArgvInput::parseToken()). A literal `-dn`/`-kd` after
+     * that point is a plain argument, same as any other flag-shaped value
+     * would be, and must survive untouched rather than being rewritten.
+     */
+    #[Test]
+    public function leavesTokensAfterTheEndOfOptionsDelimiterUntouched(): void
+    {
+        self::assertSame(
+            ['bin/sync-tool', '-f', 'x.yaml', '--', '-dn', '-kd'],
+            LegacyShortOptions::rewrite(['bin/sync-tool', '-f', 'x.yaml', '--', '-dn', '-kd']),
+        );
+    }
 }

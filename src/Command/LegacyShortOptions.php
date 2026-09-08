@@ -43,6 +43,16 @@ final class LegacyShortOptions
         for ($i = 0; $i < $count; ++$i) {
             $token = $argv[$i];
 
+            if ('--' === $token) {
+                // Symfony Console itself stops interpreting options after a bare
+                // `--` (ArgvInput::parseToken()); a legacy flag spelled out past
+                // that point is a literal argument, not ours to rewrite.
+                for (; $i < $count; ++$i) {
+                    $result[] = $argv[$i];
+                }
+                break;
+            }
+
             if ('-dn' === $token) {
                 $result[] = '--dump-name';
                 continue;
