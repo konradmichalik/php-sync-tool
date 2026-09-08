@@ -65,6 +65,52 @@ final class FileSyncTest extends TestCase
         self::assertTrue($recorder->ran('/var/www/fileadmin'));
     }
 
+    /**
+     * file-sync-tool configs commonly used a shell glob to sync a directory's
+     * contents (`fileadmin/*`), relying on the *local* shell to expand it
+     * before invoking rsync. RsyncCommandBuilder now quotes the whole path to
+     * close a command-injection hole, so the shell never sees it and rsync
+     * receives a literal, nonexistent `*` entry (rsync error, nothing
+     * transferred). A trailing `/` already makes rsync sync the directory's
+     * contents, so the literal asterisk must never reach rsync.
+     */
+    #[Test]
+    public function syncNormalizesATrailingDirectoryGlobToATrailingSlash(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'path' => '/srv/app', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+            'files' => [['origin' => 'fileadmin/*', 'target' => 'fileadmin']],
+        ]);
+
+        $recorder = new RecordingCommandRunner();
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, Plans::receiver());
+
+        self::assertTrue($recorder->ran('deploy@o.example.com:/srv/app/fileadmin/'));
+        self::assertFalse($recorder->ran('fileadmin/*'), 'the literal asterisk must never reach rsync');
+    }
+
+    /**
+     * Only the whole-directory case (`dir/*`) has a safe, semantically
+     * equivalent rewrite (a trailing slash). A partial pattern like `*.jpg`
+     * would need real glob expansion, which is out of scope here, so it is
+     * left untouched rather than silently doing something else.
+     */
+    #[Test]
+    public function syncLeavesAPartialGlobUntouched(): void
+    {
+        $config = SyncConfig::fromArray([
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'path' => '/srv/app', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+            'files' => [['origin' => 'fileadmin/*.jpg', 'target' => 'fileadmin']],
+        ]);
+
+        $recorder = new RecordingCommandRunner();
+        (new FileSync(new TransferStrategyResolver(new FakeRunnerFactory($recorder))))->sync($config, Plans::receiver());
+
+        self::assertTrue($recorder->ran('deploy@o.example.com:/srv/app/fileadmin/*.jpg'));
+    }
+
     #[Test]
     public function syncAppliesGlobalFilesOptionsWhenEntryHasNone(): void
     {
