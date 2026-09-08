@@ -13,10 +13,10 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool;
 
-use KonradMichalik\SyncTool\Command\{EnvironmentsCommand, InitCommand, PullCommand, PushCommand, SyncCommand};
+use KonradMichalik\SyncTool\Command\{EnvironmentsCommand, InitCommand, LegacyShortOptions, PullCommand, PushCommand, SyncCommand};
 use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
-use Symfony\Component\Console\Input\{InputInterface, StringInput};
+use Symfony\Component\Console\Input\{ArgvInput, InputInterface, StringInput};
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -41,6 +41,21 @@ final class Application extends BaseApplication
             'environments' => static fn (): EnvironmentsCommand => new EnvironmentsCommand(),
         ]));
         $this->setDefaultCommand('sync');
+    }
+
+    /**
+     * `$input` is only ever null on the real CLI invocation (`bin/sync-tool`
+     * constructs no input of its own), which is also the only place db-sync-tool's
+     * legacy short flags can appear as raw argv. A caller that already built its
+     * own `InputInterface` (every test, `StringInput` included) bypasses this.
+     */
+    public function run(?InputInterface $input = null, ?OutputInterface $output = null): int
+    {
+        if (null === $input) {
+            $input = new ArgvInput(LegacyShortOptions::rewrite($_SERVER['argv'] ?? []));
+        }
+
+        return parent::run($input, $output);
     }
 
     public function doRun(InputInterface $input, OutputInterface $output): int
