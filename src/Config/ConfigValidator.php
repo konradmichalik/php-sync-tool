@@ -176,6 +176,7 @@ final class ConfigValidator
             "config_file_path": {"type": "string"},
             "log_file": {"type": "string"},
             "json_log": {"type": "boolean"},
+            "check_for_updates": {"type": "boolean"},
             "script": %SCRIPT%,
             "scripts": %SCRIPT%,
             "target": %CLIENT%,

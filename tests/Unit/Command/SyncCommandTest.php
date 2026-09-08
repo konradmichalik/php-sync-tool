@@ -15,6 +15,8 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 
 use KonradMichalik\SyncTool\Application;
 use KonradMichalik\SyncTool\Command\SyncCommand;
+use KonradMichalik\SyncTool\Tests\Fixture\FakePackageVersionSource;
+use KonradMichalik\SyncTool\Update\UpdateChecker;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -321,6 +323,89 @@ final class SyncCommandTest extends TestCase
         ]);
 
         self::assertSame(0, $exit, $tester->getDisplay());
+    }
+
+    /**
+     * `check_for_updates` is opt-in: no notice, and no reason to have made
+     * the (fake, here) network call at all, unless the flag is set.
+     */
+    #[Test]
+    public function checkForUpdatesReportsANewerReleaseWhenEnabled(): void
+    {
+        $file = $this->dir.'/updates.yaml';
+        file_put_contents($file, <<<'YAML'
+            origin:
+              path: /var/www
+              db: {name: a, user: root, password: root}
+            target:
+              path: /var/www2
+              db: {name: b, user: root, password: root}
+            YAML);
+
+        $checker = new UpdateChecker(new FakePackageVersionSource(['9.9.9']));
+        $tester = new CommandTester(new SyncCommand(updateChecker: $checker));
+        $exit = $tester->execute([
+            '--config-file' => $file,
+            '--check-for-updates' => true,
+            '--dry-run' => true,
+        ]);
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+        self::assertStringContainsString('9.9.9', $tester->getDisplay());
+    }
+
+    /**
+     * CI/JSON/Quiet consumers parse a fixed line format, or asked for
+     * silence outright; an update notice has no place in either.
+     */
+    #[Test]
+    public function checkForUpdatesStaysSilentInNonInteractiveOutputModes(): void
+    {
+        $file = $this->dir.'/no-updates-ci.yaml';
+        file_put_contents($file, <<<'YAML'
+            origin:
+              path: /var/www
+              db: {name: a, user: root, password: root}
+            target:
+              path: /var/www2
+              db: {name: b, user: root, password: root}
+            YAML);
+
+        $checker = new UpdateChecker(new FakePackageVersionSource(['9.9.9']));
+        $tester = new CommandTester(new SyncCommand(updateChecker: $checker));
+        $exit = $tester->execute([
+            '--config-file' => $file,
+            '--check-for-updates' => true,
+            '--output' => 'ci',
+            '--dry-run' => true,
+        ]);
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+        self::assertStringNotContainsString('9.9.9', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function checkForUpdatesStaysSilentWhenNotEnabled(): void
+    {
+        $file = $this->dir.'/no-updates.yaml';
+        file_put_contents($file, <<<'YAML'
+            origin:
+              path: /var/www
+              db: {name: a, user: root, password: root}
+            target:
+              path: /var/www2
+              db: {name: b, user: root, password: root}
+            YAML);
+
+        $checker = new UpdateChecker(new FakePackageVersionSource(['9.9.9']));
+        $tester = new CommandTester(new SyncCommand(updateChecker: $checker));
+        $exit = $tester->execute([
+            '--config-file' => $file,
+            '--dry-run' => true,
+        ]);
+
+        self::assertSame(0, $exit, $tester->getDisplay());
+        self::assertStringNotContainsString('9.9.9', $tester->getDisplay());
     }
 
     /**

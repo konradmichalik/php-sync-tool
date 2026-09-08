@@ -39,6 +39,7 @@ stays a command.
 | `additional_dump_options` | string | Extra options for the dump binary. `additional_mysqldump_options`, the name the Python tool used, is still read. |
 | `log_file` | string | Path to a log file. |
 | `json_log` | boolean | Write the log file as JSON lines. |
+| `check_for_updates` | boolean | Check Packagist for a newer release at the start of each run (default: off). See [CLI Reference](/reference/cli#update-notices). |
 | `ssh_agent` | boolean | Insist on the running SSH agent. A loaded agent is used on its own when an endpoint has no key and no password, see [Authentication](/configuration/authentication). |
 | `use_sshpass` | boolean | Hand rsync a password through `sshpass`. Set on its own when a password is in play and the binary is installed, so it rarely needs configuring. |
 | `ssh_strict_host_key_checking` | boolean | Toggle SSH host-key verification (default: enabled). |
