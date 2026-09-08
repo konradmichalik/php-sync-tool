@@ -87,6 +87,28 @@ final readonly class DatabaseConfig
     }
 
     /**
+     * A copy with name/host/user/password/port reset to their defaults, TLS
+     * settings and `type` kept as-is.
+     *
+     * Used where the credential fields were already consumed for something other
+     * than a literal override — a TYPO3 `.env` variable-name mapping, for
+     * example — so `overriddenBy()` does not apply them a second time.
+     */
+    public function withoutCredentials(): self
+    {
+        return new self(
+            sslDisabled: $this->sslDisabled,
+            sslSkipVerify: $this->sslSkipVerify,
+            sslCa: $this->sslCa,
+            sslCapath: $this->sslCapath,
+            sslCert: $this->sslCert,
+            sslKey: $this->sslKey,
+            sslCipher: $this->sslCipher,
+            type: $this->type,
+        );
+    }
+
+    /**
      * @param array<string, mixed>|null $data
      */
     public static function fromArray(?array $data): self

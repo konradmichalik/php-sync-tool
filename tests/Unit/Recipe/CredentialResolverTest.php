@@ -64,6 +64,45 @@ final class CredentialResolverTest extends TestCase
         self::assertSame(['false'], $output);
     }
 
+    /**
+     * db-sync-tool-style config: `origin.db` names the .env variables to read,
+     * it is not a set of literal credential values. Regression test for a bug
+     * where these were re-applied as literal overrides after extraction,
+     * ending up with the variable *names* (e.g. "TYPO3_DB_NAME") as the
+     * resolved database name instead of the values they point at.
+     */
+    #[Test]
+    public function resolveMapsTypo3EnvVariableNamesInsteadOfTreatingThemAsLiteralOverrides(): void
+    {
+        $config = SyncConfig::fromArray([
+            'type' => 'TYPO3',
+            'origin' => [
+                'path' => '/app/.env',
+                'db' => [
+                    'name' => 'TYPO3_DB_NAME',
+                    'host' => 'TYPO3_DB_HOST',
+                    'user' => 'TYPO3_DB_USER',
+                    'password' => 'TYPO3_DB_PW',
+                ],
+            ],
+        ]);
+        $env = <<<'ENV'
+            TYPO3_DB_NAME=typo3_db
+            TYPO3_DB_HOST=db.example.com
+            TYPO3_DB_USER=typo3user
+            TYPO3_DB_PW=secret
+            ENV;
+        $runner = new RecordingCommandRunner(['cat ' => $env]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame('typo3_db', $db->name);
+        self::assertSame('db.example.com', $db->host);
+        self::assertSame('typo3user', $db->user);
+        self::assertSame('secret', $db->password);
+    }
+
     #[Test]
     public function resolveDetectsFrameworkFromPathWhenTypeAbsent(): void
     {
