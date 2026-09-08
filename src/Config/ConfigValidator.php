@@ -20,6 +20,7 @@ use stdClass;
 
 use function implode;
 use function is_array;
+use function sprintf;
 
 /**
  * ConfigValidator.
@@ -213,7 +214,12 @@ final class ConfigValidator
 
     /**
      * Masking rewrites rows in place. On the origin that would rewrite the system
-     * being copied from, so the block is target-only.
+     * being copied from, so the block is target-only. `local` is checked the same
+     * way: `SyncConfig::fromArray()` never reads it directly, a named environment
+     * sync merges it into whichever of origin/target it stands in for before this
+     * validation runs, so an `anonymize` block written there while that merge did
+     * not happen (a plain, non-named sync) would otherwise validate happily and
+     * then silently mask nothing.
      *
      * @param array<string, mixed> $config
      *
@@ -221,10 +227,12 @@ final class ConfigValidator
      */
     private function assertAnonymizationTargetsTheTarget(array $config): void
     {
-        $origin = $config['origin'] ?? null;
+        foreach (['origin', 'local'] as $key) {
+            $endpoint = $config[$key] ?? null;
 
-        if (is_array($origin) && [] !== ($origin['anonymize'] ?? [])) {
-            throw new ValidationException('Configuration validation failed: "anonymize" is only supported on the target, not on the origin');
+            if (is_array($endpoint) && [] !== ($endpoint['anonymize'] ?? [])) {
+                throw new ValidationException(sprintf('Configuration validation failed: "anonymize" is only supported on the target, not on the %s', $key));
+            }
         }
     }
 

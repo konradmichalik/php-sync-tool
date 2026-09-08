@@ -205,6 +205,25 @@ final class ConfigValidatorTest extends TestCase
         ]);
     }
 
+    /**
+     * `SyncConfig::fromArray()` never reads `local`, so an `anonymize` block
+     * written there validates happily and then silently masks nothing — the
+     * same trap `rejectsAnUnknownRootKey` already guards against for a
+     * misspelled key.
+     */
+    #[Test]
+    public function rejectsAnonymizationOnTheLocalEndpointBlock(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessageMatches('#only supported on the target#');
+
+        (new ConfigValidator())->validate([
+            'local' => ['path' => '/l', 'anonymize' => ['preset' => 'typo3']],
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app']],
+        ]);
+    }
+
     #[Test]
     public function acceptsALocalEndpointBlock(): void
     {
