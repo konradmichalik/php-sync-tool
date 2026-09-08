@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Recipe;
 
+use KonradMichalik\SyncTool\Config\DatabaseConfig;
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
 use KonradMichalik\SyncTool\Util\Pure;
 
@@ -27,20 +28,30 @@ use function is_string;
 final class Extractors
 {
     /**
-     * TYPO3 .env: TYPO3_CONF_VARS__DB__Connections__Default__* variables.
+     * TYPO3 .env: TYPO3_CONF_VARS__DB__Connections__Default__* variables by
+     * default.
+     *
+     * A project's `.env` may name these variables differently. `$mapping`, when
+     * given, carries the *variable names* to read instead of the default ones,
+     * one entry per field (name/host/user/password), e.g. `name: 'TYPO3_DB_NAME'`
+     * reads the value of the `TYPO3_DB_NAME=` line rather than
+     * `TYPO3_CONF_VARS__DB__Connections__Default__dbname=`. This mirrors
+     * db-sync-tool's TYPO3 recipe, which read the `db` block the same way, so
+     * configs written for it keep resolving the same credentials. `port` is not
+     * remapped, db-sync-tool did not support that either.
      *
      * @return array{name: string, host: string, user: string, password: string, port: string, db_type: string}
      */
-    public static function typo3FromEnv(string $content): array
+    public static function typo3FromEnv(string $content, ?DatabaseConfig $mapping = null): array
     {
         $prefix = 'TYPO3_CONF_VARS__DB__Connections__Default__';
         $driver = self::envValue($content, $prefix.'driver');
 
         return [
-            'name' => self::envValue($content, $prefix.'dbname'),
-            'host' => self::envValue($content, $prefix.'host'),
-            'user' => self::envValue($content, $prefix.'user'),
-            'password' => self::envValue($content, $prefix.'password'),
+            'name' => self::envValue($content, self::mappedVariable($mapping?->name, $prefix.'dbname')),
+            'host' => self::envValue($content, self::mappedVariable($mapping?->host, $prefix.'host')),
+            'user' => self::envValue($content, self::mappedVariable($mapping?->user, $prefix.'user')),
+            'password' => self::envValue($content, self::mappedVariable($mapping?->password, $prefix.'password')),
             'port' => self::withPortDefault(self::envValue($content, $prefix.'port'), $driver),
             'db_type' => $driver,
         ];
@@ -148,6 +159,11 @@ final class Extractors
             'password' => self::yamlValue($content, 'database_password'),
             'port' => self::yamlValue($content, 'database_port'),
         ];
+    }
+
+    private static function mappedVariable(?string $variableName, string $default): string
+    {
+        return null !== $variableName && '' !== $variableName ? $variableName : $default;
     }
 
     private static function envValue(string $content, string $name): string

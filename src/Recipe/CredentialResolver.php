@@ -58,9 +58,9 @@ final readonly class CredentialResolver
 
         if ('' === $content && Framework::Drupal === $framework && ReadStrategy::PlainFile === $strategy) {
             $content = $runner->run($this->readCommand(ReadStrategy::DrupalDrush, $phpBin, $client->path));
-            $creds = self::extract($framework, '__drush__', $content);
+            $creds = self::extract($framework, '__drush__', $content, $client->db);
         } else {
-            $creds = self::extract($framework, $file, $content);
+            $creds = self::extract($framework, $file, $content, $client->db);
         }
 
         $detected = new DatabaseConfig(
@@ -73,10 +73,18 @@ final readonly class CredentialResolver
             type: DatabaseSystem::fromDriver((string) ($creds['db_type'] ?? '')),
         );
 
+        // For a TYPO3 `.env`, `client->db` was already consumed above as a
+        // variable-name mapping (see Extractors::typo3FromEnv()), so its
+        // name/host/user/password must not be applied a second time as literal
+        // override values here — only the TLS settings still come from it as-is.
+        $override = Framework::Typo3 === $framework && '.env' === $file
+            ? $client->db->withoutCredentials()
+            : $client->db;
+
         // An explicitly configured value stands in for one the application's own
         // configuration does not carry, so the check has to see the merged result
         // rather than what was read from the file.
-        $db = $detected->overriddenBy($client->db);
+        $db = $detected->overriddenBy($override);
 
         $clientLabel = '' !== $client->host ? $client->host : 'local';
         $this->validator->validate($clientLabel, [
@@ -120,10 +128,10 @@ final readonly class CredentialResolver
     /**
      * @return array<string, mixed>
      */
-    public static function extract(Framework $framework, string $file, string $content): array
+    public static function extract(Framework $framework, string $file, string $content, ?DatabaseConfig $client = null): array
     {
         return match ($framework) {
-            Framework::Typo3 => self::extractTypo3($file, $content),
+            Framework::Typo3 => self::extractTypo3($file, $content, $client),
             Framework::Symfony => self::extractSymfony($file, $content),
             Framework::Drupal => self::extractDrupal($file, $content),
             Framework::WordPress => Extractors::wordpressFromConfig($content),
@@ -134,10 +142,10 @@ final readonly class CredentialResolver
     /**
      * @return array<string, mixed>
      */
-    private static function extractTypo3(string $file, string $content): array
+    private static function extractTypo3(string $file, string $content, ?DatabaseConfig $client = null): array
     {
         if ('.env' === $file) {
-            return Extractors::typo3FromEnv($content);
+            return Extractors::typo3FromEnv($content, $client);
         }
 
         if ('AdditionalConfiguration.php' === $file || 'additional.php' === $file) {
