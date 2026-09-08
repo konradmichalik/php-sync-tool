@@ -98,4 +98,76 @@ final class AnonymizationRuleTest extends TestCase
 
         AnonymizationRule::fromConfig(['fe_users' => ['password' => null]]);
     }
+
+    #[Test]
+    public function aPresetExpandsToItsCannedRules(): void
+    {
+        $rules = AnonymizationRule::fromConfig(['preset' => 'typo3']);
+
+        $targets = array_map(static fn (AnonymizationRule $rule): string => $rule->table.'.'.$rule->column, $rules);
+        self::assertContains('fe_users.email', $targets);
+        self::assertContains('fe_users.password', $targets);
+        self::assertContains('be_users.email', $targets);
+        self::assertContains('be_users.password', $targets);
+    }
+
+    #[Test]
+    public function explicitColumnsOverrideAMatchingPresetColumn(): void
+    {
+        $rules = AnonymizationRule::fromConfig([
+            'preset' => 'typo3',
+            'fe_users' => ['password' => 'null'],
+        ]);
+
+        $password = self::ruleFor($rules, 'fe_users', 'password');
+        self::assertNotNull($password);
+        self::assertSame(AnonymizationStrategy::Nullify, $password->strategy, 'the explicit rule wins over the preset default');
+    }
+
+    #[Test]
+    public function explicitColumnsExtendAPresetTableWithoutRemovingItsOtherColumns(): void
+    {
+        $rules = AnonymizationRule::fromConfig([
+            'preset' => 'typo3',
+            'fe_users' => ['telephone' => 'null'],
+        ]);
+
+        self::assertNotNull(self::ruleFor($rules, 'fe_users', 'telephone'));
+        self::assertNotNull(self::ruleFor($rules, 'fe_users', 'email'), 'the preset column survives alongside the added one');
+    }
+
+    #[Test]
+    public function explicitTablesOutsideThePresetAreKeptUnchanged(): void
+    {
+        $rules = AnonymizationRule::fromConfig([
+            'preset' => 'typo3',
+            'sys_log' => ['details' => 'null'],
+        ]);
+
+        self::assertNotNull(self::ruleFor($rules, 'sys_log', 'details'));
+        self::assertNotNull(self::ruleFor($rules, 'fe_users', 'email'), 'the preset itself is still applied');
+    }
+
+    #[Test]
+    public function rejectsAnUnknownPreset(): void
+    {
+        $this->expectException(ConfigException::class);
+        $this->expectExceptionMessageMatches('#bogus#');
+
+        AnonymizationRule::fromConfig(['preset' => 'bogus']);
+    }
+
+    /**
+     * @param list<AnonymizationRule> $rules
+     */
+    private static function ruleFor(array $rules, string $table, string $column): ?AnonymizationRule
+    {
+        foreach ($rules as $rule) {
+            if ($rule->table === $table && $rule->column === $column) {
+                return $rule;
+            }
+        }
+
+        return null;
+    }
 }

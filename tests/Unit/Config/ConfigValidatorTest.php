@@ -171,6 +171,32 @@ final class ConfigValidatorTest extends TestCase
     }
 
     #[Test]
+    public function acceptsAnAnonymizationPresetAlongsideExplicitTables(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => [
+                'path' => '/t',
+                'db' => ['name' => 'app'],
+                'anonymize' => ['preset' => 'typo3', 'sys_log' => ['details' => 'null']],
+            ],
+        ]);
+    }
+
+    #[Test]
+    public function rejectsAnUnknownAnonymizationPreset(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app'], 'anonymize' => ['preset' => 'bogus']],
+        ]);
+    }
+
+    #[Test]
     public function rejectsAnUnknownAnonymizationStrategy(): void
     {
         $this->expectException(ValidationException::class);
@@ -189,6 +215,25 @@ final class ConfigValidatorTest extends TestCase
 
         (new ConfigValidator())->validate([
             'origin' => ['path' => '/o', 'db' => ['name' => 'app'], 'anonymize' => ['fe_users' => ['email' => 'email']]],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app']],
+        ]);
+    }
+
+    /**
+     * `SyncConfig::fromArray()` never reads `local`, so an `anonymize` block
+     * written there validates happily and then silently masks nothing — the
+     * same trap `rejectsAnUnknownRootKey` already guards against for a
+     * misspelled key.
+     */
+    #[Test]
+    public function rejectsAnonymizationOnTheLocalEndpointBlock(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessageMatches('#only supported on the target#');
+
+        (new ConfigValidator())->validate([
+            'local' => ['path' => '/l', 'anonymize' => ['preset' => 'typo3']],
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
             'target' => ['path' => '/t', 'db' => ['name' => 'app']],
         ]);
     }

@@ -52,6 +52,60 @@ address, so uniqueness constraints and joins on the address survive, and
 being readable, password hashes above all: the copy keeps a value in the column,
 but it is no longer the hash that protects the production account.
 
+## Presets
+
+Every TYPO3 project ends up masking the same handful of `fe_users`/`be_users`
+columns. `preset: typo3` expands to that canned rule set, using nothing but
+the four strategies above:
+
+```yaml
+target:
+  anonymize:
+    preset: typo3
+```
+
+is equivalent to writing out:
+
+```yaml
+target:
+  anonymize:
+    fe_users:
+      username: hash
+      password: hash
+      email: email
+      name: {strategy: static, value: 'Redacted'}
+      first_name: {strategy: static, value: 'Redacted'}
+      last_name: {strategy: static, value: 'Redacted'}
+      address: 'null'
+      telephone: 'null'
+    be_users:
+      username: hash
+      password: hash
+      email: email
+      realName: {strategy: static, value: 'Redacted'}
+```
+
+A table alongside `preset` merges into it column by column: a column the
+preset already covers is overridden, a new one is added, and every other
+preset column stays as the preset defined it.
+
+```yaml
+target:
+  anonymize:
+    preset: typo3
+    fe_users:
+      telephone: hash   # overrides the preset's `null` for this one column
+    tt_address:
+      email: email      # a table the preset doesn't know about, kept as-is
+```
+
+The preset assumes TYPO3 core's own `fe_users`/`be_users` schema. A table or
+column that doesn't exist (a heavily customized installation, or a framework
+other than TYPO3) fails the same way a hand-written rule against the wrong
+column would: the anonymize statement aborts the sync rather than silently
+masking nothing, since every rule still runs in the single database
+invocation described below.
+
 ## When it runs
 
 Masking is its own phase, between the import and `post_sql`:
