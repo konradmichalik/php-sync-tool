@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Config;
 
 use KonradMichalik\SyncTool\Config\{AnonymizationRule, ClientConfig, DatabaseConfig, FileTransferConfig, JumpHostConfig, SyncConfig};
-use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem};
+use KonradMichalik\SyncTool\Enum\{AnonymizationStrategy, DatabaseSystem, HostKeyCheckingMode};
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -264,7 +264,7 @@ final class WitherCompletenessTest extends TestCase
             filesOnly: true,
             sshAgent: true,
             forcePassword: true,
-            strictHostKeyChecking: false,
+            hostKeyChecking: HostKeyCheckingMode::Off,
             sshPasswordOrigin: 'origin-secret',
             sshPasswordTarget: 'target-secret',
             configFilePath: '/etc/sync.yaml',

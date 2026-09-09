@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Remote;
 
 use KonradMichalik\SyncTool\Config\ClientConfig;
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 use KonradMichalik\SyncTool\Exception\SyncException;
 use phpseclib3\Crypt\Common\PrivateKey;
 use phpseclib3\Crypt\PublicKeyLoader;
@@ -38,26 +39,26 @@ final readonly class SshClientFactory
         private HostKeyVerifier $verifier = new HostKeyVerifier(),
     ) {}
 
-    public function create(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, bool $strictHostKeyChecking = true): SSH2
+    public function create(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, HostKeyCheckingMode $hostKeyChecking = HostKeyCheckingMode::Strict): SSH2
     {
         return $this->connect(
             new SSH2($client->host, $client->port, $this->timeout),
             $client,
             $useSshAgent,
             $forcePassword,
-            $strictHostKeyChecking,
+            $hostKeyChecking,
         );
     }
 
-    public function createSftp(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, bool $strictHostKeyChecking = true): SFTP
+    public function createSftp(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, HostKeyCheckingMode $hostKeyChecking = HostKeyCheckingMode::Strict): SFTP
     {
         $sftp = new SFTP($client->host, $client->port, $this->timeout);
-        $this->connect($sftp, $client, $useSshAgent, $forcePassword, $strictHostKeyChecking);
+        $this->connect($sftp, $client, $useSshAgent, $forcePassword, $hostKeyChecking);
 
         return $sftp;
     }
 
-    private function connect(SSH2 $ssh, ClientConfig $client, bool $useSshAgent, bool $forcePassword, bool $strictHostKeyChecking): SSH2
+    private function connect(SSH2 $ssh, ClientConfig $client, bool $useSshAgent, bool $forcePassword, HostKeyCheckingMode $hostKeyChecking): SSH2
     {
         $ssh->setKeepAlive($this->keepAlive);
 
@@ -65,11 +66,12 @@ final readonly class SshClientFactory
         if (false === $serverKey) {
             throw new SyncException(sprintf('Could not retrieve the host key from %s', $client->host));
         }
-        $this->verifier->assert(
-            $this->knownHosts->match($client->host, $client->port, $serverKey),
-            $strictHostKeyChecking,
-            $client->host,
-        );
+        $status = $this->knownHosts->match($client->host, $client->port, $serverKey);
+        $this->verifier->assert($status, $hostKeyChecking, $client->host);
+
+        if ($this->verifier->shouldTrustOnFirstUse($status, $hostKeyChecking)) {
+            $this->knownHosts->append($client->host, $client->port, $serverKey);
+        }
 
         if (!$this->authenticate($ssh, $client, $useSshAgent, $forcePassword)) {
             throw new SyncException(sprintf('SSH authentication failed for %s@%s', $client->user, $client->host));

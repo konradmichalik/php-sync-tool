@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Fixture;
 
 use KonradMichalik\SyncTool\Config\ClientConfig;
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 use KonradMichalik\SyncTool\Remote\{CommandRunner, RunnerFactory};
 
 /**
@@ -26,7 +27,7 @@ final class FakeRunnerFactory extends RunnerFactory
 {
     public function __construct(private readonly CommandRunner $runner) {}
 
-    public function forClient(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, bool $strictHostKeyChecking = true): CommandRunner
+    public function forClient(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, HostKeyCheckingMode $hostKeyChecking = HostKeyCheckingMode::Strict): CommandRunner
     {
         return $this->runner;
     }

@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
 use KonradMichalik\SyncTool\Config\{ClientConfig, JumpHostConfig};
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 use KonradMichalik\SyncTool\Remote\RsyncCommandBuilder;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -77,11 +78,15 @@ final class RsyncCommandBuilderTest extends TestCase
 
         self::assertStringContainsString(
             'StrictHostKeyChecking=yes',
-            $this->builder->authorization($client, false, null, true),
+            $this->builder->authorization($client, false, null, HostKeyCheckingMode::Strict),
         );
         self::assertStringContainsString(
             'StrictHostKeyChecking=no',
-            $this->builder->authorization($client, false, null, false),
+            $this->builder->authorization($client, false, null, HostKeyCheckingMode::Off),
+        );
+        self::assertStringContainsString(
+            'StrictHostKeyChecking=accept-new',
+            $this->builder->authorization($client, false, null, HostKeyCheckingMode::AcceptNew),
         );
     }
 

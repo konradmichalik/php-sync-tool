@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 use KonradMichalik\SyncTool\Exception\SyncException;
 
 use function sprintf;
@@ -25,14 +26,19 @@ use function sprintf;
  */
 final class HostKeyVerifier
 {
-    public function assert(HostKeyStatus $status, bool $strict, string $host): void
+    public function assert(HostKeyStatus $status, HostKeyCheckingMode $mode, string $host): void
     {
         if (HostKeyStatus::Mismatch === $status) {
             throw new SyncException(sprintf('Host key verification failed for %s: the server key does not match the known_hosts entry (possible man-in-the-middle).', $host));
         }
 
-        if (HostKeyStatus::Unknown === $status && $strict) {
-            throw new SyncException(sprintf('Host key verification failed for %s: host is not in known_hosts. Add it (e.g. via ssh-keyscan) or set ssh_strict_host_key_checking: false.', $host));
+        if (HostKeyStatus::Unknown === $status && HostKeyCheckingMode::Strict === $mode) {
+            throw new SyncException(sprintf('Host key verification failed for %s: host is not in known_hosts. Add it (e.g. via ssh-keyscan), set ssh_strict_host_key_checking: accept-new to trust it automatically, or false to disable checking.', $host));
         }
+    }
+
+    public function shouldTrustOnFirstUse(HostKeyStatus $status, HostKeyCheckingMode $mode): bool
+    {
+        return HostKeyStatus::Unknown === $status && HostKeyCheckingMode::AcceptNew === $mode;
     }
 }

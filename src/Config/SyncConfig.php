@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Config;
 
 use InvalidArgumentException;
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 
 use function array_key_exists;
 use function get_object_vars;
@@ -61,7 +62,7 @@ final readonly class SyncConfig
         public bool $filesOnly = false,
         public bool $sshAgent = false,
         public bool $forcePassword = false,
-        public bool $strictHostKeyChecking = true,
+        public HostKeyCheckingMode $hostKeyChecking = HostKeyCheckingMode::Strict,
         public ?string $sshPasswordOrigin = null,
         public ?string $sshPasswordTarget = null,
         public ?string $configFilePath = null,
@@ -108,7 +109,7 @@ final readonly class SyncConfig
             filesOnly: ConfigAccessor::getBool($data, 'files_only', false),
             sshAgent: ConfigAccessor::getBool($data, 'ssh_agent', false),
             forcePassword: ConfigAccessor::getBool($data, 'force_password', false),
-            strictHostKeyChecking: ConfigAccessor::getBool($data, 'ssh_strict_host_key_checking', true),
+            hostKeyChecking: HostKeyCheckingMode::fromConfigValue($data['ssh_strict_host_key_checking'] ?? true),
             sshPasswordOrigin: ConfigAccessor::getStringOrNull($sshPasswords, 'origin'),
             sshPasswordTarget: ConfigAccessor::getStringOrNull($sshPasswords, 'target'),
             configFilePath: ConfigAccessor::getStringOrNull($data, 'config_file_path'),

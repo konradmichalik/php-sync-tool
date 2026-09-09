@@ -132,6 +132,13 @@ final class ConfigValidatorTest extends TestCase
     }
 
     #[Test]
+    public function acceptsAcceptNewStrictHostKeyChecking(): void
+    {
+        $this->expectNotToPerformAssertions();
+        (new ConfigValidator())->validate(['ssh_strict_host_key_checking' => 'accept-new']);
+    }
+
+    #[Test]
     public function acceptsAKnownDatabaseType(): void
     {
         $this->expectNotToPerformAssertions();

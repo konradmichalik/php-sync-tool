@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Config;
 
 use KonradMichalik\SyncTool\Config\{ClientConfig, FileTransferConfig, SyncConfig};
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -136,10 +137,17 @@ final class SyncConfigTest extends TestCase
     }
 
     #[Test]
-    public function strictHostKeyCheckingDefaultsTrueAndReadsFlag(): void
+    public function hostKeyCheckingDefaultsToStrictAndReadsMode(): void
     {
-        self::assertTrue(SyncConfig::fromArray([])->strictHostKeyChecking);
-        self::assertFalse(SyncConfig::fromArray(['ssh_strict_host_key_checking' => false])->strictHostKeyChecking);
+        self::assertSame(HostKeyCheckingMode::Strict, SyncConfig::fromArray([])->hostKeyChecking);
+        self::assertSame(
+            HostKeyCheckingMode::Off,
+            SyncConfig::fromArray(['ssh_strict_host_key_checking' => false])->hostKeyChecking,
+        );
+        self::assertSame(
+            HostKeyCheckingMode::AcceptNew,
+            SyncConfig::fromArray(['ssh_strict_host_key_checking' => 'accept-new'])->hostKeyChecking,
+        );
     }
 
     #[Test]
@@ -194,7 +202,7 @@ final class SyncConfigTest extends TestCase
             'ignore_tables' => ['cache'], 'truncate_tables' => ['log'], 'use_rsync' => false,
             'use_rsync_options' => '-z', 'use_sshpass' => true, 'with_files' => true,
             'files_only' => true, 'ssh_agent' => true, 'force_password' => true,
-            'ssh_strict_host_key_checking' => false, 'ssh_password' => ['origin' => 'po', 'target' => 'pt'],
+            'ssh_strict_host_key_checking' => 'accept-new', 'ssh_password' => ['origin' => 'po', 'target' => 'pt'],
             'config_file_path' => '/c.yaml', 'log_file' => '/l.log', 'json_log' => true,
             'type' => 'symfony', 'scripts' => ['before' => 'echo hi'],
         ]);
@@ -244,7 +252,7 @@ final class SyncConfigTest extends TestCase
             filesOnly: true,
             sshAgent: true,
             forcePassword: true,
-            strictHostKeyChecking: false,
+            hostKeyChecking: HostKeyCheckingMode::Off,
             sshPasswordOrigin: 'origin-secret',
             sshPasswordTarget: 'target-secret',
             configFilePath: '/tmp/config.yaml',

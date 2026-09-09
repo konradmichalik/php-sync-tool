@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Remote\{HostKeyStatus, HostKeyVerifier};
 use PHPUnit\Framework\Attributes\Test;
@@ -30,27 +31,61 @@ final class HostKeyVerifierTest extends TestCase
     public function matchedNeverThrows(): void
     {
         $this->expectNotToPerformAssertions();
-        (new HostKeyVerifier())->assert(HostKeyStatus::Matched, true, 'h');
+        (new HostKeyVerifier())->assert(HostKeyStatus::Matched, HostKeyCheckingMode::Strict, 'h');
     }
 
     #[Test]
-    public function mismatchThrowsEvenWhenNotStrict(): void
+    public function mismatchThrowsWhenStrict(): void
     {
         $this->expectException(SyncException::class);
-        (new HostKeyVerifier())->assert(HostKeyStatus::Mismatch, false, 'h');
+        (new HostKeyVerifier())->assert(HostKeyStatus::Mismatch, HostKeyCheckingMode::Strict, 'h');
+    }
+
+    #[Test]
+    public function mismatchThrowsWhenAcceptNew(): void
+    {
+        $this->expectException(SyncException::class);
+        (new HostKeyVerifier())->assert(HostKeyStatus::Mismatch, HostKeyCheckingMode::AcceptNew, 'h');
+    }
+
+    #[Test]
+    public function mismatchThrowsWhenOff(): void
+    {
+        $this->expectException(SyncException::class);
+        (new HostKeyVerifier())->assert(HostKeyStatus::Mismatch, HostKeyCheckingMode::Off, 'h');
     }
 
     #[Test]
     public function unknownThrowsWhenStrict(): void
     {
         $this->expectException(SyncException::class);
-        (new HostKeyVerifier())->assert(HostKeyStatus::Unknown, true, 'h');
+        (new HostKeyVerifier())->assert(HostKeyStatus::Unknown, HostKeyCheckingMode::Strict, 'h');
     }
 
     #[Test]
-    public function unknownPassesWhenNotStrict(): void
+    public function unknownPassesWhenOff(): void
     {
         $this->expectNotToPerformAssertions();
-        (new HostKeyVerifier())->assert(HostKeyStatus::Unknown, false, 'h');
+        (new HostKeyVerifier())->assert(HostKeyStatus::Unknown, HostKeyCheckingMode::Off, 'h');
+    }
+
+    #[Test]
+    public function unknownPassesWhenAcceptNew(): void
+    {
+        $this->expectNotToPerformAssertions();
+        (new HostKeyVerifier())->assert(HostKeyStatus::Unknown, HostKeyCheckingMode::AcceptNew, 'h');
+    }
+
+    #[Test]
+    public function shouldTrustOnFirstUseOnlyForUnknownAndAcceptNew(): void
+    {
+        $verifier = new HostKeyVerifier();
+
+        self::assertTrue($verifier->shouldTrustOnFirstUse(HostKeyStatus::Unknown, HostKeyCheckingMode::AcceptNew));
+
+        self::assertFalse($verifier->shouldTrustOnFirstUse(HostKeyStatus::Unknown, HostKeyCheckingMode::Strict));
+        self::assertFalse($verifier->shouldTrustOnFirstUse(HostKeyStatus::Unknown, HostKeyCheckingMode::Off));
+        self::assertFalse($verifier->shouldTrustOnFirstUse(HostKeyStatus::Matched, HostKeyCheckingMode::AcceptNew));
+        self::assertFalse($verifier->shouldTrustOnFirstUse(HostKeyStatus::Mismatch, HostKeyCheckingMode::AcceptNew));
     }
 }

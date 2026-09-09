@@ -13,9 +13,12 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
+use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Remote\{HostKeyStatus, KnownHosts};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
+
+use function sprintf;
 
 /**
  * KnownHostsTest.
@@ -130,6 +133,118 @@ final class KnownHostsTest extends TestCase
     {
         $kh = $this->write("# a comment\n@revoked example.com ssh-ed25519 REVOKEDKEY\n");
         self::assertSame(HostKeyStatus::Unknown, $kh->match('example.com', 22, 'ssh-ed25519 AAAAKEY'));
+    }
+
+    #[Test]
+    public function appendWritesAPlainHostEntryAtDefaultPort(): void
+    {
+        $kh = new KnownHosts($this->file);
+        $kh->append('example.com', 22, 'ssh-ed25519 AAAAKEY');
+
+        self::assertSame(HostKeyStatus::Matched, $kh->match('example.com', 22, 'ssh-ed25519 AAAAKEY'));
+        self::assertSame("example.com ssh-ed25519 AAAAKEY\n", file_get_contents($this->file));
+    }
+
+    #[Test]
+    public function appendUsesBracketNotationForNonDefaultPort(): void
+    {
+        $kh = new KnownHosts($this->file);
+        $kh->append('example.com', 2222, 'ssh-ed25519 AAAAKEY');
+
+        self::assertSame(HostKeyStatus::Matched, $kh->match('example.com', 2222, 'ssh-ed25519 AAAAKEY'));
+        self::assertSame(HostKeyStatus::Unknown, $kh->match('example.com', 22, 'ssh-ed25519 AAAAKEY'));
+    }
+
+    #[Test]
+    public function appendAddsToExistingFileWithoutOverwriting(): void
+    {
+        $kh = $this->write("other.com ssh-ed25519 OTHERKEY\n");
+        $kh->append('example.com', 22, 'ssh-ed25519 AAAAKEY');
+
+        self::assertSame(HostKeyStatus::Matched, $kh->match('other.com', 22, 'ssh-ed25519 OTHERKEY'));
+        self::assertSame(HostKeyStatus::Matched, $kh->match('example.com', 22, 'ssh-ed25519 AAAAKEY'));
+    }
+
+    #[Test]
+    public function appendRestrictsFilePermissionsOnCreation(): void
+    {
+        $kh = new KnownHosts($this->file);
+        $kh->append('example.com', 22, 'ssh-ed25519 AAAAKEY');
+
+        self::assertSame('0600', substr(sprintf('%o', fileperms($this->file)), -4));
+    }
+
+    #[Test]
+    public function appendDoesNotCorruptAFileMissingATrailingNewline(): void
+    {
+        // A file whose last line was never newline-terminated (hand-edited, or
+        // written by a tool that doesn't add one) must not have the new entry
+        // glued onto the end of the previous one.
+        $kh = $this->write('other.com ssh-ed25519 OTHERKEY');
+        $kh->append('example.com', 22, 'ssh-ed25519 AAAAKEY');
+
+        self::assertSame(HostKeyStatus::Matched, $kh->match('other.com', 22, 'ssh-ed25519 OTHERKEY'));
+        self::assertSame(HostKeyStatus::Matched, $kh->match('example.com', 22, 'ssh-ed25519 AAAAKEY'));
+    }
+
+    #[Test]
+    public function appendWritesTheNormalizedKeyTypeLikeOpenSshDoes(): void
+    {
+        // The server presents rsa-sha2-512; OpenSSH-style known_hosts files
+        // record the type as ssh-rsa. match() normalizes both sides so this
+        // doesn't break matching either way, but the file itself should still
+        // read like a file OpenSSH's own tools would produce.
+        $kh = new KnownHosts($this->file);
+        $kh->append('example.com', 22, 'rsa-sha2-512 AAAARSAKEY');
+
+        self::assertSame("example.com ssh-rsa AAAARSAKEY\n", file_get_contents($this->file));
+    }
+
+    #[Test]
+    public function appendThrowsWhenTheEntryCannotBeWritten(): void
+    {
+        // A path that is itself a directory can never be written to as a
+        // file, regardless of permissions — a portable way to force the
+        // write to fail without depending on the test runner's privileges.
+        $dirAsFile = sys_get_temp_dir().'/known_hosts_dir_'.uniqid();
+        mkdir($dirAsFile);
+
+        try {
+            $this->expectException(SyncException::class);
+            (new KnownHosts($dirAsFile))->append('example.com', 22, 'ssh-ed25519 AAAAKEY');
+        } finally {
+            rmdir($dirAsFile);
+        }
+    }
+
+    #[Test]
+    public function appendThrowsWhenItsDirectoryCannotBeCreated(): void
+    {
+        // mkdir() fails whenever a regular file already occupies the path a
+        // directory needs, independent of permissions.
+        $fileWhereADirShouldBe = sys_get_temp_dir().'/known_hosts_blocker_'.uniqid();
+        file_put_contents($fileWhereADirShouldBe, 'not a directory');
+
+        try {
+            $this->expectException(SyncException::class);
+            (new KnownHosts($fileWhereADirShouldBe.'/known_hosts'))->append('example.com', 22, 'ssh-ed25519 AAAAKEY');
+        } finally {
+            unlink($fileWhereADirShouldBe);
+        }
+    }
+
+    #[Test]
+    public function appendThrowsWhenHomeIsNotSetAndNoPathWasConfigured(): void
+    {
+        $originalHome = getenv('HOME');
+        putenv('HOME');
+
+        try {
+            $this->expectException(SyncException::class);
+            (new KnownHosts())->append('example.com', 22, 'ssh-ed25519 AAAAKEY');
+        } finally {
+            putenv(false !== $originalHome ? "HOME={$originalHome}" : 'HOME');
+        }
     }
 
     private function write(string $contents): KnownHosts
