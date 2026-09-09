@@ -141,15 +141,32 @@ and the `rsync` connection that moves the dump and any files. Both consult the
 same `~/.ssh/known_hosts` and both follow the setting below.
 
 For controlled environments (e.g. ephemeral CI containers or DDEV) where
-maintaining `known_hosts` is impractical, verification can be disabled:
+maintaining `known_hosts` ahead of time is impractical, but key-rotation
+protection should still apply after the first connection, trust the host on
+first contact instead:
+
+```yaml
+ssh_strict_host_key_checking: accept-new
+```
+
+This mirrors OpenSSH's own `StrictHostKeyChecking=accept-new`: an unknown host
+is trusted and its key is written to `~/.ssh/known_hosts` automatically, then
+verified against that entry on every later connection exactly like `true`
+would. A host whose key changes afterwards still fails verification.
+
+Where even that is unwanted, verification can be disabled entirely:
 
 ```yaml
 ssh_strict_host_key_checking: false
 ```
 
 ::: warning
-Only disable host-key verification in trusted, controlled environments. Never
-disable it against production hosts on untrusted networks.
+`false` skips the unknown-host check and never writes to `known_hosts`, but a
+host already recorded there whose key has since changed is still rejected;
+that check always runs, regardless of this setting. Only use `false` in
+trusted, controlled environments; never against production hosts on untrusted
+networks. `accept-new` is almost always the better choice for unattended
+environments, since it still catches a changed host key.
 :::
 
 ::: tip
@@ -186,5 +203,6 @@ origin:
 
 ### Host Key Verification Failed
 
-Add the host to `known_hosts` (see above), or set
-`ssh_strict_host_key_checking: false` in a trusted environment.
+Add the host to `known_hosts` (see above), set
+`ssh_strict_host_key_checking: accept-new` to trust it automatically on first
+contact, or `false` to disable checking in a trusted environment.
