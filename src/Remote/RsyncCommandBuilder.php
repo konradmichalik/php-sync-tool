@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Remote;
 
 use KonradMichalik\SyncTool\Config\{ClientConfig, JumpHostConfig};
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 use KonradMichalik\SyncTool\Security\Shell;
 
 use function implode;
@@ -83,7 +84,7 @@ final class RsyncCommandBuilder
     /**
      * The remote-shell option for rsync, as one shell-quoted argument.
      *
-     * `$strictHostKeyChecking` mirrors the `ssh_strict_host_key_checking` config
+     * `$hostKeyChecking` mirrors the `ssh_strict_host_key_checking` config
      * key that the phpseclib command channel already honours. Hard-coding
      * `StrictHostKeyChecking=no` here left the data channel unauthenticated while
      * the tool documented the opposite.
@@ -92,7 +93,7 @@ final class RsyncCommandBuilder
         ClientConfig $client,
         bool $useSshpass,
         ?JumpHostConfig $jump = null,
-        bool $strictHostKeyChecking = true,
+        HostKeyCheckingMode $hostKeyChecking = HostKeyCheckingMode::Strict,
     ): string {
         // A configured key wins over sshpass, which is why passwordEnvironment()
         // returns nothing as soon as one is present.
@@ -112,7 +113,11 @@ final class RsyncCommandBuilder
 
         $parts[] = '-p'.$client->port;
         $parts[] = '-o';
-        $parts[] = 'StrictHostKeyChecking='.($strictHostKeyChecking ? 'yes' : 'no');
+        $parts[] = 'StrictHostKeyChecking='.match ($hostKeyChecking) {
+            HostKeyCheckingMode::Strict => 'yes',
+            HostKeyCheckingMode::Off => 'no',
+            HostKeyCheckingMode::AcceptNew => 'accept-new',
+        };
 
         if ($withPassword) {
             $parts[] = '-l';

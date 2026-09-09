@@ -13,8 +13,13 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use KonradMichalik\SyncTool\Exception\SyncException;
+
 use function count;
+use function dirname;
 use function in_array;
+use function is_dir;
+use function mkdir;
 use function sprintf;
 use function str_starts_with;
 
@@ -30,8 +35,8 @@ final readonly class KnownHosts
 
     public function match(string $host, int $port, string $serverKey): HostKeyStatus
     {
-        $path = '' !== $this->path ? $this->path : (getenv('HOME') ?: '').'/.ssh/known_hosts';
-        if (!is_file($path)) {
+        $path = $this->resolvePath();
+        if (null === $path || !is_file($path)) {
             return HostKeyStatus::Unknown;
         }
         $lines = file($path, \FILE_IGNORE_NEW_LINES | \FILE_SKIP_EMPTY_LINES);
@@ -44,7 +49,7 @@ final readonly class KnownHosts
             return HostKeyStatus::Unknown;
         }
 
-        $token = 22 === $port ? $host : sprintf('[%s]:%d', $host, $port);
+        $token = $this->token($host, $port);
         $sameTypeSeen = false;
 
         foreach ($lines as $line) {
@@ -74,6 +79,69 @@ final readonly class KnownHosts
         }
 
         return $sameTypeSeen ? HostKeyStatus::Mismatch : HostKeyStatus::Unknown;
+    }
+
+    public function append(string $host, int $port, string $serverKey): void
+    {
+        [$type, $blob] = $this->splitKey($serverKey);
+        if (null === $blob) {
+            return;
+        }
+
+        $path = $this->resolvePath();
+        if (null === $path) {
+            throw new SyncException(sprintf('Could not determine the known_hosts path for %s: $HOME is not set.', $host));
+        }
+
+        $dir = dirname($path);
+        if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
+            throw new SyncException(sprintf('Could not create %s to store the trusted host key for %s.', $dir, $host));
+        }
+
+        $needsLeadingNewline = is_file($path) && filesize($path) > 0 && "\n" !== $this->lastByte($path);
+        $line = ($needsLeadingNewline ? "\n" : '').sprintf('%s %s %s'."\n", $this->token($host, $port), $this->normalizeType($type), $blob);
+        $isNewFile = !is_file($path);
+
+        if (false === @file_put_contents($path, $line, \FILE_APPEND | \LOCK_EX)) {
+            throw new SyncException(sprintf('Could not write the trusted host key for %s to %s.', $host, $path));
+        }
+
+        if ($isNewFile) {
+            chmod($path, 0600);
+        }
+    }
+
+    private function resolvePath(): ?string
+    {
+        if ('' !== $this->path) {
+            return $this->path;
+        }
+
+        $home = getenv('HOME');
+        if (false === $home || '' === $home) {
+            return null;
+        }
+
+        return $home.'/.ssh/known_hosts';
+    }
+
+    private function token(string $host, int $port): string
+    {
+        return 22 === $port ? $host : sprintf('[%s]:%d', $host, $port);
+    }
+
+    private function lastByte(string $path): string
+    {
+        $handle = fopen($path, 'r');
+        if (false === $handle) {
+            return '';
+        }
+
+        fseek($handle, -1, \SEEK_END);
+        $byte = fread($handle, 1);
+        fclose($handle);
+
+        return false !== $byte ? $byte : '';
     }
 
     private function hostMatches(string $hostField, string $token): bool

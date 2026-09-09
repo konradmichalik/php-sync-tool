@@ -15,7 +15,7 @@ namespace KonradMichalik\SyncTool\Remote;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\ClientConfig;
-use KonradMichalik\SyncTool\Enum\LogChannel;
+use KonradMichalik\SyncTool\Enum\{HostKeyCheckingMode, LogChannel};
 
 use function implode;
 use function sprintf;
@@ -48,11 +48,11 @@ class RunnerFactory
         $this->log = $log ?? static function (string $message, LogChannel $channel = LogChannel::Step): void {};
     }
 
-    public function forClient(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, bool $strictHostKeyChecking = true): CommandRunner
+    public function forClient(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, HostKeyCheckingMode $hostKeyChecking = HostKeyCheckingMode::Strict): CommandRunner
     {
-        $key = $this->key($client, $useSshAgent, $forcePassword, $strictHostKeyChecking);
+        $key = $this->key($client, $useSshAgent, $forcePassword, $hostKeyChecking);
 
-        return $this->runners[$key] ??= $this->create($client, $useSshAgent, $forcePassword, $strictHostKeyChecking);
+        return $this->runners[$key] ??= $this->create($client, $useSshAgent, $forcePassword, $hostKeyChecking);
     }
 
     public function local(): CommandRunner
@@ -60,7 +60,7 @@ class RunnerFactory
         return new LocalCommandRunner();
     }
 
-    private function create(ClientConfig $client, bool $useSshAgent, bool $forcePassword, bool $strictHostKeyChecking): CommandRunner
+    private function create(ClientConfig $client, bool $useSshAgent, bool $forcePassword, HostKeyCheckingMode $hostKeyChecking): CommandRunner
     {
         if ($client->isRemote()) {
             if (null !== $client->jumpHost) {
@@ -71,7 +71,7 @@ class RunnerFactory
 
             ($this->log)(sprintf('Connecting via SSH to %s@%s', $client->user, $client->host));
 
-            return new SshCommandRunner($this->sshClientFactory->create($client, $useSshAgent, $forcePassword, $strictHostKeyChecking));
+            return new SshCommandRunner($this->sshClientFactory->create($client, $useSshAgent, $forcePassword, $hostKeyChecking));
         }
 
         return new LocalCommandRunner();
@@ -89,7 +89,7 @@ class RunnerFactory
      * belong; that needs the caller to build the factory per run, which is part of
      * pulling credential resolution out of Sync.
      */
-    private function key(ClientConfig $client, bool $useSshAgent, bool $forcePassword, bool $strictHostKeyChecking): string
+    private function key(ClientConfig $client, bool $useSshAgent, bool $forcePassword, HostKeyCheckingMode $hostKeyChecking): string
     {
         return implode("\0", [
             $client->host,
@@ -99,7 +99,7 @@ class RunnerFactory
             null !== $client->jumpHost ? $client->jumpHost->sshSpec() : '',
             $useSshAgent ? '1' : '0',
             $forcePassword ? '1' : '0',
-            $strictHostKeyChecking ? '1' : '0',
+            $hostKeyChecking->value,
         ]);
     }
 }

@@ -174,6 +174,6 @@ final readonly class SftpTransferStrategy implements TransferStrategy
 
     private function connect(SyncConfig $config, ClientConfig $client): SFTP
     {
-        return $this->factory->createSftp($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+        return $this->factory->createSftp($client, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
     }
 }

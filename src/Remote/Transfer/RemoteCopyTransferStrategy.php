@@ -61,7 +61,7 @@ final readonly class RemoteCopyTransferStrategy implements TransferStrategy
             $config->origin,
             $config->sshAgent,
             $config->forcePassword,
-            $config->strictHostKeyChecking,
+            $config->hostKeyChecking,
         )->run($command);
     }
 }

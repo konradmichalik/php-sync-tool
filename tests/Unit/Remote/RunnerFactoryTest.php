@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Remote;
 
 use KonradMichalik\SyncTool\Config\{ClientConfig, JumpHostConfig};
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 use KonradMichalik\SyncTool\Remote\{LocalCommandRunner, RunnerFactory, SystemSshCommandRunner};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -128,8 +129,28 @@ final class RunnerFactoryTest extends TestCase
         );
 
         self::assertNotSame(
-            $factory->forClient($client, strictHostKeyChecking: true),
-            $factory->forClient($client, strictHostKeyChecking: false),
+            $factory->forClient($client, hostKeyChecking: HostKeyCheckingMode::Strict),
+            $factory->forClient($client, hostKeyChecking: HostKeyCheckingMode::Off),
+        );
+    }
+
+    #[Test]
+    public function acceptNewDoesNotReuseAStrictOrOffConnection(): void
+    {
+        $factory = new RunnerFactory();
+        $client = new ClientConfig(
+            host: 'remote.example.com',
+            user: 'deploy',
+            jumpHost: new JumpHostConfig(host: 'jump.example.com', user: 'proxy'),
+        );
+
+        self::assertNotSame(
+            $factory->forClient($client, hostKeyChecking: HostKeyCheckingMode::AcceptNew),
+            $factory->forClient($client, hostKeyChecking: HostKeyCheckingMode::Strict),
+        );
+        self::assertNotSame(
+            $factory->forClient($client, hostKeyChecking: HostKeyCheckingMode::AcceptNew),
+            $factory->forClient($client, hostKeyChecking: HostKeyCheckingMode::Off),
         );
     }
 }

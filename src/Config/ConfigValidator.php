@@ -168,7 +168,7 @@ final class ConfigValidator
             "files_only": {"type": "boolean"},
             "ssh_agent": {"type": "boolean"},
             "force_password": {"type": "boolean"},
-            "ssh_strict_host_key_checking": {"type": "boolean"},
+            "ssh_strict_host_key_checking": {"oneOf": [{"type": "boolean"}, {"enum": ["accept-new"]}]},
             "ssh_password": {
                 "type": "object",
                 "additionalProperties": false,

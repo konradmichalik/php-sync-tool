@@ -60,7 +60,7 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         $pull = $this->rsync->build(
             $this->rsync->passwordEnvironment($config->origin, $config->useSshpass),
             $options,
-            $this->rsync->authorization($config->origin, $config->useSshpass, $config->origin->jumpHost, $config->strictHostKeyChecking),
+            $this->rsync->authorization($config->origin, $config->useSshpass, $config->origin->jumpHost, $config->hostKeyChecking),
             $this->rsync->userHost($config->origin),
             $payload->originPath,
             '',
@@ -70,7 +70,7 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         $push = $this->rsync->build(
             $this->rsync->passwordEnvironment($config->target, $config->useSshpass),
             $options,
-            $this->rsync->authorization($config->target, $config->useSshpass, $config->target->jumpHost, $config->strictHostKeyChecking),
+            $this->rsync->authorization($config->target, $config->useSshpass, $config->target->jumpHost, $config->hostKeyChecking),
             '',
             $localTemp,
             $this->rsync->userHost($config->target),

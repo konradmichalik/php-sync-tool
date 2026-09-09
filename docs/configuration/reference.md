@@ -42,7 +42,7 @@ stays a command.
 | `check_for_updates` | boolean | Check Packagist for a newer release at the start of each run (default: off). See [CLI Reference](/reference/cli#update-notices). |
 | `ssh_agent` | boolean | Insist on the running SSH agent. A loaded agent is used on its own when an endpoint has no key and no password, see [Authentication](/configuration/authentication). |
 | `use_sshpass` | boolean | Hand rsync a password through `sshpass`. Set on its own when a password is in play and the binary is installed, so it rarely needs configuring. |
-| `ssh_strict_host_key_checking` | boolean | Toggle SSH host-key verification (default: enabled). |
+| `ssh_strict_host_key_checking` | boolean \| `accept-new` | SSH host-key verification (default: enabled). `accept-new` trusts an unknown host once, writes it to `known_hosts`, and verifies against it afterwards; see [Authentication](/configuration/authentication#host-key-verification). |
 | `files` | array | File-transfer entries (see [File Synchronization](/configuration/file-sync)). |
 
 ## Client Object

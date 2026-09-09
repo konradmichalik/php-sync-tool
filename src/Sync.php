@@ -112,7 +112,7 @@ final readonly class Sync
         $target = $config->target;
 
         if ($this->needsCredentialResolution($config, $origin)) {
-            $runner = $this->runners->forClient($origin, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+            $runner = $this->runners->forClient($origin, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
             ($this->log)('Reading database credentials from '.$origin->path);
             $db = $this->credentialResolver->resolve($config, $origin, $runner);
             if (null !== $db) {
@@ -121,7 +121,7 @@ final readonly class Sync
         }
 
         if ($this->needsCredentialResolution($config, $target)) {
-            $runner = $this->runners->forClient($target, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+            $runner = $this->runners->forClient($target, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
             ($this->log)('Reading database credentials from '.$target->path);
             $db = $this->credentialResolver->resolve($config, $target, $runner);
             if (null !== $db) {
@@ -168,7 +168,7 @@ final readonly class Sync
     private function createOriginDump(SyncConfig $config, string $dumpName): void
     {
         $client = $config->origin;
-        $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+        $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
         $driver = $this->drivers->forDatabase($client->db, $client->console, $runner);
         $this->assertSupported($driver, $config, $client->db);
 
@@ -239,7 +239,7 @@ final readonly class Sync
     private function importDump(SyncConfig $config, SyncPlan $plan, string $dumpName): void
     {
         $client = $config->target;
-        $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->strictHostKeyChecking);
+        $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
         $driver = $this->drivers->forDatabase($client->db, $client->console, $runner);
         $this->assertSupported($driver, $config, $client->db);
 
