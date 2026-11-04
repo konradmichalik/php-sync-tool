@@ -488,6 +488,26 @@ final class SyncCommandTest extends TestCase
         self::assertStringContainsString('Aborted by user', $output);
     }
 
+    /**
+     * A files-only run never touches a database, so the prompt must not claim it does.
+     */
+    #[Test]
+    public function filesOnlyConfirmationNamesFilesNotTheDatabase(): void
+    {
+        $output = $this->declinedPromptFor(['--files-only' => true]);
+
+        self::assertStringContainsString('This overwrites files on the local system. Continue?', $output);
+        self::assertStringNotContainsString('database', $output);
+    }
+
+    #[Test]
+    public function withFilesConfirmationNamesDatabaseAndFiles(): void
+    {
+        $output = $this->declinedPromptFor(['--with-files' => true]);
+
+        self::assertStringContainsString('This overwrites the local database and files. Continue?', $output);
+    }
+
     #[Test]
     public function yesFlagSkipsTheConfirmationPrompt(): void
     {
@@ -570,6 +590,34 @@ final class SyncCommandTest extends TestCase
 
         self::assertSame(0, $exit, $tester->getDisplay());
         self::assertStringNotContainsString('No SSH authentication', $tester->getDisplay());
+    }
+
+    /**
+     * @param array<string, bool> $flags
+     */
+    private function declinedPromptFor(array $flags): string
+    {
+        $file = $this->dir.'/prompt.yaml';
+        file_put_contents($file, <<<'YAML'
+            origin:
+              path: /var/www
+              db: {name: a, user: root, password: root}
+            target:
+              path: /var/www2
+              db: {name: b, user: root, password: root}
+            files:
+              - {origin: /var/www/fileadmin, target: /var/www2/fileadmin}
+            YAML);
+
+        $tester = $this->tester();
+        $tester->setInputs(['no']);
+        $exit = $tester->execute(['--config-file' => $file, ...$flags], ['interactive' => true]);
+
+        $output = $tester->getDisplay();
+        self::assertSame(0, $exit, $output);
+        self::assertStringContainsString('Aborted by user', $output);
+
+        return $output;
     }
 
     private function tester(): CommandTester
