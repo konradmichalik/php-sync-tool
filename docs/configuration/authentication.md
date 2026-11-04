@@ -113,7 +113,8 @@ bin/sync-tool -f config.yaml --force-password
 ```
 
 The flag needs a terminal. An empty answer is rejected rather than sent as a
-password.
+password, and after three empty answers, or when the input is closed, the run
+stops with an error instead of asking again.
 
 ::: warning rsync + password
 rsync takes no password of its own, so a password-authenticated transfer needs
