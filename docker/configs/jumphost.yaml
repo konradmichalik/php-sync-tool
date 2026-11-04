@@ -12,6 +12,7 @@ origin:
   host: www3
   user: root
   port: 22
+  ssh_key: /root/.ssh/id_ed25519
   dump_dir: /tmp/
   jump_host:
     host: proxy
