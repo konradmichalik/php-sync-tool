@@ -165,8 +165,10 @@ Any run that writes to a target database asks for confirmation before it starts:
 This overwrites the remote (prod.example.com) database. Continue? (yes/no) [no]:
 ```
 
-The question names what the run writes: `--with-files` asks about the
-"database and files", `--files-only` about "files on the ... system".
+The question names what the run writes. With `--with-files` it reads
+`This overwrites the remote (prod.example.com) database and files. Continue?`,
+with `--files-only` (or `--with-files` plus `keep_dump`) it reads
+`This overwrites files on the remote (prod.example.com) system. Continue?`.
 
 The prompt only appears on an interactive terminal. Non-interactive contexts
 (CI pipelines, Deployer, cron) proceed automatically, as does `--dry-run`. Skip
