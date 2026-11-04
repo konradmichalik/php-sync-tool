@@ -42,6 +42,10 @@ final class RsyncCommandBuilder
     private const DIRECTORY_MODES = '--chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo=';
     private const FILE_MODES = '--chmod=Fu=rw,Fg=rw,Fo=';
 
+    // The local process has no wall-clock limit, so a transfer that moves no
+    // data for this long is what ends a stalled run.
+    private const IO_TIMEOUT = '--timeout=600';
+
     /**
      * Directory trees: mirror the source, compress on the wire, normalise
      * filename encoding and set group-readable modes on dirs and files.
@@ -56,6 +60,7 @@ final class RsyncCommandBuilder
         '--human-readable',
         '--iconv=UTF-8',
         self::DIRECTORY_MODES,
+        self::IO_TIMEOUT,
     ];
 
     /**
@@ -70,6 +75,7 @@ final class RsyncCommandBuilder
         '--stats',
         '--human-readable',
         self::FILE_MODES,
+        self::IO_TIMEOUT,
     ];
 
     public function passwordEnvironment(ClientConfig $client, bool $useSshpass): string
@@ -118,6 +124,8 @@ final class RsyncCommandBuilder
             HostKeyCheckingMode::Off => 'no',
             HostKeyCheckingMode::AcceptNew => 'accept-new',
         };
+        // Drops a silently dead connection after two minutes instead of hanging.
+        array_push($parts, '-o', 'ServerAliveInterval=30', '-o', 'ServerAliveCountMax=4');
 
         if ($withPassword) {
             $parts[] = '-l';
