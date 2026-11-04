@@ -542,7 +542,7 @@ class SyncCommand extends Command
 
         return match (true) {
             $syncConfig->filesOnly => sprintf('This overwrites files on the %s system. Continue?', $target),
-            $syncConfig->withFiles => sprintf('This overwrites the %s database and files. Continue?', $target),
+            $syncConfig->withFiles && [] !== $syncConfig->files => sprintf('This overwrites the %s database and files. Continue?', $target),
             default => sprintf('This overwrites the %s database. Continue?', $target),
         };
     }

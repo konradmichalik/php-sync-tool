@@ -508,6 +508,25 @@ final class SyncCommandTest extends TestCase
         self::assertStringContainsString('This overwrites the local database and files. Continue?', $output);
     }
 
+    /**
+     * `--with-files` is valid without a `files` list, and then only the database is written.
+     */
+    #[Test]
+    public function withFilesButNoFileEntriesNamesOnlyTheDatabase(): void
+    {
+        $file = $this->dir.'/with-files-no-entries.yaml';
+        file_put_contents($file, "target:\n  db: {name: db, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $tester->setInputs(['no']);
+        $tester->execute(
+            ['--config-file' => $file, '--import-file' => '/tmp/seed.sql', '--with-files' => true],
+            ['interactive' => true],
+        );
+
+        self::assertStringContainsString('This overwrites the local database. Continue?', $tester->getDisplay());
+    }
+
     #[Test]
     public function yesFlagSkipsTheConfirmationPrompt(): void
     {
