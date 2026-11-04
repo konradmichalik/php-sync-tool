@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Remote;
 use Closure;
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Security\LogSanitizer;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
 use function sprintf;
@@ -30,18 +31,24 @@ use function trim;
 final readonly class LocalCommandRunner implements CommandRunner
 {
     public function __construct(
-        private int $timeout = 600,
+        // No limit by default: dumps and rsync runs grow with the data.
+        private ?int $timeout = null,
     ) {}
 
     public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {
         $process = Process::fromShellCommandline($command);
-        $process->setTimeout((float) $this->timeout);
-        $process->run(null === $onOutput ? null : static function (string $type, string $buffer) use ($onOutput): void {
-            if (Process::OUT === $type) {
-                $onOutput($buffer);
-            }
-        });
+        $process->setTimeout($this->timeout);
+
+        try {
+            $process->run(null === $onOutput ? null : static function (string $type, string $buffer) use ($onOutput): void {
+                if (Process::OUT === $type) {
+                    $onOutput($buffer);
+                }
+            });
+        } catch (ProcessTimedOutException $exception) {
+            throw new SyncException(sprintf('Command timed out after %d seconds: %s', (int) $exception->getExceededTimeout(), LogSanitizer::sanitize($command)), 0, $exception);
+        }
 
         // Every non-zero exit is a failure, whether or not the command bothered to
         // explain itself on stderr. Gating this on stderr let a silent `rm`, `test`
