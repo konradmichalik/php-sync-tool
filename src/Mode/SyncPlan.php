@@ -73,8 +73,8 @@ final readonly class SyncPlan
     }
 
     /**
-     * Everything that writes the target, and is therefore blocked when the
-     * target host is protected. A dump writes nothing but a file.
+     * Whether the database mode imports into the target. Protection and the
+     * confirmation go by writesTarget(), which also counts the file sync.
      */
     public function isProtectable(): bool
     {
@@ -87,8 +87,7 @@ final readonly class SyncPlan
     }
 
     /**
-     * The database mode alone misses the file sync: a same-host dump still
-     * copies files onto the target.
+     * A same-host dump writes no database but can still copy files onto the target.
      */
     public function writesTarget(SyncConfig $config): bool
     {

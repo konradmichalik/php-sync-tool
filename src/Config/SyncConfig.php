@@ -139,11 +139,11 @@ final readonly class SyncConfig
     }
 
     /**
-     * `--with-files` is valid without file entries, and then copies nothing.
+     * Both file flags are valid without file entries, and then copy nothing.
      */
     public function writesFiles(): bool
     {
-        return $this->filesOnly || ($this->withFiles && [] !== $this->files);
+        return ($this->filesOnly || $this->withFiles) && [] !== $this->files;
     }
 
     public function getClient(string $client): ClientConfig

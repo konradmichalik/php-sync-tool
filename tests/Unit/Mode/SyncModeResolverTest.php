@@ -199,7 +199,7 @@ final class SyncModeResolverTest extends TestCase
     }
 
     #[Test]
-    public function aFilesOnlyRunIsNotRefusedForADatabaseDump(): void
+    public function aRefusedFilesOnlyRunNamesFilesNotADatabase(): void
     {
         $config = new SyncConfig(
             files: [new FileTransferConfig(origin: '/var/www/fileadmin')],
@@ -215,5 +215,52 @@ final class SyncModeResolverTest extends TestCase
             self::assertStringContainsString('protected against writing files', $exception->getMessage());
             self::assertStringNotContainsString('database', $exception->getMessage());
         }
+    }
+
+    #[Test]
+    public function protectionBlocksWithFilesOnADumpPlan(): void
+    {
+        $config = new SyncConfig(
+            files: [new FileTransferConfig(origin: '/var/www/fileadmin', target: '/var/www/fileadmin_copy')],
+            withFiles: true,
+            origin: new ClientConfig(path: '/var/www'),
+            target: new ClientConfig(path: '/var/www', protect: true),
+        );
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('protected against writing files');
+
+        $this->resolver->checkForProtection($this->resolver->resolve($config), $config);
+    }
+
+    /**
+     * Without file entries a files-only run copies nothing, so there is nothing to protect.
+     */
+    #[Test]
+    public function aFilesOnlyRunWithoutEntriesPassesProtection(): void
+    {
+        $config = new SyncConfig(
+            filesOnly: true,
+            origin: new ClientConfig(path: '/var/www'),
+            target: new ClientConfig(path: '/var/www', protect: true),
+        );
+
+        $this->resolver->checkForProtection($this->resolver->resolve($config), $config);
+
+        self::assertFalse($config->writesFiles());
+    }
+
+    #[Test]
+    public function aProtectedImportNamesTheImport(): void
+    {
+        $config = new SyncConfig(
+            importFile: '/tmp/seed.sql',
+            target: new ClientConfig(path: '/var/www', protect: true),
+        );
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('protected against importing a database dump');
+
+        $this->resolver->checkForProtection($this->resolver->resolve($config), $config);
     }
 }

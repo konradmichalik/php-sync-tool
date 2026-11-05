@@ -43,16 +43,20 @@ final class SyncModeResolver
      */
     public function checkForProtection(SyncPlan $plan, SyncConfig $cfg): void
     {
-        if ($plan->writesTarget($cfg) && $cfg->target->protect) {
-            $host = '' !== $cfg->target->host ? $cfg->target->host : 'local';
-            $blocked = match (true) {
-                $plan->writesDatabase($cfg) && $cfg->writesFiles() => 'a database dump and files',
-                $cfg->writesFiles() => 'files',
-                default => 'a database dump',
-            };
+        $writesDatabase = $plan->writesDatabase($cfg);
+        $writesFiles = $cfg->writesFiles();
 
-            throw new SyncException(sprintf('The host %s is protected against writing %s. Please check synchronisation target or adjust the host configuration.', $host, $blocked));
+        if (!$cfg->target->protect || (!$writesDatabase && !$writesFiles)) {
+            return;
         }
+
+        $blocked = match (true) {
+            $writesDatabase && $writesFiles => 'importing a database dump and writing files',
+            $writesFiles => 'writing files',
+            default => 'importing a database dump',
+        };
+
+        throw new SyncException(sprintf('The host %s is protected against %s. Please check synchronisation target or adjust the host configuration.', '' !== $cfg->target->host ? $cfg->target->host : 'local', $blocked));
     }
 
     private function operation(SyncConfig $cfg, bool $sameHost): SyncOperation
