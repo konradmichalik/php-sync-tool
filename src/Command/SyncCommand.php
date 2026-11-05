@@ -541,9 +541,13 @@ class SyncCommand extends Command
     {
         $target = $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host);
 
+        // keep_dump skips the import (Sync::run), so only the files reach the target.
+        $writesDatabase = !$syncConfig->filesOnly && !$syncConfig->keepDump;
+        $writesFiles = $syncConfig->filesOnly || ($syncConfig->withFiles && [] !== $syncConfig->files);
+
         return match (true) {
-            $syncConfig->filesOnly => sprintf('This overwrites files on the %s system. Continue?', $target),
-            $syncConfig->withFiles && [] !== $syncConfig->files => sprintf('This overwrites the %s database and files. Continue?', $target),
+            $writesDatabase && $writesFiles => sprintf('This overwrites the %s database and files. Continue?', $target),
+            $writesFiles => sprintf('This overwrites files on the %s system. Continue?', $target),
             default => sprintf('This overwrites the %s database. Continue?', $target),
         };
     }

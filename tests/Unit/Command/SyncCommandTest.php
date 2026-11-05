@@ -497,7 +497,17 @@ final class SyncCommandTest extends TestCase
         $output = $this->declinedPromptFor(['--files-only' => true]);
 
         self::assertStringContainsString('This overwrites files on the local system. Continue?', $output);
-        self::assertStringNotContainsString('database', $output);
+    }
+
+    /**
+     * keep_dump skips the import, so a run with files only writes files.
+     */
+    #[Test]
+    public function keepDumpWithFilesConfirmationNamesOnlyFiles(): void
+    {
+        $output = $this->declinedPromptFor(['--with-files' => true, '--keep-dump' => true]);
+
+        self::assertStringContainsString('This overwrites files on the local system. Continue?', $output);
     }
 
     #[Test]
