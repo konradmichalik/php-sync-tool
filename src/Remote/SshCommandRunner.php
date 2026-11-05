@@ -40,6 +40,16 @@ final readonly class SshCommandRunner implements CommandRunner
     {
         $output = $this->ssh->exec($command);
 
+        // phpseclib catches its own timeout and returns the partial output with no
+        // exit status, which would otherwise pass as a finished command.
+        if ($this->ssh->isTimeout()) {
+            if ($allowFail) {
+                return '';
+            }
+
+            throw new SyncException(sprintf('Remote command timed out: %s', LogSanitizer::sanitize($command)));
+        }
+
         if (false === $output) {
             if ($allowFail) {
                 return '';

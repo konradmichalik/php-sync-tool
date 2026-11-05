@@ -77,6 +77,11 @@ final readonly class SshClientFactory
             throw new SyncException(sprintf('SSH authentication failed for %s@%s', $client->user, $client->host));
         }
 
+        // The constructor timeout bounds the connect. For exec() and SFTP transfers
+        // phpseclib counts it against the whole call, which cut off remote dumps
+        // running past it. 0 lifts that limit; the keepalive keeps running.
+        $ssh->setTimeout(0);
+
         return $ssh;
     }
 

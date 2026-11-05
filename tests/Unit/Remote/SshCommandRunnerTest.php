@@ -50,6 +50,24 @@ final class SshCommandRunnerTest extends TestCase
         (new SshCommandRunner($ssh))->run('boom');
     }
 
+    /**
+     * phpseclib swallows its own timeout and hands back whatever output arrived,
+     * with no exit status. That must not pass as a finished command.
+     */
+    #[Test]
+    public function aTimedOutCommandThrows(): void
+    {
+        $ssh = $this->createStub(SSH2::class);
+        $ssh->method('exec')->willReturn('partial output');
+        $ssh->method('isTimeout')->willReturn(true);
+        $ssh->method('getExitStatus')->willReturn(false);
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('Remote command timed out');
+
+        (new SshCommandRunner($ssh))->run('mysqldump db > /tmp/db.sql');
+    }
+
     #[Test]
     public function nonZeroExitStatusThrows(): void
     {
