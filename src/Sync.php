@@ -266,12 +266,11 @@ final readonly class Sync
         $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
 
         try {
-            $dumpPath = $plan->isImport() && '' !== $config->importFile
-                ? $config->importFile
-                : $this->dumpDir($client).$dumpName.'.gz';
+            $isImportFile = $plan->isImport() && '' !== $config->importFile;
+            $dumpPath = $isImportFile ? $config->importFile : $this->dumpDir($client).$dumpName.'.gz';
 
             if ($config->checkDump) {
-                $this->checkDump($runner, $driver, $dumpPath);
+                $this->checkDump($runner, $driver, $dumpPath, !$isImportFile);
             }
 
             if ($config->backupBeforeImport) {
@@ -333,7 +332,7 @@ final readonly class Sync
      * The trailer is read rather than the last line alone, because pg_dump closes
      * its marker with a comment rule while mysqldump does not.
      */
-    private function checkDump(CommandRunner $runner, DatabaseDriver $driver, string $dumpPath): void
+    private function checkDump(CommandRunner $runner, DatabaseDriver $driver, string $dumpPath, bool $requireTrailer): void
     {
         $safePath = escapeshellarg($dumpPath);
 
@@ -353,6 +352,12 @@ final readonly class Sync
         // turns the pair off together.
         if (str_ends_with($dumpPath, '.gz') && 'OK' !== trim($runner->run(sprintf('gunzip -t %s && echo OK', $safePath), true))) {
             throw new SyncException(sprintf('Dump validation failed: %s is not a valid gzip archive, it was damaged in writing or transfer', $dumpPath));
+        }
+
+        // The trailer proves our own dump finished. A file the user brings with
+        // --import-file may be hand-written or dumped without comments.
+        if (!$requireTrailer) {
+            return;
         }
 
         $trailer = $runner->run(sprintf('%s | tail -n 5', $this->readDumpCommand($dumpPath)), true);
@@ -403,14 +408,11 @@ final readonly class Sync
     }
 
     /**
-     * Writes the dump to stdout, whether it is gzipped (everything this tool
-     * produces) or a plain `.sql` handed in through `--import-file`.
+     * Writes one of the tool's own dumps, always gzipped, to stdout.
      */
     private function readDumpCommand(string $dumpPath): string
     {
-        $safePath = escapeshellarg($dumpPath);
-
-        return str_ends_with($dumpPath, '.gz') ? 'gunzip -c '.$safePath : 'cat '.$safePath;
+        return 'gunzip -c '.escapeshellarg($dumpPath);
     }
 
     private function importAfterDump(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
