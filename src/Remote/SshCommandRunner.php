@@ -47,7 +47,7 @@ final readonly class SshCommandRunner implements CommandRunner
                 return '';
             }
 
-            throw new SyncException(sprintf('Remote command timed out: %s', LogSanitizer::sanitize($command)));
+            throw $this->failure('Remote command timed out', $command);
         }
 
         if (false === $output) {
@@ -55,16 +55,32 @@ final readonly class SshCommandRunner implements CommandRunner
                 return '';
             }
 
-            // The command is masked: it carries the credential file's contents on
-            // the way to a remote host, and its own `-p` arguments elsewhere.
-            throw new SyncException(sprintf('Remote command failed: %s', LogSanitizer::sanitize($command)));
+            throw $this->failure('Remote command failed', $command);
         }
 
         $exitStatus = $this->ssh->getExitStatus();
         if (!$allowFail && is_int($exitStatus) && 0 !== $exitStatus) {
-            throw new SyncException(sprintf('Remote command exited with status %d: %s', $exitStatus, LogSanitizer::sanitize($command)));
+            throw $this->failure(sprintf('Remote command exited with status %d', $exitStatus), $command);
         }
 
         return rtrim((string) $output, "\n");
+    }
+
+    /**
+     * The command is masked: it carries the credential file's contents on the way
+     * to a remote host, and its own `-p` arguments elsewhere. stderr names the
+     * cause (access denied, disk full), which the command alone would leave the
+     * user to reproduce by hand.
+     */
+    private function failure(string $reason, string $command): SyncException
+    {
+        $message = sprintf('%s: %s', $reason, LogSanitizer::sanitize($command));
+        $stderr = trim((string) $this->ssh->getStdError());
+
+        if ('' !== $stderr) {
+            $message .= "\n".LogSanitizer::sanitize($stderr);
+        }
+
+        return new SyncException($message);
     }
 }
