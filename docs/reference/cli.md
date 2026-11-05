@@ -11,8 +11,10 @@ Complete command line reference for php-sync-tool.
 | `push <environment>` | This project's database into that environment |
 | `init` | Ask a few questions and write `.sync-tool/` for this project |
 | `environments` | List the synchronizations this project is configured for |
+| `anonymize` | Mask the local target database in place, without a sync |
 
 `pull`, `push`, `init` and `environments` are described under [Named Environments](#named-environments).
+`anonymize` is described under [Anonymizing an existing database](/configuration/anonymization#anonymizing-an-existing-database).
 Every option in this reference applies to `pull` and `push` as well, apart from the
 `ORIGIN` and `TARGET` arguments, which the environment name replaces.
 

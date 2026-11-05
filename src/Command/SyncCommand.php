@@ -45,6 +45,7 @@ use function trim;
  *
  * Deliberately not final: PullCommand and PushCommand are this pipeline with a
  * different endpoint assembly, and they override buildConfig() to provide it.
+ * AnonymizeCommand reuses the configuration and replaces execute().
  *
  * @author Konrad Michalik <km@move-elevator.de>
  * @license GPL-3.0-or-later
@@ -57,7 +58,7 @@ class SyncCommand extends Command
     public function __construct(
         protected readonly ConfigResolver $resolver = new ConfigResolver(),
         private readonly ConfigLoader $loader = new ConfigLoader(),
-        private readonly ConfigValidator $validator = new ConfigValidator(),
+        protected readonly ConfigValidator $validator = new ConfigValidator(),
         private readonly SyncModeResolver $modeResolver = new SyncModeResolver(),
         private readonly SyncSteps $steps = new SyncSteps(),
         ?EnvironmentAssembler $environments = null,
@@ -132,15 +133,7 @@ class SyncCommand extends Command
         $progress = new NullSyncProgress();
 
         try {
-            /** @var string|null $outputOption */
-            $outputOption = $input->getOption('output');
-            $mode = OutputMode::fromString($outputOption);
-            // `--quiet` belongs to the application, so it is absent when a command
-            // runs standalone.
-            if (($input->hasOption('quiet') && true === $input->getOption('quiet')) || true === $input->getOption('mute')) {
-                $mode = OutputMode::Quiet;
-            }
-
+            $mode = $this->outputMode($input);
             $reporter = new ConsoleReporter($mode, $io, $output);
 
             $config = $this->buildConfig($input, $output);
@@ -217,6 +210,23 @@ class SyncCommand extends Command
 
             return Command::FAILURE;
         }
+    }
+
+    /**
+     * @throws ConfigException on an unknown `--output` value
+     */
+    protected function outputMode(InputInterface $input): OutputMode
+    {
+        /** @var string|null $outputOption */
+        $outputOption = $input->getOption('output');
+        $mode = OutputMode::fromString($outputOption);
+        // `--quiet` belongs to the application, so it is absent when a command
+        // runs standalone.
+        if (($input->hasOption('quiet') && true === $input->getOption('quiet')) || true === $input->getOption('mute')) {
+            return OutputMode::Quiet;
+        }
+
+        return $mode;
     }
 
     /**

@@ -106,30 +106,50 @@ final readonly class Sync
         }
     }
 
+    /**
+     * Masks the target database as it is, without dump, transfer or import.
+     * Only the target is contacted: the origin may well be a live system.
+     */
+    public function anonymize(SyncConfig $config): void
+    {
+        $config = $config->withClients($config->origin, $this->resolveClientCredentials($config, $config->target));
+        $client = $config->target;
+        $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
+        $driver = $this->drivers->forDatabase($client->db, $client->console, $runner);
+        $this->assertSupported($driver, $config, $client->db);
+        $credentialsPath = $this->prepareCredentials($client, $runner, $driver);
+
+        try {
+            if ($config->backupBeforeImport) {
+                $this->backupTarget($config, $runner, $driver, $credentialsPath);
+            }
+
+            $this->anonymizeData($client, $runner, $driver, $credentialsPath);
+            $this->pruneDumps($client, $runner);
+        } finally {
+            $this->cleanupCredentials($client, $runner, $credentialsPath);
+        }
+    }
+
     private function resolveCredentials(SyncConfig $config): SyncConfig
     {
-        $origin = $config->origin;
-        $target = $config->target;
+        return $config->withClients(
+            $this->resolveClientCredentials($config, $config->origin),
+            $this->resolveClientCredentials($config, $config->target),
+        );
+    }
 
-        if ($this->needsCredentialResolution($config, $origin)) {
-            $runner = $this->runners->forClient($origin, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
-            ($this->log)('Reading database credentials from '.$origin->path);
-            $db = $this->credentialResolver->resolve($config, $origin, $runner);
-            if (null !== $db) {
-                $origin = $origin->withDb($db);
-            }
+    private function resolveClientCredentials(SyncConfig $config, ClientConfig $client): ClientConfig
+    {
+        if (!$this->needsCredentialResolution($config, $client)) {
+            return $client;
         }
 
-        if ($this->needsCredentialResolution($config, $target)) {
-            $runner = $this->runners->forClient($target, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
-            ($this->log)('Reading database credentials from '.$target->path);
-            $db = $this->credentialResolver->resolve($config, $target, $runner);
-            if (null !== $db) {
-                $target = $target->withDb($db);
-            }
-        }
+        $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
+        ($this->log)('Reading database credentials from '.$client->path);
+        $db = $this->credentialResolver->resolve($config, $client, $runner);
 
-        return $config->withClients($origin, $target);
+        return null !== $db ? $client->withDb($db) : $client;
     }
 
     /**
