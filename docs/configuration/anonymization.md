@@ -171,6 +171,34 @@ leave the *unmasked* dump of the origin lying in the target's dump directory,
 and so does `--dry-run`. Treat such a dump as production data, or let the sync
 finish and mask.
 
+## Anonymizing an existing database
+
+A local copy that already holds production data, for example one synced before
+`anonymize` was configured, can be masked in place:
+
+```bash
+bin/sync-tool anonymize -f config.yaml
+```
+
+The command applies the target's `anonymize` rules, `preset` included, to the
+target database as it is. There is no dump, transfer or import, and only the
+target is contacted, so a config whose origin is production works unchanged.
+
+Because the change cannot be undone, the command:
+
+- works on a local target only and refuses a remote one
+- refuses a target marked `protect: true`
+- fails when the target has no `anonymize` rules
+- asks before it starts (`This irreversibly anonymizes the local database "db".
+  Continue?`), skipped with `--yes`, `--dry-run`, `--mute`, `--output=quiet` or
+  without a terminal
+- dumps the target first with `--backup-before-import` or `backup_before_import: true`,
+  and applies `keep_dumps` to those backups
+- refuses options that only make sense for a sync, such as `--tables`, `--where`
+  or `--reverse`, instead of silently ignoring them
+
+Neither `post_sql` nor the `scripts` lifecycle hooks run around it.
+
 ## PostgreSQL
 
 The same rules work unchanged. The tool emits the dialect of the configured

@@ -373,6 +373,32 @@ final class SyncScenarioTest extends TestCase
     }
 
     /**
+     * The config's origin is the remote www1, which the command must never need:
+     * only the local db2 is masked in place, with no dump, transfer or import.
+     */
+    #[Test]
+    public function anonymizeMasksAnExistingTargetDatabaseInPlace(): void
+    {
+        $this->mysql('db2', "DELETE FROM account; INSERT INTO account (email, password, display_name, notes) VALUES ('carol@example.com', 'secret', 'Carol', 'note');");
+
+        $result = $this->compose([
+            'exec', '-T', 'www2',
+            'php', '/app/bin/sync-tool', 'anonymize', '-f', '/app/docker/configs/anonymize.yaml', '-y', '-v',
+        ]);
+        $log = $result->getOutput().$result->getErrorOutput();
+        self::assertTrue($result->isSuccessful(), $log);
+        self::assertStringContainsString('Anonymizing data', $log);
+        self::assertStringNotContainsString('Importing dump', $log);
+
+        $row = $this->mysqlRow('db2', 'SELECT email, display_name, notes FROM account LIMIT 1');
+
+        self::assertMatchesRegularExpression('#^[0-9a-f]{32}@example\\.invalid$#', $row[0], 'email is hashed into the reserved domain');
+        self::assertSame('Redacted', $row[1]);
+        self::assertSame('NULL', $row[2]);
+        self::assertSame(1, $this->rowCountOf('db2', 'account'), 'nothing was imported on top');
+    }
+
+    /**
      * Auto-detected credentials rebuild the endpoint objects mid-run. That used to
      * drop the target's anonymize rules, so masking was skipped without a warning
      * in exactly the configuration style the documentation recommends. Every unit

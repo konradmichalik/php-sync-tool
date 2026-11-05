@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool;
 
-use KonradMichalik\SyncTool\Command\{EnvironmentsCommand, InitCommand, LegacyShortOptions, PullCommand, PushCommand, SyncCommand};
+use KonradMichalik\SyncTool\Command\{AnonymizeCommand, EnvironmentsCommand, InitCommand, LegacyShortOptions, PullCommand, PushCommand, SyncCommand};
 use Symfony\Component\Console\Application as BaseApplication;
 use Symfony\Component\Console\CommandLoader\FactoryCommandLoader;
 use Symfony\Component\Console\Input\{ArgvInput, InputInterface, StringInput};
@@ -39,6 +39,7 @@ final class Application extends BaseApplication
             'push' => static fn (): PushCommand => new PushCommand(),
             'init' => static fn (): InitCommand => new InitCommand(),
             'environments' => static fn (): EnvironmentsCommand => new EnvironmentsCommand(),
+            'anonymize' => static fn (): AnonymizeCommand => new AnonymizeCommand(),
         ]));
         $this->setDefaultCommand('sync');
     }
