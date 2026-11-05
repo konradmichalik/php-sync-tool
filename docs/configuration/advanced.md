@@ -171,7 +171,8 @@ The question names what the run writes. With `--with-files` it reads
 with `--files-only` (or `--with-files` plus `keep_dump`) it reads
 `This overwrites files on the remote (prod.example.com) system. Continue?`.
 A run whose endpoints share host and database only dumps the database, but it
-still asks when it syncs files onto the target.
+still asks when it syncs files onto the target. Two different `path` values on
+one host count as different data, so such a run imports.
 
 The prompt only appears on an interactive terminal. Non-interactive contexts
 (CI pipelines, Deployer, cron) proceed automatically, as does `--dry-run`. Skip
