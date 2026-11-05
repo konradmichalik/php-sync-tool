@@ -510,6 +510,33 @@ final class SyncCommandTest extends TestCase
         self::assertStringContainsString('This overwrites files on the local system. Continue?', $output);
     }
 
+    /**
+     * One host, one database is a dump for the database, but the file sync still
+     * overwrites the target, so the run has to ask.
+     */
+    #[Test]
+    public function aSameHostDumpThatSyncsFilesAsksFirst(): void
+    {
+        $file = $this->dir.'/same-host-files.yaml';
+        file_put_contents($file, <<<'YAML'
+            origin:
+              path: /var/www
+              db: {name: a, user: root, password: root}
+            target:
+              path: /var/www
+              db: {name: a, user: root, password: root}
+            files:
+              - {origin: /var/www/fileadmin, target: /var/www/fileadmin_copy}
+            YAML);
+
+        $tester = $this->tester();
+        $tester->setInputs(['no']);
+        $tester->execute(['--config-file' => $file, '--files-only' => true], ['interactive' => true]);
+
+        self::assertStringContainsString('This overwrites files on the local system. Continue?', $tester->getDisplay());
+        self::assertStringContainsString('Aborted by user', $tester->getDisplay());
+    }
+
     #[Test]
     public function withFilesConfirmationNamesDatabaseAndFiles(): void
     {

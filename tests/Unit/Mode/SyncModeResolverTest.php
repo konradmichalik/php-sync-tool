@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Mode;
 
-use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, SyncConfig};
+use KonradMichalik\SyncTool\Config\{ClientConfig, DatabaseConfig, FileTransferConfig, SyncConfig};
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Mode\SyncModeResolver;
 use PHPUnit\Framework\Attributes\Test;
@@ -173,5 +173,94 @@ final class SyncModeResolverTest extends TestCase
         $this->resolver->checkForProtection($plan, $config);
 
         self::assertSame('DUMP_LOCAL', $plan->label());
+    }
+
+    /**
+     * One host, one database resolves to a dump, yet the file sync still writes
+     * the target. Protection follows what is written, not the database mode.
+     */
+    #[Test]
+    public function protectionBlocksFileWritesOnADumpPlan(): void
+    {
+        $config = new SyncConfig(
+            files: [new FileTransferConfig(origin: '/var/www/fileadmin', target: '/var/www/fileadmin_copy')],
+            filesOnly: true,
+            origin: new ClientConfig(path: '/var/www'),
+            target: new ClientConfig(path: '/var/www', protect: true),
+        );
+
+        $plan = $this->resolver->resolve($config);
+        self::assertSame('DUMP_LOCAL', $plan->label());
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('protected against writing files');
+
+        $this->resolver->checkForProtection($plan, $config);
+    }
+
+    #[Test]
+    public function aRefusedFilesOnlyRunNamesFilesNotADatabase(): void
+    {
+        $config = new SyncConfig(
+            files: [new FileTransferConfig(origin: '/var/www/fileadmin')],
+            filesOnly: true,
+            origin: new ClientConfig(host: 'remote.example.com', user: 'u'),
+            target: new ClientConfig(path: '/var/www', protect: true),
+        );
+
+        try {
+            $this->resolver->checkForProtection($this->resolver->resolve($config), $config);
+            self::fail('Expected a SyncException');
+        } catch (SyncException $exception) {
+            self::assertStringContainsString('protected against writing files', $exception->getMessage());
+            self::assertStringNotContainsString('database', $exception->getMessage());
+        }
+    }
+
+    #[Test]
+    public function protectionBlocksWithFilesOnADumpPlan(): void
+    {
+        $config = new SyncConfig(
+            files: [new FileTransferConfig(origin: '/var/www/fileadmin', target: '/var/www/fileadmin_copy')],
+            withFiles: true,
+            origin: new ClientConfig(path: '/var/www'),
+            target: new ClientConfig(path: '/var/www', protect: true),
+        );
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('protected against writing files');
+
+        $this->resolver->checkForProtection($this->resolver->resolve($config), $config);
+    }
+
+    /**
+     * Without file entries a files-only run copies nothing, so there is nothing to protect.
+     */
+    #[Test]
+    public function aFilesOnlyRunWithoutEntriesPassesProtection(): void
+    {
+        $config = new SyncConfig(
+            filesOnly: true,
+            origin: new ClientConfig(path: '/var/www'),
+            target: new ClientConfig(path: '/var/www', protect: true),
+        );
+
+        $this->resolver->checkForProtection($this->resolver->resolve($config), $config);
+
+        self::assertFalse($config->writesFiles());
+    }
+
+    #[Test]
+    public function aProtectedImportNamesTheImport(): void
+    {
+        $config = new SyncConfig(
+            importFile: '/tmp/seed.sql',
+            target: new ClientConfig(path: '/var/www', protect: true),
+        );
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('protected against importing a database dump');
+
+        $this->resolver->checkForProtection($this->resolver->resolve($config), $config);
     }
 }

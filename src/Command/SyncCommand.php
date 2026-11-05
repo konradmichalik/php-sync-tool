@@ -173,7 +173,7 @@ class SyncCommand extends Command
             }
 
             if ($this->needsConfirmation($plan, $syncConfig, $mode, $input->isInteractive())
-                && !$io->confirm($this->confirmationQuestion($syncConfig), false)
+                && !$io->confirm($this->confirmationQuestion($plan, $syncConfig), false)
             ) {
                 $reporter->success('Aborted by user.');
 
@@ -537,13 +537,13 @@ class SyncCommand extends Command
         return $isRemote ? sprintf('remote (%s)', $host) : 'local';
     }
 
-    private function confirmationQuestion(SyncConfig $syncConfig): string
+    private function confirmationQuestion(SyncPlan $plan, SyncConfig $syncConfig): string
     {
         $target = $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host);
 
         // keep_dump skips the import (Sync::run), so only the files reach the target.
-        $writesDatabase = !$syncConfig->filesOnly && !$syncConfig->keepDump;
-        $writesFiles = $syncConfig->filesOnly || ($syncConfig->withFiles && [] !== $syncConfig->files);
+        $writesDatabase = $plan->writesDatabase($syncConfig) && !$syncConfig->keepDump;
+        $writesFiles = $syncConfig->writesFiles();
 
         return match (true) {
             $writesDatabase && $writesFiles => sprintf('This overwrites the %s database and files. Continue?', $target),
@@ -613,7 +613,7 @@ class SyncCommand extends Command
      */
     private function needsConfirmation(SyncPlan $plan, SyncConfig $syncConfig, OutputMode $outputMode, bool $isInteractive): bool
     {
-        return $plan->isProtectable()
+        return $plan->writesTarget($syncConfig)
             && !$syncConfig->yes
             && $isInteractive
             && OutputMode::Quiet !== $outputMode;

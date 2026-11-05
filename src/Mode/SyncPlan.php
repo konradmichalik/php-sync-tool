@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Mode;
 
+use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\{SyncDirection, SyncOperation};
 
 /**
@@ -72,12 +73,25 @@ final readonly class SyncPlan
     }
 
     /**
-     * Everything that writes the target, and is therefore blocked when the
-     * target host is protected. A dump writes nothing but a file.
+     * Whether the database mode imports into the target. Protection and the
+     * confirmation go by writesTarget(), which also counts the file sync.
      */
     public function isProtectable(): bool
     {
         return !$this->isDump();
+    }
+
+    public function writesDatabase(SyncConfig $config): bool
+    {
+        return $this->isProtectable() && !$config->filesOnly;
+    }
+
+    /**
+     * A same-host dump writes no database but can still copy files onto the target.
+     */
+    public function writesTarget(SyncConfig $config): bool
+    {
+        return $this->writesDatabase($config) || $config->writesFiles();
     }
 
     /**
