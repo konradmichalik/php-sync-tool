@@ -173,7 +173,7 @@ class SyncCommand extends Command
             }
 
             if ($this->needsConfirmation($plan, $syncConfig, $mode, $input->isInteractive())
-                && !$io->confirm(sprintf('This overwrites the %s database. Continue?', $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host)), false)
+                && !$io->confirm($this->confirmationQuestion($syncConfig), false)
             ) {
                 $reporter->success('Aborted by user.');
 
@@ -535,6 +535,17 @@ class SyncCommand extends Command
     private function describeClient(bool $isRemote, string $host): string
     {
         return $isRemote ? sprintf('remote (%s)', $host) : 'local';
+    }
+
+    private function confirmationQuestion(SyncConfig $syncConfig): string
+    {
+        $target = $this->describeClient($syncConfig->target->isRemote(), $syncConfig->target->host);
+
+        return match (true) {
+            $syncConfig->filesOnly => sprintf('This overwrites files on the %s system. Continue?', $target),
+            $syncConfig->withFiles && [] !== $syncConfig->files => sprintf('This overwrites the %s database and files. Continue?', $target),
+            default => sprintf('This overwrites the %s database. Continue?', $target),
+        };
     }
 
     /**
