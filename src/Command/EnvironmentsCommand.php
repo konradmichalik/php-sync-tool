@@ -36,18 +36,20 @@ use function sprintf;
 #[AsCommand(name: 'environments', description: 'List the synchronizations this project is configured for.')]
 final class EnvironmentsCommand extends Command
 {
-    private readonly EnvironmentAssembler $environments;
-
-    public function __construct(?EnvironmentAssembler $environments = null)
-    {
-        $this->environments = $environments ?? new EnvironmentAssembler(new ConfigResolver());
+    public function __construct(
+        private readonly ConfigResolver $resolver = new ConfigResolver(),
+    ) {
         parent::__construct();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $choices = $this->environments->syncChoices();
+        $choices = (new EnvironmentAssembler($this->resolver))->syncChoices();
+
+        foreach ($this->resolver->getDeprecations() as $deprecation) {
+            $io->warning($deprecation);
+        }
 
         if ([] === $choices) {
             $io->warning('Nothing configured yet. Run "sync-tool init" to describe this project and its first environment.');
