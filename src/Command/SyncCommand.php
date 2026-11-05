@@ -27,18 +27,19 @@ use KonradMichalik\SyncTool\Update\UpdateChecker;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Exception\MissingInputException;
-use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption};
+use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption, StreamableInputInterface};
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 use function array_is_list;
 use function array_key_exists;
 use function array_key_first;
 use function array_keys;
+use function defined;
 use function is_array;
 use function is_string;
 use function sprintf;
-use function trim;
 
 /**
  * SyncCommand.
@@ -176,7 +177,7 @@ class SyncCommand extends Command
             // After the confirmation and after the dry-run exit: a run that is about
             // to be called off, or that never connects, has no business asking for
             // a password.
-            $syncConfig = $this->sshAuth->resolve($syncConfig, $plan, $this->passwordPrompt($io, $input->isInteractive()));
+            $syncConfig = $this->sshAuth->resolve($syncConfig, $plan, $this->passwordPrompt($io, $this->canAnswer($input)));
 
             $fileLog = new LogWriter($syncConfig->jsonLog, $syncConfig->logFile, static function (string $l): void {});
 
@@ -587,25 +588,28 @@ class SyncCommand extends Command
      *
      * @return Closure(string): string
      */
-    private function passwordPrompt(SymfonyStyle $io, bool $isInteractive): Closure
+    private function passwordPrompt(SymfonyStyle $io, bool $canAnswer): Closure
     {
-        return static function (string $endpoint) use ($io, $isInteractive): string {
-            if (!$isInteractive) {
-                throw new ConfigException(sprintf('No SSH authentication configured for %s. Set ssh_key, password or ssh_agent, or run interactively to be asked for a password.', $endpoint));
+        return static function (string $endpoint) use ($io, $canAnswer): string {
+            if (!$canAnswer) {
+                throw new ConfigException(sprintf('No SSH authentication configured for %s. Set ssh_key, password or ssh_agent, or run on a terminal to be asked for a password.', $endpoint));
             }
 
             $missing = sprintf('No SSH password given for %s. Set ssh_key, password or ssh_agent instead.', $endpoint);
+            $question = (new Question(sprintf('SSH password for %s', $endpoint)))->setHidden(true)->setTrimmable(false);
 
             // Bounded: at EOF Symfony either aborts the question or answers it with
             // an empty string, and the latter made an unbounded retry spin forever.
             for ($attempt = 0; $attempt < 3; ++$attempt) {
                 try {
-                    $password = (string) $io->askHidden(sprintf('SSH password for %s', $endpoint));
+                    // Not trimmable: spaces belong to the password. Only the line ending,
+                    // which an untrimmed answer keeps, is removed.
+                    $password = rtrim((string) $io->askQuestion($question), "\r\n");
                 } catch (MissingInputException $exception) {
                     throw new ConfigException($missing, 0, $exception);
                 }
 
-                if ('' !== trim($password)) {
+                if ('' !== $password) {
                     return $password;
                 }
 
@@ -614,6 +618,24 @@ class SyncCommand extends Command
 
             throw new ConfigException($missing);
         };
+    }
+
+    /**
+     * Symfony keeps a run interactive on a piped stdin, so a prompt there waits
+     * for an answer nobody can give. A stream set on the input (tests, embedding
+     * code) is trusted to answer; otherwise stdin has to be a terminal.
+     */
+    private function canAnswer(InputInterface $input): bool
+    {
+        if (!$input->isInteractive()) {
+            return false;
+        }
+
+        if ($input instanceof StreamableInputInterface && null !== $input->getStream()) {
+            return true;
+        }
+
+        return defined('STDIN') && stream_isatty(\STDIN);
     }
 
     /**

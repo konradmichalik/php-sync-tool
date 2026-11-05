@@ -332,9 +332,34 @@ final class SyncTest extends TestCase
 
         $recorder = $this->runSync($config, Plans::importLocal());
 
-        self::assertTrue($recorder->ran("cat '/dumps/plain.sql' | tail -n 5"), 'the dump trailer is read without gunzip');
         self::assertTrue($recorder->ran('< /dumps/plain.sql'), 'the import reads the file directly');
         self::assertFalse($recorder->ran('gunzip'), 'gunzip is never invoked for a plain file');
+    }
+
+    /**
+     * The completion trailer proves our own dump finished. A file the user brings
+     * may be hand-written or dumped with `--skip-comments`, and never carries it.
+     */
+    #[Test]
+    public function anImportFileWithoutTheDumpToolsTrailerIsImported(): void
+    {
+        $config = $this->localConfig(['import' => '/dumps/plain.sql']);
+        $recorder = new RecordingCommandRunner(['tail -n 5' => 'INSERT INTO `users` VALUES (1);'] + self::DEFAULT_RESPONSES);
+
+        $this->syncWith($recorder)->run($config, Plans::importLocal());
+
+        self::assertTrue($recorder->ran('< /dumps/plain.sql'), 'the import runs');
+    }
+
+    #[Test]
+    public function aMissingImportFileStillAborts(): void
+    {
+        $config = $this->localConfig(['import' => '/dumps/plain.sql']);
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('is missing or empty');
+
+        $this->syncWith(new RecordingCommandRunner([]))->run($config, Plans::importLocal());
     }
 
     #[Test]

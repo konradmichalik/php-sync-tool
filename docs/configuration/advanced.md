@@ -245,6 +245,10 @@ loses data.
    with it, not merely contain it somewhere, so a row that happens to carry the
    same text cannot vouch for a dump that stops mid-statement.
 
+A file passed with `--import-file` only goes through the first two steps. It was
+not written by the tool, so it may be hand-written or dumped without comments
+and never carry that line.
+
 The check is on by default and can be turned off for a run:
 
 ```bash
