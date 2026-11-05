@@ -115,6 +115,10 @@ The verbosity threshold applies to `interactive` only: `--output ci` and `--outp
 have no live line and keep emitting every message, and the `--log-file` always records
 everything.
 
+Warnings, such as a fallback away from rsync or a config directory under its old
+name, show at every verbosity: prefixed `[warning]` in `interactive`, `WARNING:` in
+`ci`, and as `"event":"warning"` in `json`.
+
 ## Execution Options
 
 | Option | Short | Description |
