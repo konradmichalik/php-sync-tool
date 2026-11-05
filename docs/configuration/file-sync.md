@@ -93,6 +93,26 @@ to, the run stops and says so rather than synchronizing nothing.
 - For proxy mode (remote → remote), files are relayed via the local machine in
   two hops, mirroring the database transfer.
 
+### File permissions
+
+Synced files get group access and none for others: directories
+`rwxrws---`, files `rw-rw----`. That fits a web server running as the
+transferring user or in its group, and keeps a production copy private on a
+shared machine.
+
+Some hosts serve files through a web server outside that group, for example
+managed hosting where everything else is world-readable. Synced files then
+answer 403. Pass a second `--chmod`, which rsync applies after the default:
+
+```yaml
+files_options: "--chmod=Do=rx,Fo=r"
+```
+
+`files_options` applies to every entry without its own `options`. An entry
+with `options` replaces it, so repeat the flag there. The SFTP fallback ignores
+both: it creates local directories with `rwxrwx---` and leaves every other
+mode to the receiving side's defaults.
+
 ### rsync vs. SFTP fallback differences
 
 The SFTP fallback (`--no-rsync`) transfers the same files and honors
