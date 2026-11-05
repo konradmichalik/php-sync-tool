@@ -383,10 +383,12 @@ final class SyncScenarioTest extends TestCase
 
         $result = $this->compose([
             'exec', '-T', 'www2',
-            'php', '/app/bin/sync-tool', 'anonymize', '-f', '/app/docker/configs/anonymize.yaml', '-y',
+            'php', '/app/bin/sync-tool', 'anonymize', '-f', '/app/docker/configs/anonymize.yaml', '-y', '-v',
         ]);
-        self::assertTrue($result->isSuccessful(), $result->getOutput().$result->getErrorOutput());
-        self::assertStringNotContainsString('Importing dump', $result->getOutput());
+        $log = $result->getOutput().$result->getErrorOutput();
+        self::assertTrue($result->isSuccessful(), $log);
+        self::assertStringContainsString('Anonymizing data', $log);
+        self::assertStringNotContainsString('Importing dump', $log);
 
         $row = $this->mysqlRow('db2', 'SELECT email, display_name, notes FROM account LIMIT 1');
 
