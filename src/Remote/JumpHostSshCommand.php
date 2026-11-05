@@ -36,6 +36,8 @@ final class JumpHostSshCommand
         }
 
         $parts[] = '-p '.$client->port;
+        // Drops a silently dead connection after two minutes instead of hanging.
+        $parts[] = '-o ServerAliveInterval=30 -o ServerAliveCountMax=4';
         $parts[] = escapeshellarg(sprintf('%s@%s', $client->user, $client->host));
         $parts[] = escapeshellarg($remoteCommand);
 

@@ -70,6 +70,19 @@ final class LocalCommandRunnerTest extends TestCase
         }
     }
 
+    /**
+     * Symfony's own timeout exception sits outside the tool's hierarchy and
+     * would surface as a raw stack-trace style error instead of a sync failure.
+     */
+    #[Test]
+    public function aTimedOutCommandThrowsASyncException(): void
+    {
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('timed out after 1 seconds');
+
+        (new LocalCommandRunner(timeout: 1))->run('sleep 3');
+    }
+
     #[Test]
     public function streamsOutputToTheCallbackWhileTheCommandRuns(): void
     {

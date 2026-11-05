@@ -56,6 +56,18 @@ final class JumpHostSshCommandTest extends TestCase
     }
 
     #[Test]
+    public function detectsAStalledConnection(): void
+    {
+        $cmd = (new JumpHostSshCommand())->build(
+            new ClientConfig(host: 'db.internal', user: 'app'),
+            new JumpHostConfig(host: 'bastion.example.com', user: 'jump'),
+            'echo ok',
+        );
+
+        self::assertStringContainsString('-o ServerAliveInterval=30 -o ServerAliveCountMax=4', $cmd);
+    }
+
+    #[Test]
     public function omitsKeyWhenUnset(): void
     {
         $cmd = (new JumpHostSshCommand())->build(

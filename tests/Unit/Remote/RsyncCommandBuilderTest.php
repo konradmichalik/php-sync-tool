@@ -40,7 +40,7 @@ final class RsyncCommandBuilderTest extends TestCase
         $client = new ClientConfig(host: 'h', user: 'u', sshKey: '/home/u/.ssh/id_rsa', port: 2222);
 
         self::assertSame(
-            "-e 'ssh -i /home/u/.ssh/id_rsa -p2222 -o StrictHostKeyChecking=yes'",
+            "-e 'ssh -i /home/u/.ssh/id_rsa -p2222 -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=4'",
             $this->builder->authorization($client, false),
         );
     }
@@ -51,7 +51,7 @@ final class RsyncCommandBuilderTest extends TestCase
         $client = new ClientConfig(host: 'h', user: 'u', port: 22);
 
         self::assertSame(
-            "-e 'ssh -p22 -o StrictHostKeyChecking=yes'",
+            "-e 'ssh -p22 -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=4'",
             $this->builder->authorization($client, false),
         );
     }
@@ -62,7 +62,7 @@ final class RsyncCommandBuilderTest extends TestCase
         $client = new ClientConfig(host: 'h', user: 'deploy', password: 'secret', port: 2200);
 
         self::assertSame(
-            "--rsh='sshpass -e ssh -p2200 -o StrictHostKeyChecking=yes -l deploy'",
+            "--rsh='sshpass -e ssh -p2200 -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -l deploy'",
             $this->builder->authorization($client, true),
         );
     }
@@ -90,13 +90,30 @@ final class RsyncCommandBuilderTest extends TestCase
         );
     }
 
+    /**
+     * The local process has no wall-clock limit, so a connection that drops
+     * silently has to be detected by ssh and rsync themselves.
+     */
+    #[Test]
+    public function stalledTransfersAreDetectedBySshAndRsync(): void
+    {
+        $client = new ClientConfig(host: 'h', user: 'u', port: 22);
+
+        self::assertStringContainsString(
+            '-o ServerAliveInterval=30 -o ServerAliveCountMax=4',
+            $this->builder->authorization($client, false),
+        );
+        self::assertStringContainsString('--timeout=600', $this->builder->options(null));
+        self::assertStringContainsString('--timeout=600', $this->builder->options(null, [], false, true));
+    }
+
     #[Test]
     public function authorizationQuotesAnAwkwardKeyPath(): void
     {
         $client = new ClientConfig(host: 'h', user: 'u', sshKey: '/keys/$(id).pem', port: 22);
 
         self::assertSame(
-            "-e 'ssh -i /keys/$(id).pem -p22 -o StrictHostKeyChecking=yes'",
+            "-e 'ssh -i /keys/$(id).pem -p22 -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=4'",
             $this->builder->authorization($client, false),
         );
     }
@@ -167,11 +184,11 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsAppendAdditionalWithoutSeparator(): void
     {
         self::assertSame(
-            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo=',
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --timeout=600',
             $this->builder->options(null),
         );
         self::assertSame(
-            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --progress',
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --timeout=600 --progress',
             $this->builder->options(' --progress'),
         );
     }
@@ -180,7 +197,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsRequestMachineReadableProgressWhenAskedFor(): void
     {
         self::assertSame(
-            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --info=progress2 --no-i-r',
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --timeout=600 --info=progress2 --no-i-r',
             $this->builder->options(null, withProgress: true),
         );
     }
@@ -189,7 +206,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsInsertsASeparatingSpaceEvenWithoutOne(): void
     {
         self::assertSame(
-            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= -z',
+            '--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --timeout=600 -z',
             $this->builder->options('-z'),
         );
     }
@@ -198,7 +215,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsAppendsExcludePatternsBeforeAdditional(): void
     {
         self::assertSame(
-            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --exclude='*.log' --exclude='cache/' --progress",
+            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --timeout=600 --exclude='*.log' --exclude='cache/' --progress",
             $this->builder->options(' --progress', ['*.log', 'cache/']),
         );
     }
@@ -207,7 +224,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsWithExcludePatternsAndNoAdditional(): void
     {
         self::assertSame(
-            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --exclude='*.log'",
+            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --timeout=600 --exclude='*.log'",
             $this->builder->options(null, ['*.log']),
         );
     }
@@ -216,7 +233,7 @@ final class RsyncCommandBuilderTest extends TestCase
     public function optionsEscapesSingleQuotesInExcludePatterns(): void
     {
         self::assertSame(
-            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --exclude='it'\\''s/*'",
+            "--delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --timeout=600 --exclude='it'\\''s/*'",
             $this->builder->options(null, ["it's/*"]),
         );
     }
@@ -259,7 +276,7 @@ final class RsyncCommandBuilderTest extends TestCase
         );
 
         self::assertSame(
-            'rsync --delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= '
+            'rsync --delete -a -z --stats --human-readable --iconv=UTF-8 --chmod=Du=rwx,Dg=rwxs,Do=,Fu=rw,Fg=rw,Fo= --timeout=600 '
             .'-e "ssh -p22 -o StrictHostKeyChecking=no" deploy@server:/var/www/fileadmin/ /local/fileadmin/',
             $command,
         );
