@@ -119,7 +119,7 @@ everything.
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--yes` | `-y` | Skip the import confirmation prompt |
+| `--yes` | `-y` | Skip the confirmation prompt. A writing run without a terminal (CI, Deployer, cron) needs it |
 | `--dry-run` | | Resolve and report without export, transfer, or import |
 | `--reverse` | `-r` | Swap origin and target |
 | `--force-password` | | Force interactive password authentication |
