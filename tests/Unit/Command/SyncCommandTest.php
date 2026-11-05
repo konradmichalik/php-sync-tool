@@ -21,7 +21,10 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Process\Process;
 use Throwable;
+
+use function dirname;
 
 /**
  * SyncCommandTest.
@@ -675,6 +678,52 @@ final class SyncCommandTest extends TestCase
         self::assertSame(1, $exit);
         self::assertStringContainsString('No SSH password given for deploy@o.example.com', $tester->getDisplay());
         self::assertStringContainsString('Set ssh_key, password or ssh_agent', $tester->getDisplay());
+    }
+
+    /**
+     * Spaces are part of a password. Trimming them sends a different one, and
+     * an all-space password used to count as no answer at all.
+     */
+    #[Test]
+    public function aPasswordOfSpacesIsAccepted(): void
+    {
+        $file = $this->dir.'/space-password.yaml';
+        file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  ssh_key: /dev/null\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $tester->setInputs(['   ']);
+
+        try {
+            $tester->execute(
+                ['--config-file' => $file, '--force-password' => true, '--yes' => true],
+                ['interactive' => true],
+            );
+        } catch (Throwable) {
+            // The answer is accepted and the run goes on to connect, which this host
+            // cannot do.
+        }
+
+        self::assertStringContainsString('SSH password for deploy@o.example.com', $tester->getDisplay());
+        self::assertStringNotContainsString('The password cannot be empty', $tester->getDisplay());
+        self::assertStringNotContainsString('No SSH password given', $tester->getDisplay());
+    }
+
+    /**
+     * Symfony keeps a run interactive on a piped stdin (CI, Deployer,
+     * `docker compose exec -T`), where nobody can answer a prompt.
+     */
+    #[Test]
+    public function aStdinWithoutATerminalIsNotAskedForAPassword(): void
+    {
+        $file = $this->dir.'/piped-stdin.yaml';
+        file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+
+        // A real process with a piped stdin, the way CI and `exec -T` start it.
+        $process = new Process([\PHP_BINARY, dirname(__DIR__, 3).'/bin/sync-tool', '--config-file='.$file, '--force-password', '--yes'], input: '');
+        $process->run();
+
+        self::assertSame(1, $process->getExitCode());
+        self::assertStringContainsString('No SSH authentication configured for deploy@o.example.com', $process->getOutput().$process->getErrorOutput());
     }
 
     #[Test]
