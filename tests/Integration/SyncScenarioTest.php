@@ -377,6 +377,22 @@ final class SyncScenarioTest extends TestCase
      * only the local db2 is masked in place, with no dump, transfer or import.
      */
     #[Test]
+    public function remoteStderrStaysOutOfTheCommandOutput(): void
+    {
+        $code = <<<'PHP'
+            require '/app/vendor/autoload.php';
+            $client = KonradMichalik\SyncTool\Config\ClientConfig::fromArray(['host' => 'www1', 'user' => 'root', 'password' => 'root', 'port' => 22]);
+            $ssh = (new KonradMichalik\SyncTool\Remote\SshClientFactory())->create($client, hostKeyChecking: KonradMichalik\SyncTool\Enum\HostKeyCheckingMode::Off);
+            echo (new KonradMichalik\SyncTool\Remote\SshCommandRunner($ssh))->run('echo "warning: setlocale" >&2; echo OK');
+            PHP;
+
+        $result = $this->compose(['exec', '-T', 'www2', 'php', '-r', $code]);
+
+        self::assertTrue($result->isSuccessful(), $result->getOutput().$result->getErrorOutput());
+        self::assertSame('OK', $result->getOutput());
+    }
+
+    #[Test]
     public function anonymizeMasksAnExistingTargetDatabaseInPlace(): void
     {
         $this->mysql('db2', "DELETE FROM account; INSERT INTO account (email, password, display_name, notes) VALUES ('carol@example.com', 'secret', 'Carol', 'note');");

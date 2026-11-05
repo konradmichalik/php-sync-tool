@@ -51,9 +51,18 @@ final class SshCommandRunnerTest extends TestCase
     }
 
     /**
-     * phpseclib swallows its own timeout and hands back whatever output arrived,
-     * with no exit status. That must not pass as a finished command.
+     * Without quiet mode phpseclib appends stderr to the output that callers parse,
+     * e.g. `test -s ... && echo OK`.
      */
+    #[Test]
+    public function stderrIsKeptOutOfTheParsedOutput(): void
+    {
+        $ssh = $this->createMock(SSH2::class);
+        $ssh->expects(self::once())->method('enableQuietMode');
+
+        new SshCommandRunner($ssh);
+    }
+
     #[Test]
     public function aTimedOutCommandCarriesTheRemoteErrorSoFar(): void
     {
@@ -68,6 +77,10 @@ final class SshCommandRunnerTest extends TestCase
         (new SshCommandRunner($ssh))->run('mysqldump db > /tmp/db.sql');
     }
 
+    /**
+     * phpseclib swallows its own timeout and hands back whatever output arrived,
+     * with no exit status. That must not pass as a finished command.
+     */
     #[Test]
     public function aTimedOutCommandThrows(): void
     {

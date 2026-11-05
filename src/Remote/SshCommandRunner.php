@@ -31,7 +31,11 @@ final readonly class SshCommandRunner implements CommandRunner
 {
     public function __construct(
         private SSH2 $ssh,
-    ) {}
+    ) {
+        // Keeps stderr out of the output callers parse; failure() reads it
+        // separately through getStdError().
+        $ssh->enableQuietMode();
+    }
 
     /**
      * phpseclib buffers the whole response, so $onOutput has nothing to stream and is ignored.
@@ -67,10 +71,8 @@ final readonly class SshCommandRunner implements CommandRunner
     }
 
     /**
-     * The command is masked: it carries the credential file's contents on the way
-     * to a remote host, and its own `-p` arguments elsewhere. stderr names the
-     * cause (access denied, disk full), which the command alone would leave the
-     * user to reproduce by hand.
+     * Masks the command, which can carry credentials, and adds the remote stderr,
+     * which names the cause the command alone would not.
      */
     private function failure(string $reason, string $command): SyncException
     {
