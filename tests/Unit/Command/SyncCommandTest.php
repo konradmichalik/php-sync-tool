@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 
 use KonradMichalik\SyncTool\Application;
-use KonradMichalik\SyncTool\Command\SyncCommand;
+use KonradMichalik\SyncTool\Command\{AnonymizeCommand, SyncCommand};
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver};
 use KonradMichalik\SyncTool\Tests\Fixture\{FakePackageVersionSource, PipedCli};
 use KonradMichalik\SyncTool\Update\UpdateChecker;
@@ -24,6 +24,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 use Throwable;
 
+use function dirname;
+
 /**
  * SyncCommandTest.
  *
@@ -32,6 +34,7 @@ use Throwable;
  */
 final class SyncCommandTest extends TestCase
 {
+    private const LEGACY_STAGING = "origin:\n  host: o.example.com\n  user: deploy\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n  anonymize: {account: {email: email}}\n";
     private string $dir;
 
     protected function setUp(): void
@@ -747,25 +750,30 @@ final class SyncCommandTest extends TestCase
     #[Test]
     public function aDeprecationIsShownWithoutVerbosity(): void
     {
-        mkdir($this->dir.'/home');
-        mkdir($this->dir.'/work/.db-sync-tool', 0o777, true);
-        file_put_contents($this->dir.'/work/.db-sync-tool/staging.yaml', "origin:\n  host: o.example.com\n  user: deploy\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+        $display = $this->runInProject(new SyncCommand($this->projectResolver()), ['.db-sync-tool/staging.yaml' => self::LEGACY_STAGING], ['origin' => 'staging', '--dry-run' => true]);
 
-        $command = new SyncCommand(new ConfigResolver(new ConfigLoader(), $this->dir.'/home', $this->dir.'/work'));
-        $command->setApplication(new Application());
-        $tester = new CommandTester($command);
+        self::assertStringContainsString('[warning]', $display);
+        self::assertStringContainsString('Rename it to .sync-tool', $display);
+    }
 
-        try {
-            $tester->execute(['origin' => 'staging', '--dry-run' => true]);
-        } finally {
-            unlink($this->dir.'/work/.db-sync-tool/staging.yaml');
-            rmdir($this->dir.'/work/.db-sync-tool');
-            rmdir($this->dir.'/work');
-            rmdir($this->dir.'/home');
-        }
+    /**
+     * An ignored legacy directory is why its configs are not found, so the
+     * notice has to come with the error, not only with a run that succeeds.
+     */
+    #[Test]
+    public function anIgnoredLegacyDirectoryIsNamedWhenTheConfigIsNotFound(): void
+    {
+        $display = $this->runInProject(new SyncCommand($this->projectResolver()), ['.sync-tool/other.yaml' => self::LEGACY_STAGING, '.db-sync-tool/staging.yaml' => self::LEGACY_STAGING], ['origin' => 'staging', '--dry-run' => true]);
 
-        self::assertStringContainsString('[warning]', $tester->getDisplay());
-        self::assertStringContainsString('.db-sync-tool', $tester->getDisplay());
+        self::assertStringContainsString('is ignored because', $display);
+    }
+
+    #[Test]
+    public function anonymizeShowsTheDeprecationToo(): void
+    {
+        $display = $this->runInProject(new AnonymizeCommand($this->projectResolver()), ['.db-sync-tool/staging.yaml' => self::LEGACY_STAGING], ['origin' => 'staging', '--dry-run' => true]);
+
+        self::assertStringContainsString('Rename it to .sync-tool', $display);
     }
 
     #[Test]
@@ -807,6 +815,43 @@ final class SyncCommandTest extends TestCase
         self::assertStringContainsString('Aborted by user', $output);
 
         return $output;
+    }
+
+    private function projectResolver(): ConfigResolver
+    {
+        return new ConfigResolver(new ConfigLoader(), $this->dir.'/home', $this->dir.'/work');
+    }
+
+    /**
+     * @param array<string, string>      $files     paths relative to the project directory
+     * @param array<string, bool|string> $arguments
+     */
+    private function runInProject(SyncCommand $command, array $files, array $arguments): string
+    {
+        mkdir($this->dir.'/home');
+        foreach ($files as $path => $contents) {
+            $file = $this->dir.'/work/'.$path;
+            if (!is_dir(dirname($file))) {
+                mkdir(dirname($file), 0o777, true);
+            }
+            file_put_contents($file, $contents);
+        }
+
+        $command->setApplication(new Application());
+        $tester = new CommandTester($command);
+
+        try {
+            $tester->execute($arguments);
+        } finally {
+            foreach (array_keys($files) as $path) {
+                unlink($this->dir.'/work/'.$path);
+                @rmdir(dirname($this->dir.'/work/'.$path));
+            }
+            rmdir($this->dir.'/work');
+            rmdir($this->dir.'/home');
+        }
+
+        return $tester->getDisplay();
     }
 
     private function tester(): CommandTester
