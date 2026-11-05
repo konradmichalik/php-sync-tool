@@ -26,6 +26,7 @@ use KonradMichalik\SyncTool\Remote\{RunnerFactory, SshAuthResolver};
 use KonradMichalik\SyncTool\Update\UpdateChecker;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Exception\MissingInputException;
 use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption};
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -568,17 +569,25 @@ class SyncCommand extends Command
                 throw new ConfigException(sprintf('No SSH authentication configured for %s. Set ssh_key, password or ssh_agent, or run interactively to be asked for a password.', $endpoint));
             }
 
-            do {
-                /** @var string|null $password */
-                $password = $io->askHidden(sprintf('SSH password for %s', $endpoint));
-                $password ??= '';
+            $missing = sprintf('No SSH password given for %s. Set ssh_key, password or ssh_agent instead.', $endpoint);
 
-                if ('' === trim($password)) {
-                    $io->warning('The password cannot be empty.');
+            // Bounded: at EOF Symfony either aborts the question or answers it with
+            // an empty string, and the latter made an unbounded retry spin forever.
+            for ($attempt = 0; $attempt < 3; ++$attempt) {
+                try {
+                    $password = (string) $io->askHidden(sprintf('SSH password for %s', $endpoint));
+                } catch (MissingInputException $exception) {
+                    throw new ConfigException($missing, 0, $exception);
                 }
-            } while ('' === trim($password));
 
-            return $password;
+                if ('' !== trim($password)) {
+                    return $password;
+                }
+
+                $io->warning('The password cannot be empty.');
+            }
+
+            throw new ConfigException($missing);
         };
     }
 

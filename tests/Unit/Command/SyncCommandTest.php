@@ -559,6 +559,48 @@ final class SyncCommandTest extends TestCase
         self::assertStringContainsString('SSH password for deploy@o.example.com', $tester->getDisplay());
     }
 
+    /**
+     * Guards against the endless prompt on a stdin that only yields empty answers.
+     */
+    #[Test]
+    public function emptyPasswordAnswersGiveUpAfterThreeAttempts(): void
+    {
+        $file = $this->dir.'/empty-password.yaml';
+        file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  ssh_key: /dev/null\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $tester->setInputs(['', '', '']);
+        $exit = $tester->execute(
+            ['--config-file' => $file, '--force-password' => true, '--yes' => true],
+            ['interactive' => true],
+        );
+
+        self::assertSame(1, $exit);
+        self::assertStringContainsString('No SSH password given for deploy@o.example.com', $tester->getDisplay());
+    }
+
+    /**
+     * Symfony aborts a question on a closed stdin with its own exception, which
+     * the command would otherwise print raw instead of naming the way out.
+     */
+    #[Test]
+    public function aClosedStdinEndsThePasswordPromptWithAConfigError(): void
+    {
+        $file = $this->dir.'/closed-stdin.yaml';
+        file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  ssh_key: /dev/null\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+
+        $tester = $this->tester();
+        $tester->setInputs([]);
+        $exit = $tester->execute(
+            ['--config-file' => $file, '--force-password' => true, '--yes' => true],
+            ['interactive' => true],
+        );
+
+        self::assertSame(1, $exit);
+        self::assertStringContainsString('No SSH password given for deploy@o.example.com', $tester->getDisplay());
+        self::assertStringContainsString('Set ssh_key, password or ssh_agent', $tester->getDisplay());
+    }
+
     #[Test]
     public function aDryRunIsNeverAskedForAPassword(): void
     {
