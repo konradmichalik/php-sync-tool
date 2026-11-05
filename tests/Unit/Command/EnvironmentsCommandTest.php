@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 
 use KonradMichalik\SyncTool\Command\EnvironmentsCommand;
-use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, EnvironmentAssembler};
+use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver};
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
@@ -71,6 +71,22 @@ final class EnvironmentsCommandTest extends TestCase
         self::assertStringContainsString('sync-tool pull staging', $display);
     }
 
+    /**
+     * The list comes from the same directories as a sync, so it names an old
+     * directory the same way instead of leaving its entries out without a word.
+     */
+    #[Test]
+    public function namesALegacyDirectoryItIgnores(): void
+    {
+        mkdir($this->project.'/.db-sync-tool');
+        file_put_contents($this->project.'/.db-sync-tool/staging.yaml', "origin:\n  host: stage.example.com\n");
+
+        $tester = $this->tester();
+        $tester->execute([]);
+
+        self::assertStringContainsString('Move whatever you still need into .sync-tool', $tester->getDisplay());
+    }
+
     #[Test]
     public function saysSoWhenThereIsNothingConfiguredYet(): void
     {
@@ -83,9 +99,7 @@ final class EnvironmentsCommandTest extends TestCase
 
     private function tester(): CommandTester
     {
-        $command = new EnvironmentsCommand(new EnvironmentAssembler(
-            new ConfigResolver(new ConfigLoader(), $this->home, $this->project),
-        ));
+        $command = new EnvironmentsCommand(new ConfigResolver(new ConfigLoader(), $this->home, $this->project));
         $command->setApplication(new Application());
 
         return new CommandTester($command);

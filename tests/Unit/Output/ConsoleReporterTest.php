@@ -50,6 +50,26 @@ final class ConsoleReporterTest extends TestCase
         self::assertSame('{"time":"T","event":"step","message":"msg /a"}'."\n", $out->fetch());
     }
 
+    /**
+     * A pipeline that greps for warnings, or filters JSON events, must be able to
+     * tell one from routine progress.
+     */
+    #[Test]
+    public function ciMarksAWarning(): void
+    {
+        $out = new BufferedOutput();
+        $this->reporter(OutputMode::Ci, $out)->step('rsync not found', LogChannel::Warning);
+        self::assertSame("WARNING: rsync not found\n", $out->fetch());
+    }
+
+    #[Test]
+    public function jsonEmitsAWarningEvent(): void
+    {
+        $out = new BufferedOutput();
+        $this->reporter(OutputMode::Json, $out)->step('rsync not found', LogChannel::Warning);
+        self::assertSame('{"time":"T","event":"warning","message":"rsync not found"}'."\n", $out->fetch());
+    }
+
     #[Test]
     public function jsonSummaryIncludesEndpoints(): void
     {

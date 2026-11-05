@@ -84,10 +84,12 @@ final class ConsoleReporter
 
     public function step(string $message, LogChannel $channel = LogChannel::Step): void
     {
+        $warning = LogChannel::Warning === $channel;
+
         match ($this->mode) {
             OutputMode::Interactive => $this->interactiveStep($message, $channel),
-            OutputMode::Ci => $this->output->writeln($message),
-            OutputMode::Json => $this->output->writeln($this->jsonLine('step', $message)),
+            OutputMode::Ci => $this->output->writeln($warning ? 'WARNING: '.$message : $message),
+            OutputMode::Json => $this->output->writeln($this->jsonLine($warning ? 'warning' : 'step', $message)),
             OutputMode::Quiet => null,
         };
     }

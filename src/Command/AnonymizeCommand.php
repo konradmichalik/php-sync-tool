@@ -61,11 +61,7 @@ final class AnonymizeCommand extends SyncCommand
             $reporter = new ConsoleReporter($mode, $io, $output);
             $this->assertNoSyncOnlyOptions($input);
 
-            $config = $this->buildConfig($input, $output);
-
-            foreach ($this->resolver->getDeprecations() as $deprecation) {
-                $reporter->step($deprecation);
-            }
+            $config = $this->buildConfigReportingDeprecations($input, $output, $reporter);
 
             $this->validator->validate($config);
             $syncConfig = SyncConfig::fromArray($config);

@@ -137,11 +137,7 @@ class SyncCommand extends Command
             $mode = $this->outputMode($input);
             $reporter = new ConsoleReporter($mode, $io, $output);
 
-            $config = $this->buildConfig($input, $output);
-
-            foreach ($this->resolver->getDeprecations() as $deprecation) {
-                $reporter->step($deprecation);
-            }
+            $config = $this->buildConfigReportingDeprecations($input, $output, $reporter);
 
             $this->validator->validate($config);
 
@@ -255,6 +251,23 @@ class SyncCommand extends Command
         }
 
         return $this->finishConfig($this->baseFromResolution($configFile, $origin, $target, $hostFile), $input, $output);
+    }
+
+    /**
+     * The notices come out even when resolving fails: an ignored legacy
+     * directory is often the reason a config is not found at all.
+     *
+     * @return array<string, mixed>
+     */
+    protected function buildConfigReportingDeprecations(InputInterface $input, OutputInterface $output, ConsoleReporter $reporter): array
+    {
+        try {
+            return $this->buildConfig($input, $output);
+        } finally {
+            foreach ($this->resolver->getDeprecations() as $deprecation) {
+                $reporter->step($deprecation, LogChannel::Warning);
+            }
+        }
     }
 
     /**
