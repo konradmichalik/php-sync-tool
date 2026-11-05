@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 
 use KonradMichalik\SyncTool\Application;
 use KonradMichalik\SyncTool\Command\SyncCommand;
+use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver};
 use KonradMichalik\SyncTool\Tests\Fixture\{FakePackageVersionSource, PipedCli};
 use KonradMichalik\SyncTool\Update\UpdateChecker;
 use PHPUnit\Framework\Attributes\Test;
@@ -737,6 +738,34 @@ final class SyncCommandTest extends TestCase
         self::assertSame(1, $process->getExitCode(), $output);
         self::assertStringContainsString('Pass --yes', $output);
         self::assertStringNotContainsString('Aborted by user', $output);
+    }
+
+    /**
+     * A plain step only shows with -v, so a run reading the legacy config
+     * directory never told anyone to rename it.
+     */
+    #[Test]
+    public function aDeprecationIsShownWithoutVerbosity(): void
+    {
+        mkdir($this->dir.'/home');
+        mkdir($this->dir.'/work/.db-sync-tool', 0o777, true);
+        file_put_contents($this->dir.'/work/.db-sync-tool/staging.yaml', "origin:\n  host: o.example.com\n  user: deploy\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+
+        $command = new SyncCommand(new ConfigResolver(new ConfigLoader(), $this->dir.'/home', $this->dir.'/work'));
+        $command->setApplication(new Application());
+        $tester = new CommandTester($command);
+
+        try {
+            $tester->execute(['origin' => 'staging', '--dry-run' => true]);
+        } finally {
+            unlink($this->dir.'/work/.db-sync-tool/staging.yaml');
+            rmdir($this->dir.'/work/.db-sync-tool');
+            rmdir($this->dir.'/work');
+            rmdir($this->dir.'/home');
+        }
+
+        self::assertStringContainsString('[warning]', $tester->getDisplay());
+        self::assertStringContainsString('.db-sync-tool', $tester->getDisplay());
     }
 
     #[Test]

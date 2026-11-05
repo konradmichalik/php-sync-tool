@@ -64,7 +64,7 @@ final class AnonymizeCommand extends SyncCommand
             $config = $this->buildConfig($input, $output);
 
             foreach ($this->resolver->getDeprecations() as $deprecation) {
-                $reporter->step($deprecation);
+                $reporter->step($deprecation, LogChannel::Warning);
             }
 
             $this->validator->validate($config);
