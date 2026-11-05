@@ -15,16 +15,13 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 
 use KonradMichalik\SyncTool\Application;
 use KonradMichalik\SyncTool\Command\SyncCommand;
-use KonradMichalik\SyncTool\Tests\Fixture\FakePackageVersionSource;
+use KonradMichalik\SyncTool\Tests\Fixture\{FakePackageVersionSource, PipedCli};
 use KonradMichalik\SyncTool\Update\UpdateChecker;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
-use Symfony\Component\Process\Process;
 use Throwable;
-
-use function dirname;
 
 /**
  * SyncCommandTest.
@@ -718,12 +715,28 @@ final class SyncCommandTest extends TestCase
         $file = $this->dir.'/piped-stdin.yaml';
         file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
 
-        // A real process with a piped stdin, the way CI and `exec -T` start it.
-        $process = new Process([\PHP_BINARY, dirname(__DIR__, 3).'/bin/sync-tool', '--config-file='.$file, '--force-password', '--yes'], input: '');
-        $process->run();
+        $process = PipedCli::run(['--config-file='.$file, '--force-password', '--yes']);
 
         self::assertSame(1, $process->getExitCode());
         self::assertStringContainsString('No SSH authentication configured for deploy@o.example.com', $process->getOutput().$process->getErrorOutput());
+    }
+
+    /**
+     * The prompt read EOF, took "no" and exited 0, so a pipeline saw a sync that
+     * never happened as a success.
+     */
+    #[Test]
+    public function aWritingRunWithoutATerminalStopsInsteadOfReportingSuccess(): void
+    {
+        $file = $this->dir.'/no-terminal-confirm.yaml';
+        file_put_contents($file, "origin:\n  host: o.example.com\n  user: deploy\n  password: x\n  db: {name: a, user: r, password: r}\ntarget:\n  db: {name: b, user: r, password: r}\n");
+
+        $process = PipedCli::run(['--config-file='.$file]);
+        $output = $process->getOutput().$process->getErrorOutput();
+
+        self::assertSame(1, $process->getExitCode(), $output);
+        self::assertStringContainsString('Pass --yes', $output);
+        self::assertStringNotContainsString('Aborted by user', $output);
     }
 
     #[Test]

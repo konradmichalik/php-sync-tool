@@ -174,9 +174,11 @@ A run whose endpoints share host and database only dumps the database, but it
 still asks when it syncs files onto the target. Two different `path` values on
 one host count as different data, so such a run imports.
 
-The prompt only appears on an interactive terminal. Non-interactive contexts
-(CI pipelines, Deployer, cron) proceed automatically, as does `--dry-run`. Skip
-it explicitly with `--yes` / `-y`:
+A run without a terminal (CI pipelines, Deployer, cron, `docker compose exec
+-T`) cannot answer the prompt, so it stops with an error instead of reporting a
+success that changed nothing. `-n` / `--no-interaction`, quiet output
+(`--quiet`, `--mute`, `--output quiet`) and `--dry-run` never ask. Skip the
+prompt explicitly with `--yes` / `-y`:
 
 ```bash
 bin/sync-tool -f config.yaml --yes

@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 use KonradMichalik\SyncTool\Application;
 use KonradMichalik\SyncTool\Command\SyncCommand;
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver};
+use KonradMichalik\SyncTool\Tests\Fixture\PipedCli;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -132,6 +133,22 @@ final class SyncPickerTest extends TestCase
         $tester->execute(['--dry-run' => true], ['interactive' => false]);
 
         self::assertStringContainsString('Configuration is missing', $tester->getDisplay());
+    }
+
+    /**
+     * The choice read EOF and ended in Symfony's raw "Aborted." instead of the
+     * error that names what is missing.
+     */
+    #[Test]
+    public function keepsFailingWithoutATerminal(): void
+    {
+        $this->writeEverything();
+
+        $process = PipedCli::run(['--dry-run'], $this->work, ['HOME' => $this->home]);
+        $output = $process->getOutput().$process->getErrorOutput();
+
+        self::assertStringNotContainsString('How should this be synchronized?', $output);
+        self::assertStringContainsString('Configuration is missing', $output);
     }
 
     #[Test]

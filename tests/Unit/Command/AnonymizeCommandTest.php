@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Tests\Unit\Command;
 
 use KonradMichalik\SyncTool\Application;
+use KonradMichalik\SyncTool\Tests\Fixture\PipedCli;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -129,6 +130,19 @@ final class AnonymizeCommandTest extends TestCase
 
         self::assertSame(1, $tester->getStatusCode());
         self::assertStringContainsString('does not support', $tester->getDisplay());
+    }
+
+    #[Test]
+    public function anonymizingWithoutATerminalStopsInsteadOfReportingSuccess(): void
+    {
+        $file = $this->dir.'/anonymize.yaml';
+        file_put_contents($file, "target:\n  db: {name: db, user: r, password: r}\n".self::RULES);
+
+        $process = PipedCli::run(['anonymize', '--config-file='.$file]);
+        $output = $process->getOutput().$process->getErrorOutput();
+
+        self::assertSame(1, $process->getExitCode(), $output);
+        self::assertStringContainsString('Pass --yes', $output);
     }
 
     /**
