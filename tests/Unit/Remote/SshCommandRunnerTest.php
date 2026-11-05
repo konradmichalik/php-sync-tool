@@ -55,6 +55,20 @@ final class SshCommandRunnerTest extends TestCase
      * with no exit status. That must not pass as a finished command.
      */
     #[Test]
+    public function aTimedOutCommandCarriesTheRemoteErrorSoFar(): void
+    {
+        $ssh = $this->createStub(SSH2::class);
+        $ssh->method('exec')->willReturn('');
+        $ssh->method('isTimeout')->willReturn(true);
+        $ssh->method('getStdError')->willReturn('mysqldump: Error 1878: Disk quota exceeded');
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('Disk quota exceeded');
+
+        (new SshCommandRunner($ssh))->run('mysqldump db > /tmp/db.sql');
+    }
+
+    #[Test]
     public function aTimedOutCommandThrows(): void
     {
         $ssh = $this->createStub(SSH2::class);
@@ -82,15 +96,42 @@ final class SshCommandRunnerTest extends TestCase
     }
 
     /**
+     * Without the remote's own error, "exited with status 1" leaves the user to
+     * rerun the command by hand to learn it was, say, an access denial.
+     */
+    #[Test]
+    public function theFailureMessageCarriesTheRemoteError(): void
+    {
+        $ssh = $this->failingSsh("ERROR 1045 (28000): Access denied for user 'app'@'localhost'\n");
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage("Remote command exited with status 1: mysql app < dump.sql\nERROR 1045 (28000): Access denied for user 'app'@'localhost'");
+
+        (new SshCommandRunner($ssh))->run('mysql app < dump.sql');
+    }
+
+    #[Test]
+    public function theRemoteErrorIsMaskedLikeTheCommand(): void
+    {
+        $ssh = $this->failingSsh("bash: line 1: mysql -p's3cret': command not found");
+
+        try {
+            (new SshCommandRunner($ssh))->run('true');
+            self::fail('Expected a SyncException');
+        } catch (SyncException $exception) {
+            self::assertStringContainsString('command not found', $exception->getMessage());
+            self::assertStringNotContainsString('s3cret', $exception->getMessage());
+        }
+    }
+
+    /**
      * The failing command is quoted back to the user, and the one that writes the
      * credential file to a remote host carries the password in its payload.
      */
     #[Test]
     public function theFailureMessageMasksCredentialsInTheCommand(): void
     {
-        $ssh = $this->createStub(SSH2::class);
-        $ssh->method('exec')->willReturn('');
-        $ssh->method('getExitStatus')->willReturn(1);
+        $ssh = $this->failingSsh();
 
         try {
             (new SshCommandRunner($ssh))->run("mysql -h db -u root -p's3cret' --defaults-extra-file=/tmp/.my_a.cnf");
@@ -108,5 +149,15 @@ final class SshCommandRunnerTest extends TestCase
 
         self::assertInstanceOf(LocalCommandRunner::class, $factory->local());
         self::assertInstanceOf(LocalCommandRunner::class, $factory->forClient(new ClientConfig(path: '/var/www')));
+    }
+
+    private function failingSsh(string $stderr = ''): SSH2
+    {
+        $ssh = $this->createStub(SSH2::class);
+        $ssh->method('exec')->willReturn('');
+        $ssh->method('getExitStatus')->willReturn(1);
+        $ssh->method('getStdError')->willReturn($stderr);
+
+        return $ssh;
     }
 }
