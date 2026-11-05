@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Mode;
 
+use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\{SyncDirection, SyncOperation};
 
 /**
@@ -78,6 +79,20 @@ final readonly class SyncPlan
     public function isProtectable(): bool
     {
         return !$this->isDump();
+    }
+
+    public function writesDatabase(SyncConfig $config): bool
+    {
+        return $this->isProtectable() && !$config->filesOnly;
+    }
+
+    /**
+     * The database mode alone misses the file sync: a same-host dump still
+     * copies files onto the target.
+     */
+    public function writesTarget(SyncConfig $config): bool
+    {
+        return $this->writesDatabase($config) || $config->writesFiles();
     }
 
     /**

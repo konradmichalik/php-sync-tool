@@ -159,7 +159,8 @@ bin/sync-tool -f config.yaml -o hosts.yaml
 
 ## Import Confirmation
 
-Any run that writes to a target database asks for confirmation before it starts:
+Any run that writes to the target, its database or its files, asks for
+confirmation before it starts:
 
 ```
 This overwrites the remote (prod.example.com) database. Continue? (yes/no) [no]:
@@ -169,6 +170,8 @@ The question names what the run writes. With `--with-files` it reads
 `This overwrites the remote (prod.example.com) database and files. Continue?`,
 with `--files-only` (or `--with-files` plus `keep_dump`) it reads
 `This overwrites files on the remote (prod.example.com) system. Continue?`.
+A run whose endpoints share host and database only dumps the database, but it
+still asks when it syncs files onto the target.
 
 The prompt only appears on an interactive terminal. Non-interactive contexts
 (CI pipelines, Deployer, cron) proceed automatically, as does `--dry-run`. Skip
@@ -180,9 +183,10 @@ bin/sync-tool -f config.yaml --yes
 
 ## Protect Host
 
-Prevent accidental imports into a critical system entirely. When an endpoint
-marked `protect: true` is used as the **target**, the sync is refused with an
-error before any change is made — regardless of `--yes`:
+Prevent accidental writes to a critical system entirely. When an endpoint
+marked `protect: true` is used as the **target** of a run that imports a dump or
+syncs files, the sync is refused with an error before any change is made,
+regardless of `--yes`:
 
 ```yaml
 origin:

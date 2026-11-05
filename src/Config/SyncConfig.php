@@ -138,6 +138,14 @@ final readonly class SyncConfig
         return $this->with(['useSshpass' => $useSshpass]);
     }
 
+    /**
+     * `--with-files` is valid without file entries, and then copies nothing.
+     */
+    public function writesFiles(): bool
+    {
+        return $this->filesOnly || ($this->withFiles && [] !== $this->files);
+    }
+
     public function getClient(string $client): ClientConfig
     {
         return match ($client) {

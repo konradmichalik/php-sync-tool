@@ -63,7 +63,7 @@ Both `origin` and `target` accept the same structure:
 | `keep_dumps` | number | Retention: keep only the N most recent dumps in `dump_dir`. |
 | `after_dump` | string | Additional SQL file to import after the main import. |
 | `post_sql` | array | SQL statements to execute after import, in one batch. |
-| `protect` | boolean | Refuse to use this endpoint as an import target without confirmation. |
+| `protect` | boolean | Refuse to use this endpoint as the target of an import or a file sync. |
 | `console` | object | Custom binary paths, keyed by the binary they replace (`php`, `mysql`, `mysqldump`, `mariadb`, `mariadb-dump`, `psql`, `pg_dump`). |
 | `script` | object | Lifecycle commands: `before`, `after`, `error`. They run on the machine driving the sync, not on the endpoint. `scripts` is accepted as well. |
 | `db` | object | Manual database credentials (see [Database Object](#database-object)). |
