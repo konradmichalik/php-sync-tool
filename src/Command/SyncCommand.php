@@ -167,7 +167,7 @@ class SyncCommand extends Command
             }
 
             if ($this->needsConfirmation($plan, $syncConfig, $mode, $input->isInteractive())
-                && !$io->confirm($this->confirmationQuestion($plan, $syncConfig), false)
+                && !$this->confirm($io, $input, $this->confirmationQuestion($plan, $syncConfig))
             ) {
                 $reporter->success('Aborted by user.');
 
@@ -246,7 +246,7 @@ class SyncCommand extends Command
 
         $nothingRequested = (null === $configFile || '' === $configFile) && (null === $origin || '' === $origin);
 
-        if ($nothingRequested && $input->isInteractive()) {
+        if ($nothingRequested && $this->canAnswer($input)) {
             $picked = $this->askWhatToSync($input, $output);
 
             if (null !== $picked) {
@@ -486,6 +486,21 @@ class SyncCommand extends Command
     }
 
     /**
+     * Without a terminal the question would read EOF and take its "no", ending
+     * a run nobody watches with a success that changed nothing.
+     *
+     * @throws ConfigException when nobody can answer
+     */
+    protected function confirm(SymfonyStyle $io, InputInterface $input, string $question): bool
+    {
+        if (!$this->canAnswer($input)) {
+            throw new ConfigException('There is no terminal to confirm this run. Pass --yes to proceed.');
+        }
+
+        return $io->confirm($question, false);
+    }
+
+    /**
      * Called without any hint of what to sync, on a terminal: offer what has been
      * discovered instead of failing. Returns null when there is nothing to offer,
      * which leaves the usual "configuration is missing" path intact.
@@ -639,9 +654,9 @@ class SyncCommand extends Command
     }
 
     /**
-     * A confirmation prompt is only warranted for writing modes on an interactive
-     * terminal. Non-interactive runs (CI, Deployer), quiet output and the explicit
-     * --yes flag all proceed without asking.
+     * A confirmation prompt is only warranted for writing modes. `-n`, quiet
+     * output and the explicit --yes flag proceed without asking; an interactive
+     * run without a terminal is stopped by confirm() instead.
      */
     private function needsConfirmation(SyncPlan $plan, SyncConfig $syncConfig, OutputMode $outputMode, bool $isInteractive): bool
     {

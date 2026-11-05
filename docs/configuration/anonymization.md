@@ -191,7 +191,7 @@ Because the change cannot be undone, the command:
 - fails when the target has no `anonymize` rules
 - asks before it starts (`This irreversibly anonymizes the local database "db".
   Continue?`), skipped with `--yes`, `--dry-run`, `--mute`, `--output=quiet` or
-  without a terminal
+  `-n`. Without a terminal it stops and asks for `--yes`
 - dumps the target first with `--backup-before-import` or `backup_before_import: true`,
   and applies `keep_dumps` to those backups
 - refuses options that only make sense for a sync, such as `--tables`, `--where`

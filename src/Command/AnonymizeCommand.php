@@ -78,7 +78,7 @@ final class AnonymizeCommand extends SyncCommand
             }
 
             if (!$syncConfig->yes && $input->isInteractive() && OutputMode::Quiet !== $mode
-                && !$io->confirm($this->confirmationText($syncConfig->target), false)
+                && !$this->confirm($io, $input, $this->confirmationText($syncConfig->target))
             ) {
                 $reporter->success('Aborted by user.');
 
