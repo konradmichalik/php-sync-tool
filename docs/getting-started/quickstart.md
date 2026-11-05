@@ -130,7 +130,7 @@ discovery works.
 |--------|-------|-------------|
 | `--config-file` | `-f` | Path to a configuration file |
 | `--dry-run` | | Resolve and report the plan without exporting/transferring/importing |
-| `--yes` | `-y` | Skip the import confirmation prompt |
+| `--yes` | `-y` | Skip the confirmation prompt. A writing run without a terminal (CI, Deployer, cron) needs it |
 | `--output` | | Output mode: `interactive`, `ci`, `json`, `quiet` |
 
 See the [CLI Reference](/reference/cli) for the full option list.

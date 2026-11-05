@@ -266,6 +266,18 @@ check_dump: false
 dump written with it never passes the check. Turn `check_dump` off in that case.
 :::
 
+## Long-Running Syncs
+
+A sync has no overall time limit. Dumps, transfers and imports of a large
+database run as long as they keep making progress. What ends a run is a
+connection or transfer that has stopped:
+
+- rsync gives up after 600 seconds without any data moving.
+- The SSH connections rsync and a jump host open drop a dead peer after about
+  two minutes without an answer.
+- The connection for remote commands sends a keepalive every 60 seconds, so an
+  idle firewall does not cut it while a long dump runs.
+
 ## Reverse Origin and Target
 
 Swap origin and target for a single run:
