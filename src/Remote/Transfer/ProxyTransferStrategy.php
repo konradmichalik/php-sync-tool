@@ -22,8 +22,8 @@ use KonradMichalik\SyncTool\Security\LogSanitizer;
 use function basename;
 use function bin2hex;
 use function random_bytes;
-use function rtrim;
 use function sprintf;
+use function str_ends_with;
 use function sys_get_temp_dir;
 
 /**
@@ -54,7 +54,11 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
     {
         $local = $this->runners->local();
         $staging = $this->createStagingDirectory($local);
-        $localTemp = $staging.'/'.basename(rtrim($payload->targetPath, '/'));
+        // rsync reads a trailing slash on the source as "the contents of". The push
+        // keeps the origin's form, so both hops together land where a direct rsync would.
+        $pushSource = str_ends_with($payload->originPath, '/')
+            ? $staging.'/'
+            : $staging.'/'.basename($payload->originPath);
         $options = $this->rsync->options($payload->extraRsyncOptions, $payload->excludePatterns, singleFile: $payload->singleFile);
 
         $pull = $this->rsync->build(
@@ -64,7 +68,7 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
             $this->rsync->userHost($config->origin),
             $payload->originPath,
             '',
-            $localTemp,
+            $staging.'/',
         );
 
         $push = $this->rsync->build(
@@ -72,7 +76,7 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
             $options,
             $this->rsync->authorization($config->target, $config->useSshpass, $config->target->jumpHost, $config->hostKeyChecking),
             '',
-            $localTemp,
+            $pushSource,
             $this->rsync->userHost($config->target),
             $payload->targetPath,
         );
