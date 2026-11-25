@@ -212,6 +212,19 @@ final class ExtractorsTest extends TestCase
     }
 
     #[Test]
+    public function symfonyAppEnvReadsThePlainName(): void
+    {
+        self::assertSame('stage', Extractors::symfonyAppEnv("# APP_ENV=dev\nAPP_ENV=stage\n"));
+    }
+
+    #[Test]
+    public function symfonyAppEnvIgnoresAnythingThatIsNotAPlainName(): void
+    {
+        self::assertSame('', Extractors::symfonyAppEnv("APP_ENV=../elsewhere\n"));
+        self::assertSame('', Extractors::symfonyAppEnv("DATABASE_DB=db\n"));
+    }
+
+    #[Test]
     public function symfonyFromParameters(): void
     {
         $content = <<<'YAML'

@@ -165,6 +165,17 @@ final class Extractors
     }
 
     /**
+     * The APP_ENV of a Symfony dotenv file. It names a file next to it, so anything
+     * but a plain name counts as unset.
+     */
+    public static function symfonyAppEnv(string $content): string
+    {
+        $env = self::envValue($content, 'APP_ENV');
+
+        return 1 === preg_match('/^[A-Za-z0-9_-]+$/', $env) ? $env : '';
+    }
+
+    /**
      * Symfony parameters.yml (<=2.8): database_* parameters.
      *
      * @return array{name: string, host: string, user: string, password: string, port: string}

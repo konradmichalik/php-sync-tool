@@ -401,6 +401,100 @@ final class CredentialResolverTest extends TestCase
     }
 
     #[Test]
+    public function resolveSymfonyEnvLocalToleratesAMissingEnv(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'symfony', 'origin' => ['path' => '/app/.env.local']]);
+        $runner = new RecordingCommandRunner([
+            ".env.local'" => 'DATABASE_URL=mysql://u:p@h:3306/only_local',
+        ]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame('only_local', $db->name);
+        self::assertSame([false, true], $runner->allowFail);
+    }
+
+    #[Test]
+    public function resolveSymfonyLayersTheAppEnvFileOverEnvLocalAndEnvLocalOverEnv(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'symfony', 'origin' => ['path' => '/app/.env.local']]);
+        $runner = new RecordingCommandRunner([
+            ".env.local'" => "APP_ENV=stage\nDATABASE_USER=local_user\nDATABASE_PASSWORD=local_pass\n",
+            ".env.stage'" => "DATABASE_HOST=stage.internal\nDATABASE_USER=stage_user\nDATABASE_DB=stage_db\n",
+            "/app/.env'" => "APP_ENV=dev\nDATABASE_HOST=tbd\nDATABASE_USER=tbd\nDATABASE_PORT=3309\nDATABASE_DB=tbd\nDATABASE_PASSWORD=tbd\n",
+        ]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame('stage_db', $db->name);
+        self::assertSame('stage.internal', $db->host);
+        self::assertSame('stage_user', $db->user);
+        self::assertSame('local_pass', $db->password);
+        self::assertSame(3309, $db->port);
+    }
+
+    #[Test]
+    public function resolveSymfonyPrefersVariablesOfAHigherFileOverADatabaseUrlOfALowerOne(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'symfony', 'origin' => ['path' => '/app/.env.local']]);
+        $runner = new RecordingCommandRunner([
+            ".env.local'" => "DATABASE_HOST=db1\nDATABASE_USER=u\nDATABASE_PASSWORD=p\nDATABASE_DB=app\n",
+            "/app/.env'" => 'DATABASE_URL="mysql://placeholder:!ChangeMe!@127.0.0.1:3306/placeholder"',
+        ]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame('db1', $db->host);
+        self::assertSame('app', $db->name);
+    }
+
+    #[Test]
+    public function resolveSymfonyPrefersADatabaseUrlOfAHigherFileOverVariablesOfALowerOne(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'symfony', 'origin' => ['path' => '/app/.env.local']]);
+        $runner = new RecordingCommandRunner([
+            ".env.local'" => 'DATABASE_URL=mysql://u:p@url-host:3306/url_db',
+            "/app/.env'" => "DATABASE_HOST=tbd\nDATABASE_USER=tbd\nDATABASE_PASSWORD=tbd\nDATABASE_DB=tbd\n",
+        ]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame('url-host', $db->host);
+        self::assertSame('url_db', $db->name);
+    }
+
+    #[Test]
+    public function resolveSymfonyLetsTheLocalAppEnvFileWinOverEnvLocal(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'symfony', 'origin' => ['path' => '/app/.env.local']]);
+        $runner = new RecordingCommandRunner([
+            ".env.local'" => "APP_ENV=stage\nDATABASE_PASSWORD=local_pass\n",
+            ".env.stage.local'" => "DATABASE_PASSWORD=stage_local_pass\n",
+            "/app/.env'" => "DATABASE_HOST=h\nDATABASE_USER=u\nDATABASE_DB=db\n",
+        ]);
+
+        $db = (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertNotNull($db);
+        self::assertSame('stage_local_pass', $db->password);
+    }
+
+    #[Test]
+    public function resolveSymfonyEnvReadsNoSibling(): void
+    {
+        $config = SyncConfig::fromArray(['type' => 'symfony', 'origin' => ['path' => '/app/.env']]);
+        $runner = new RecordingCommandRunner(['.env' => 'DATABASE_URL=mysql://u:p@h:3306/db']);
+
+        (new CredentialResolver())->resolve($config, $config->origin, $runner);
+
+        self::assertCount(1, $runner->commands);
+    }
+
+    #[Test]
     public function resolveTypo3StillDefaultsToMysql(): void
     {
         $config = SyncConfig::fromArray(['type' => 'typo3', 'origin' => ['path' => '/app/LocalConfiguration.php']]);

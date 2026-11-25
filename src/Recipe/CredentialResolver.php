@@ -19,7 +19,9 @@ use KonradMichalik\SyncTool\Remote\CommandRunner;
 use KonradMichalik\SyncTool\Security\Shell;
 
 use function basename;
+use function dirname;
 use function escapeshellarg;
+use function implode;
 use function is_array;
 use function json_decode;
 use function sprintf;
@@ -59,6 +61,9 @@ final readonly class CredentialResolver
         if ('' === $content && Framework::Drupal === $framework && ReadStrategy::PlainFile === $strategy) {
             $content = $runner->run($this->readCommand(ReadStrategy::DrupalDrush, $phpBin, $client->path));
             $creds = self::extract($framework, '__drush__', $content, $client->db);
+        } elseif (Framework::Symfony === $framework && '.env.local' === $file) {
+            $layers = $this->readSymfonyLayers($content, dirname($client->path), $phpBin, $strategy, $runner);
+            $creds = self::extractSymfonyLayers($layers);
         } else {
             $creds = self::extract($framework, $file, $content, $client->db);
         }
@@ -140,6 +145,25 @@ final readonly class CredentialResolver
     }
 
     /**
+     * Symfony loads .env, .env.local, .env.$env and .env.$env.local with later files
+     * winning, where $env is the APP_ENV of .env.local or .env. Highest priority
+     * first, because the extractors take the first match.
+     *
+     * @return list<string>
+     */
+    private function readSymfonyLayers(string $local, string $directory, string $phpBin, ReadStrategy $strategy, CommandRunner $runner): array
+    {
+        $read = fn (string $name): string => $runner->run($this->readCommand($strategy, $phpBin, $directory.'/'.$name), true);
+
+        $base = $read('.env');
+        $env = Extractors::symfonyAppEnv($local."\n".$base);
+        $envLocal = '' === $env ? '' : $read('.env.'.$env.'.local');
+        $envFile = '' === $env ? '' : $read('.env.'.$env);
+
+        return [$envLocal, $envFile, $local, $base];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private static function extractTypo3(string $file, string $content, ?DatabaseConfig $client = null): array
@@ -178,12 +202,50 @@ final readonly class CredentialResolver
 
             // Without any of them the file is not a database setting at all, which
             // the URL parser reports as before.
-            if ('' !== $variables['name'] || '' !== $variables['host'] || '' !== $variables['user'] || '' !== $variables['password']) {
+            if (self::hasDatabaseVariables($variables)) {
                 return $variables;
             }
         }
 
         return Parsing::parseSymfonyDatabaseUrl($urlLine);
+    }
+
+    /**
+     * The style of the highest layer that sets either one decides, so a DATABASE_URL
+     * of a lower layer, often a placeholder, cannot override variables of a higher
+     * one. In the same layer the URL wins, as it does in a single file.
+     *
+     * @param list<string> $layers highest priority first
+     *
+     * @return array<string, mixed>
+     */
+    private static function extractSymfonyLayers(array $layers): array
+    {
+        $urlAt = null;
+        $variablesAt = null;
+        foreach ($layers as $index => $layer) {
+            if (null === $urlAt && '' !== Extractors::symfonyDatabaseUrlLine($layer)) {
+                $urlAt = $index;
+            }
+            if (null === $variablesAt && self::hasDatabaseVariables(Extractors::symfonyFromEnvVariables($layer))) {
+                $variablesAt = $index;
+            }
+        }
+
+        $content = implode("\n", $layers);
+        if (null !== $variablesAt && (null === $urlAt || $variablesAt < $urlAt)) {
+            return Extractors::symfonyFromEnvVariables($content);
+        }
+
+        return Parsing::parseSymfonyDatabaseUrl(Extractors::symfonyDatabaseUrlLine($content));
+    }
+
+    /**
+     * @param array{name: string, host: string, user: string, password: string, port: string, db_type: string} $variables
+     */
+    private static function hasDatabaseVariables(array $variables): bool
+    {
+        return '' !== $variables['name'] || '' !== $variables['host'] || '' !== $variables['user'] || '' !== $variables['password'];
     }
 
     /**
