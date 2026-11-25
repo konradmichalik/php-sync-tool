@@ -172,7 +172,18 @@ final readonly class CredentialResolver
             return Extractors::symfonyFromParameters($content);
         }
 
-        return Parsing::parseSymfonyDatabaseUrl(Extractors::symfonyDatabaseUrlLine($content));
+        $urlLine = Extractors::symfonyDatabaseUrlLine($content);
+        if ('' === $urlLine) {
+            $variables = Extractors::symfonyFromEnvVariables($content);
+
+            // Without any of them the file is not a database setting at all, which
+            // the URL parser reports as before.
+            if ('' !== $variables['name'] || '' !== $variables['host'] || '' !== $variables['user'] || '' !== $variables['password']) {
+                return $variables;
+            }
+        }
+
+        return Parsing::parseSymfonyDatabaseUrl($urlLine);
     }
 
     /**

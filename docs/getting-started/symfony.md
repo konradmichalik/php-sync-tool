@@ -7,7 +7,7 @@ php-sync-tool can automatically detect database credentials from
 
 | Symfony Version | Config File | Source |
 |-----------------|-------------|--------|
-| >= 3.4 | `.env` | `DATABASE_URL` environment variable |
+| >= 3.4 | `.env` | `DATABASE_URL` environment variable, or the individual `DATABASE_*` variables |
 | <= 2.8 | `parameters.yml` | `database_*` parameters |
 
 For `.env`, the tool parses the first non-comment `DATABASE_URL` line, for
@@ -16,6 +16,28 @@ example:
 ```dotenv
 DATABASE_URL="mysql://user:password@127.0.0.1:3306/dbname"
 ```
+
+Any file name other than `parameters.yml` is read this way, so `path` may also
+point to a `.env.local`.
+
+### Individual variables
+
+Without a `DATABASE_URL`, the tool reads the individual variables instead, for
+projects that wire each Doctrine connection field to its own variable:
+
+```dotenv
+DATABASE_DB=dbname
+DATABASE_HOST=127.0.0.1
+DATABASE_PORT=3306
+DATABASE_USER=user
+DATABASE_PASSWORD=password
+```
+
+A `DATABASE_URL` line takes precedence when both are present, even an empty one,
+so remove or comment out an unused `DATABASE_URL`. The port defaults to `3306`
+when `DATABASE_PORT` is missing. These variables name no driver, so the database
+is treated as MySQL or MariaDB and `db.type` does not change that. Use a
+`DATABASE_URL` for PostgreSQL.
 
 ## Command Line
 

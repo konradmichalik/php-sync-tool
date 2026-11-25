@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Tests\Unit\Recipe;
 
 use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\{DatabaseSystem, Framework};
+use KonradMichalik\SyncTool\Exception\ParsingException;
 use KonradMichalik\SyncTool\Recipe\{CredentialResolver, ReadStrategy};
 use KonradMichalik\SyncTool\Tests\Fixture\RecordingCommandRunner;
 use PHPUnit\Framework\Attributes\Test;
@@ -254,6 +255,36 @@ final class CredentialResolverTest extends TestCase
         self::assertSame('p', $result['password']);
         self::assertSame('h', $result['host']);
         self::assertSame('3306', $result['port']);
+    }
+
+    #[Test]
+    public function extractSymfonyFallsBackToTheIndividualVariablesWithoutDatabaseUrl(): void
+    {
+        $content = "APP_ENV=prod\nDATABASE_DB=db\nDATABASE_HOST=h\nDATABASE_PORT=3306\nDATABASE_USER=u\nDATABASE_PASSWORD=p\n";
+
+        $result = CredentialResolver::extract(Framework::Symfony, '.env.local', $content);
+
+        self::assertSame('db', $result['name']);
+        self::assertSame('p', $result['password']);
+    }
+
+    #[Test]
+    public function extractSymfonyPrefersDatabaseUrlOverTheIndividualVariables(): void
+    {
+        $content = "DATABASE_URL=mysql://u:p@h:3306/url_db\nDATABASE_DB=variable_db\nDATABASE_HOST=other\n";
+
+        $result = CredentialResolver::extract(Framework::Symfony, '.env', $content);
+
+        self::assertSame('url_db', $result['name']);
+        self::assertSame('h', $result['host']);
+    }
+
+    #[Test]
+    public function extractSymfonyStillRejectsAnEnvWithoutAnyDatabaseSetting(): void
+    {
+        $this->expectException(ParsingException::class);
+
+        CredentialResolver::extract(Framework::Symfony, '.env.local', "APP_ENV=prod\n");
     }
 
     #[Test]

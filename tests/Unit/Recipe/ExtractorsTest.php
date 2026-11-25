@@ -181,6 +181,37 @@ final class ExtractorsTest extends TestCase
     }
 
     #[Test]
+    public function symfonyFromEnvVariablesReadsTheIndividualVariables(): void
+    {
+        $content = <<<'ENV'
+            # DATABASE_HOST=commented.out
+            DATABASE_DB=app_db
+            DATABASE_HOST=db.internal
+            DATABASE_PORT=3307
+            DATABASE_USER="app_user"
+            DATABASE_PASSWORD='s3cr3t'
+            ENV;
+
+        $result = Extractors::symfonyFromEnvVariables($content);
+
+        self::assertSame('app_db', $result['name']);
+        self::assertSame('db.internal', $result['host']);
+        self::assertSame('3307', $result['port']);
+        self::assertSame('app_user', $result['user']);
+        self::assertSame('s3cr3t', $result['password']);
+    }
+
+    #[Test]
+    public function symfonyFromEnvVariablesDefaultsThePortAndLeavesMissingFieldsEmpty(): void
+    {
+        $result = Extractors::symfonyFromEnvVariables("DATABASE_DB=only_db\n");
+
+        self::assertSame('only_db', $result['name']);
+        self::assertSame('', $result['host']);
+        self::assertSame('3306', $result['port']);
+    }
+
+    #[Test]
     public function symfonyFromParameters(): void
     {
         $content = <<<'YAML'
