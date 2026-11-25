@@ -70,22 +70,22 @@ final class PostgresDriverTest extends TestCase
     }
 
     #[Test]
-    public function importsAGzippedDumpThroughPsqlAndStopsOnTheFirstError(): void
+    public function importsAGzippedDumpInOneTransactionAndStopsOnTheFirstError(): void
     {
         self::assertSame(
             'sync_status=$( { { gunzip -c /tmp/app.sql.gz; echo $? >&3; } | PGPASSFILE=/tmp/.pgpass_ab12 psql '
-            .'-v ON_ERROR_STOP=1 -q -h db -p 5432 -U u -d app > /dev/null; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
+            .'-v ON_ERROR_STOP=1 --single-transaction -q -h db -p 5432 -U u -d app > /dev/null; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
             $this->driver->importCommand($this->db(), '/tmp/.pgpass_ab12', '/tmp/app.sql.gz'),
         );
     }
 
     #[Test]
-    public function importsAPlainDumpByRedirection(): void
+    public function importsAPlainDumpByRedirectionInOneTransaction(): void
     {
-        self::assertStringEndsWith(
-            ' -d app < /tmp/app.sql',
-            $this->driver->importCommand($this->db(), '/tmp/.pgpass_ab12', '/tmp/app.sql'),
-        );
+        $command = $this->driver->importCommand($this->db(), '/tmp/.pgpass_ab12', '/tmp/app.sql');
+
+        self::assertStringContainsString(' --single-transaction ', $command);
+        self::assertStringEndsWith(' -d app < /tmp/app.sql', $command);
     }
 
     #[Test]

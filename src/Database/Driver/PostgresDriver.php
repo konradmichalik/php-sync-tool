@@ -78,7 +78,7 @@ final readonly class PostgresDriver implements DatabaseDriver
 
     public function importCommand(DatabaseConfig $db, string $credentialsPath, string $filepath): string
     {
-        $psql = $this->environment($credentialsPath).$this->binaries->client.' -v ON_ERROR_STOP=1 -q'.$this->connection($db);
+        $psql = $this->environment($credentialsPath).$this->binaries->client.' -v ON_ERROR_STOP=1 --single-transaction -q'.$this->connection($db);
         $safeFilepath = Shell::quote($filepath);
 
         if (str_ends_with($filepath, '.gz')) {

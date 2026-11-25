@@ -68,7 +68,7 @@ command line and is masked in every log line.
 | Behavior | MySQL | PostgreSQL |
 |----------|-------|------------|
 | Dump | `mysqldump … \| gzip` | `pg_dump --no-owner --no-privileges --clean --if-exists … \| gzip` |
-| Import | `gunzip -c … \| mysql` | `gunzip -c … \| psql -v ON_ERROR_STOP=1` |
+| Import | `gunzip -c … \| mysql` | `gunzip -c … \| psql -v ON_ERROR_STOP=1 --single-transaction` |
 | `clear_database` | `DROP TABLE` per table, foreign-key checks disabled | one `DROP TABLE IF EXISTS … CASCADE` |
 | `truncate_table` | `TRUNCATE TABLE`, foreign-key checks disabled | `TRUNCATE TABLE … RESTART IDENTITY CASCADE` |
 | Table listing | `SHOW TABLES` | `pg_tables` in schema `public` |
@@ -76,6 +76,12 @@ command line and is masked in every log line.
 The dump carries `--clean --if-exists`, so an import drops and recreates the
 objects it contains. That makes a re-import idempotent and makes
 `clear_database` unnecessary for most PostgreSQL setups.
+
+The import runs in a single transaction, so a failing statement rolls the whole
+import back and leaves the target database as it was. An `after_dump` file or
+imported dump with its own `BEGIN`/`COMMIT`, or with statements that cannot run in
+a transaction such as `CREATE INDEX CONCURRENTLY`, fails or ends that transaction
+early.
 
 Only the `public` schema is considered when tables are listed for
 `clear_database` or for a wildcard in `ignore_table`. Table names are treated as
