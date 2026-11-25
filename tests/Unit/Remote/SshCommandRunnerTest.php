@@ -96,6 +96,23 @@ final class SshCommandRunnerTest extends TestCase
     }
 
     #[Test]
+    public function aCommandKilledBySignalThrowsUnlessAllowed(): void
+    {
+        $ssh = $this->createStub(SSH2::class);
+        $ssh->method('exec')->willReturn('partial output');
+        $ssh->method('getExitStatus')->willReturn(false);
+
+        $runner = new SshCommandRunner($ssh);
+
+        self::assertSame('partial output', $runner->run('kill -9 $$', true));
+
+        $this->expectException(SyncException::class);
+        $this->expectExceptionMessage('ended without an exit status');
+
+        $runner->run('kill -9 $$');
+    }
+
+    #[Test]
     public function nonZeroExitStatusThrows(): void
     {
         $ssh = $this->createStub(SSH2::class);

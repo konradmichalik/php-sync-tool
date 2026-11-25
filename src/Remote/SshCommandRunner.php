@@ -63,7 +63,13 @@ final readonly class SshCommandRunner implements CommandRunner
         }
 
         $exitStatus = $this->ssh->getExitStatus();
-        if (!$allowFail && is_int($exitStatus) && 0 !== $exitStatus) {
+        // A signal-killed remote shell sends exit-signal instead of exit-status,
+        // which phpseclib reports as false, as it does for a server sending none.
+        if (!$allowFail && !is_int($exitStatus)) {
+            throw $this->failure('Remote command ended without an exit status', $command);
+        }
+
+        if (!$allowFail && 0 !== $exitStatus) {
             throw $this->failure(sprintf('Remote command exited with status %d', $exitStatus), $command);
         }
 
