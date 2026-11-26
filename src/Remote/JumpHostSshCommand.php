@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace KonradMichalik\SyncTool\Remote;
 
 use KonradMichalik\SyncTool\Config\{ClientConfig, JumpHostConfig};
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 
 use function escapeshellarg;
 use function implode;
@@ -27,7 +28,7 @@ use function sprintf;
  */
 final class JumpHostSshCommand
 {
-    public function build(ClientConfig $client, JumpHostConfig $jump, string $remoteCommand): string
+    public function build(ClientConfig $client, JumpHostConfig $jump, string $remoteCommand, HostKeyCheckingMode $hostKeyChecking): string
     {
         $parts = ['ssh', '-J '.escapeshellarg($jump->sshSpec())];
 
@@ -36,6 +37,11 @@ final class JumpHostSshCommand
         }
 
         $parts[] = '-p '.$client->port;
+        $parts[] = '-o StrictHostKeyChecking='.match ($hostKeyChecking) {
+            HostKeyCheckingMode::Strict => 'yes',
+            HostKeyCheckingMode::Off => 'no',
+            HostKeyCheckingMode::AcceptNew => 'accept-new',
+        };
         // Drops a silently dead connection after two minutes instead of hanging.
         $parts[] = '-o ServerAliveInterval=30 -o ServerAliveCountMax=4';
         $parts[] = escapeshellarg(sprintf('%s@%s', $client->user, $client->host));

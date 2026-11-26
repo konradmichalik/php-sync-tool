@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Remote;
 
 use Closure;
 use KonradMichalik\SyncTool\Config\{ClientConfig, JumpHostConfig};
+use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 
 /**
  * SystemSshCommandRunner.
@@ -27,12 +28,13 @@ final readonly class SystemSshCommandRunner implements CommandRunner
     public function __construct(
         private ClientConfig $client,
         private JumpHostConfig $jump,
+        private HostKeyCheckingMode $hostKeyChecking,
         private JumpHostSshCommand $builder = new JumpHostSshCommand(),
         private LocalCommandRunner $local = new LocalCommandRunner(),
     ) {}
 
     public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {
-        return $this->local->run($this->builder->build($this->client, $this->jump, $command), $allowFail, $onOutput);
+        return $this->local->run($this->builder->build($this->client, $this->jump, $command, $this->hostKeyChecking), $allowFail, $onOutput);
     }
 }

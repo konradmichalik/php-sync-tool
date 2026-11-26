@@ -137,9 +137,17 @@ ssh-keyscan -H prod.example.com >> ~/.ssh/known_hosts
 ssh deploy@prod.example.com
 ```
 
-This applies to both channels a sync uses: the SSH connection that runs commands
-and the `rsync` connection that moves the dump and any files. Both consult the
-same `~/.ssh/known_hosts` and both follow the setting below.
+This applies to every channel a sync uses: the SSH connection that runs commands
+(through a [jump host](/configuration/advanced#jump-host) it is the system
+`ssh`) and the `rsync` connection that moves the dump and any files. All of
+them consult the same `~/.ssh/known_hosts` and follow the setting below.
+
+::: warning
+Through a jump host the setting applies to the target host only. OpenSSH starts
+the hop to the bastion as a separate `ssh` process that does not inherit `-o`
+options, so the bastion's host key is checked by your own SSH configuration
+(`~/.ssh/config`), not by this setting.
+:::
 
 For controlled environments (e.g. ephemeral CI containers or DDEV) where
 maintaining `known_hosts` ahead of time is impractical, but key-rotation
