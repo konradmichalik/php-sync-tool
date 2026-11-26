@@ -202,6 +202,18 @@ final class PostgresDriverTest extends TestCase
     }
 
     #[Test]
+    public function aSaltIsConcatenatedBeforeHashingAsAHexLiteral(): void
+    {
+        self::assertSame([
+            "UPDATE fe_users SET email = md5(convert_from(decode('706527705c706572', 'hex'), 'UTF8') || email) || '@example.invalid';",
+            "UPDATE fe_users SET password = md5(convert_from(decode('706527705c706572', 'hex'), 'UTF8') || password);",
+        ], $this->driver->anonymizeStatements([
+            new AnonymizationRule('fe_users', 'email', AnonymizationStrategy::Email),
+            new AnonymizationRule('fe_users', 'password', AnonymizationStrategy::Hash),
+        ], "pe'p\\per"));
+    }
+
+    #[Test]
     public function buildsADeterministicFakeNameLookupFromTheExistingValue(): void
     {
         $statements = $this->driver->anonymizeStatements([

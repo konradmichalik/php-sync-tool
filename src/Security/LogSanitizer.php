@@ -40,6 +40,9 @@ final class LogSanitizer
         ['~--defaults-file=[^\s]+~', '--defaults-file=***'],
         ['~--defaults-extra-file=[^\s]+~', '--defaults-extra-file=***'],
         ["~echo '[A-Za-z0-9+/=]{20,}' \\| base64~", "echo '***' | base64"],
+        // The anonymization salt, which the drivers embed as a hex literal.
+        ['~CONVERT\(UNHEX\([^)]*\) USING utf8mb4\)~i', 'CONVERT(***)'],
+        ['~convert_from\(decode\([^)]*\)[^)]*\)~i', 'convert_from(***)'],
     ];
 
     public static function sanitize(string $command): string

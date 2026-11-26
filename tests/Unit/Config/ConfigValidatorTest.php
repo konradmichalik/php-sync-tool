@@ -230,6 +230,40 @@ final class ConfigValidatorTest extends TestCase
     }
 
     #[Test]
+    public function acceptsAnAnonymizationSaltOnTheTarget(): void
+    {
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app'], 'anonymize_salt' => 'pepper', 'anonymize' => ['fe_users' => ['email' => 'email']]],
+        ]);
+
+        $this->addToAssertionCount(1);
+    }
+
+    #[Test]
+    public function rejectsAnonymizationSaltOnTheOrigin(): void
+    {
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessageMatches('#only supported on the target#');
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app'], 'anonymize_salt' => 'pepper'],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app']],
+        ]);
+    }
+
+    #[Test]
+    public function rejectsAnonymizationSaltThatIsNotAString(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        (new ConfigValidator())->validate([
+            'origin' => ['path' => '/o', 'db' => ['name' => 'app']],
+            'target' => ['path' => '/t', 'db' => ['name' => 'app'], 'anonymize_salt' => ['pepper']],
+        ]);
+    }
+
+    #[Test]
     public function rejectsAnonymizationOnTheOrigin(): void
     {
         $this->expectException(ValidationException::class);

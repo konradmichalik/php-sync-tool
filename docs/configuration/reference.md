@@ -69,6 +69,7 @@ Both `origin` and `target` accept the same structure:
 | `db` | object | Manual database credentials (see [Database Object](#database-object)). |
 | `jump_host` | object | SSH jump host (see [Jump Host Object](#jump-host-object)). |
 | `anonymize` | object | Masking rules per table and column, target only (see [Data Anonymization](/configuration/anonymization)). |
+| `anonymize_salt` | string | Salt concatenated before hashing in the `hash` and `email` strategies, target only (see [Data Anonymization](/configuration/anonymization#pseudonymization-and-the-salt)). |
 
 ### Database Object
 

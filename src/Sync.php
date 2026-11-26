@@ -468,7 +468,7 @@ final readonly class Sync
      */
     private function anonymizeData(ClientConfig $client, CommandRunner $runner, DatabaseDriver $driver, string $credentialsPath): void
     {
-        $statements = $driver->anonymizeStatements($client->anonymize);
+        $statements = $driver->anonymizeStatements($client->anonymize, $client->anonymizeSalt);
 
         if ([] === $statements) {
             return;

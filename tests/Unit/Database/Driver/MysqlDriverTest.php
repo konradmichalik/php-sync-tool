@@ -190,6 +190,22 @@ final class MysqlDriverTest extends TestCase
         ], $statements);
     }
 
+    /**
+     * The salt travels as hex, so quotes, backslashes and the server's sql_mode
+     * cannot change it, and a log can mask it with one fixed pattern.
+     */
+    #[Test]
+    public function aSaltIsConcatenatedBeforeHashingAsAHexLiteral(): void
+    {
+        self::assertSame([
+            "UPDATE `fe_users` SET `email` = CONCAT(MD5(CONCAT(CONVERT(UNHEX('706527705c706572') USING utf8mb4), `email`)), '@example.invalid');",
+            "UPDATE `fe_users` SET `password` = MD5(CONCAT(CONVERT(UNHEX('706527705c706572') USING utf8mb4), `password`));",
+        ], $this->driver->anonymizeStatements([
+            new AnonymizationRule('fe_users', 'email', AnonymizationStrategy::Email),
+            new AnonymizationRule('fe_users', 'password', AnonymizationStrategy::Hash),
+        ], "pe'p\\per"));
+    }
+
     #[Test]
     public function buildsADeterministicFakeNameLookupFromTheExistingValue(): void
     {

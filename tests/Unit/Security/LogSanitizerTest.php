@@ -110,6 +110,24 @@ final class LogSanitizerTest extends TestCase
     }
 
     #[Test]
+    public function aMysqlSaltHexLiteralIsMasked(): void
+    {
+        $result = LogSanitizer::sanitize("mysql -e 'UPDATE t SET c = MD5(CONCAT(CONVERT(UNHEX('\"'\"'697427'\"'\"') USING utf8mb4), c));'");
+
+        self::assertStringNotContainsString('697427', $result);
+        self::assertStringContainsString('UPDATE t SET c = MD5(CONCAT(CONVERT(***), c));', $result);
+    }
+
+    #[Test]
+    public function aPostgresSaltHexLiteralIsMasked(): void
+    {
+        $result = LogSanitizer::sanitize("psql -c \"UPDATE t SET c = md5(convert_from(decode('697427', 'hex'), 'UTF8') || c);\"");
+
+        self::assertStringNotContainsString('697427', $result);
+        self::assertStringContainsString('UPDATE t SET c = md5(convert_from(***) || c);', $result);
+    }
+
+    #[Test]
     public function commandsWithoutCredentialsAreUnchanged(): void
     {
         $command = 'ls -la /var/www';

@@ -104,6 +104,7 @@ final class ConfigValidator
             },
             "script": %SCRIPT%,
             "scripts": %SCRIPT%,
+            "anonymize_salt": {"type": "string"},
             "anonymize": {
                 "type": "object",
                 "properties": {
@@ -231,8 +232,8 @@ final class ConfigValidator
         foreach (['origin', 'local'] as $key) {
             $endpoint = $config[$key] ?? null;
 
-            if (is_array($endpoint) && [] !== ($endpoint['anonymize'] ?? [])) {
-                throw new ValidationException(sprintf('Configuration validation failed: "anonymize" is only supported on the target, not on the %s', $key));
+            if (is_array($endpoint) && ([] !== ($endpoint['anonymize'] ?? []) || '' !== ($endpoint['anonymize_salt'] ?? ''))) {
+                throw new ValidationException(sprintf('Configuration validation failed: "anonymize" and "anonymize_salt" are only supported on the target, not on the %s', $key));
             }
         }
     }

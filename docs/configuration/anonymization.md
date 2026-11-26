@@ -66,6 +66,29 @@ always lands in `555-0100`–`555-0199`, the line-number range the North
 American Numbering Plan reserves for fiction — unlike the rest of the `555`
 exchange, guaranteed never assigned to a real subscriber.
 
+## Pseudonymization and the salt
+
+`hash` and `email` store an unsalted MD5 of the previous value. The same value
+always gives the same result, which keeps joins and screenshots stable, but for
+low-entropy values such as e-mail addresses a word list recovers the original.
+Treat the masked copy as pseudonymized data, not as anonymous.
+
+An `anonymize_salt` on the target is concatenated before hashing:
+
+```yaml
+target:
+  anonymize_salt: a-long-random-string
+  anonymize:
+    fe_users:
+      email: email
+```
+
+The same salt gives the same output, so a run stays comparable with the last one,
+while a word list alone no longer works. Keep the salt out of the masked copy and
+treat it like a secret. It is sent to the database as a hex literal and masked
+in the log and in error messages, but it is not hidden from the process list of
+the machine that runs the masking statement, where it is easy to decode.
+
 ## Presets
 
 Every TYPO3 project ends up masking the same handful of `fe_users`/`be_users`

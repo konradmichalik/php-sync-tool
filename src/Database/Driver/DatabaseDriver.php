@@ -90,10 +90,11 @@ interface DatabaseDriver
      * One UPDATE statement per masking rule, in the dialect of this system.
      *
      * @param list<AnonymizationRule> $rules
+     * @param string                  $salt  concatenated before hashing in `hash` and `email`, so a word list alone no longer recovers the values
      *
      * @return list<string>
      */
-    public function anonymizeStatements(array $rules): array;
+    public function anonymizeStatements(array $rules, string $salt = ''): array;
 
     /**
      * Configured features this driver cannot express, named as their config keys.
