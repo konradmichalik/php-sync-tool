@@ -146,6 +146,36 @@ final class Extractors
     }
 
     /**
+     * Symfony .env without a DATABASE_URL: the individual DATABASE_* variables
+     * that a project wires into Doctrine field by field. No driver is named, so
+     * the system defaults to MySQL.
+     *
+     * @return array{name: string, host: string, user: string, password: string, port: string, db_type: string}
+     */
+    public static function symfonyFromEnvVariables(string $content): array
+    {
+        return [
+            'name' => self::envValue($content, 'DATABASE_DB'),
+            'host' => self::envValue($content, 'DATABASE_HOST'),
+            'user' => self::envValue($content, 'DATABASE_USER'),
+            'password' => self::envValue($content, 'DATABASE_PASSWORD'),
+            'port' => self::withPortDefault(self::envValue($content, 'DATABASE_PORT')),
+            'db_type' => '',
+        ];
+    }
+
+    /**
+     * The APP_ENV of a Symfony dotenv file. It names a file next to it, so anything
+     * but a plain name counts as unset.
+     */
+    public static function symfonyAppEnv(string $content): string
+    {
+        $env = self::envValue($content, 'APP_ENV');
+
+        return 1 === preg_match('/^[A-Za-z0-9_-]+$/', $env) ? $env : '';
+    }
+
+    /**
      * Symfony parameters.yml (<=2.8): database_* parameters.
      *
      * @return array{name: string, host: string, user: string, password: string, port: string}
