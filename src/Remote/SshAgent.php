@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Remote;
 
+use KonradMichalik\SyncTool\Exception\InterruptedException;
 use phpseclib3\System\SSH\Agent;
 use Throwable;
 
@@ -39,6 +40,8 @@ class SshAgent
     {
         try {
             return [] !== (new Agent())->requestIdentities();
+        } catch (InterruptedException $interrupted) {
+            throw $interrupted;
         } catch (Throwable) {
             return false;
         }

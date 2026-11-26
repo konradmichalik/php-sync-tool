@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Update;
 
+use KonradMichalik\SyncTool\Exception\InterruptedException;
 use Throwable;
 
 use function array_keys;
@@ -66,6 +67,8 @@ final class PackagistVersionSource implements PackageVersionSource
             }
 
             return array_keys($data['package']['versions']);
+        } catch (InterruptedException $interrupted) {
+            throw $interrupted;
         } catch (Throwable) {
             // Offline, DNS failure, a timeout, or a response that isn't the
             // JSON we expect: all the same "we don't know" to the caller.
