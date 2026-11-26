@@ -55,6 +55,10 @@ use function sprintf;
 #[AsCommand(name: 'sync', description: 'Synchronize a database (and optionally files) between systems.')]
 class SyncCommand extends Command implements SignalableCommandInterface
 {
+    // The POSIX numbers, so the optional pcntl extension is not a hard requirement of the package.
+    private const SIGINT = 2;
+    private const SIGTERM = 15;
+
     protected readonly EnvironmentAssembler $environments;
     private bool $interrupted = false;
 
@@ -80,7 +84,7 @@ class SyncCommand extends Command implements SignalableCommandInterface
      */
     public function getSubscribedSignals(): array
     {
-        return function_exists('pcntl_signal') ? [\SIGINT, \SIGTERM] : [];
+        return function_exists('pcntl_signal') ? [self::SIGINT, self::SIGTERM] : [];
     }
 
     /**
@@ -96,7 +100,7 @@ class SyncCommand extends Command implements SignalableCommandInterface
 
         $this->interrupted = true;
 
-        throw new InterruptedException(sprintf('Interrupted by %s', \SIGINT === $signal ? 'SIGINT' : 'SIGTERM'));
+        throw new InterruptedException(sprintf('Interrupted by %s', self::SIGINT === $signal ? 'SIGINT' : 'SIGTERM'));
     }
 
     protected function configure(): void
