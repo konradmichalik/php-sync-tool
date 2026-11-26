@@ -18,10 +18,12 @@ use KonradMichalik\SyncTool\Enum\HostKeyCheckingMode;
 use KonradMichalik\SyncTool\Exception\SyncException;
 use phpseclib3\Crypt\Common\PrivateKey;
 use phpseclib3\Crypt\PublicKeyLoader;
+use phpseclib3\Exception\NoSupportedAlgorithmsException;
 use phpseclib3\Net\{SFTP, SSH2};
 use phpseclib3\System\SSH\Agent;
 use Throwable;
 
+use function implode;
 use function sprintf;
 
 /**
@@ -62,7 +64,18 @@ final readonly class SshClientFactory
     {
         $ssh->setKeepAlive($this->keepAlive);
 
-        $serverKey = $ssh->getServerPublicHostKey();
+        // A host known by one key type that presents another would read as unknown and be trusted anew.
+        $known = $this->knownHosts->hostKeyAlgorithms($client->host, $client->port);
+        if ([] !== $known) {
+            $ssh->setPreferredAlgorithms(['hostkey' => $known]);
+        }
+
+        try {
+            $serverKey = $ssh->getServerPublicHostKey();
+        } catch (NoSupportedAlgorithmsException $exception) {
+            throw [] === $known ? $exception : new SyncException(sprintf('%s does not offer the host key type stored in known_hosts (%s). If its key changed on purpose, remove the old entry from known_hosts.', $client->host, implode(', ', $known)), 0, $exception);
+        }
+
         if (false === $serverKey) {
             throw new SyncException(sprintf('Could not retrieve the host key from %s', $client->host));
         }

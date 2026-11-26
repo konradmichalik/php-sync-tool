@@ -163,6 +163,12 @@ is trusted and its key is written to `~/.ssh/known_hosts` automatically, then
 verified against that entry on every later connection exactly like `true`
 would. A host whose key changes afterwards still fails verification.
 
+Like OpenSSH, the tool asks a host for the key types already stored for it. A
+host known by its RSA key is therefore verified against that key even though it
+also offers an ed25519 one, and no second key is added. If the server stopped
+offering the stored type, the connection fails: remove the old entry from
+`known_hosts` to accept the new key.
+
 Where even that is unwanted, verification can be disabled entirely:
 
 ```yaml
