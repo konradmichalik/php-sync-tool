@@ -16,6 +16,7 @@ namespace KonradMichalik\SyncTool\Database;
 use KonradMichalik\SyncTool\Config\DatabaseConfig;
 use KonradMichalik\SyncTool\Database\Driver\DatabaseDriver;
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
+use KonradMichalik\SyncTool\Exception\InterruptedException;
 use KonradMichalik\SyncTool\Remote\CommandRunner;
 use KonradMichalik\SyncTool\Security\Shell;
 use KonradMichalik\SyncTool\Util\Pure;
@@ -78,6 +79,8 @@ final readonly class ServerProbe
     {
         try {
             $output = $runner->run($driver->execCommand($db, $credentialsPath, $driver->versionQuery()), true);
+        } catch (InterruptedException $interrupted) {
+            throw $interrupted;
         } catch (Throwable) {
             return null;
         }

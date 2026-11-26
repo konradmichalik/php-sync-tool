@@ -13,10 +13,13 @@ declare(strict_types=1);
 
 namespace KonradMichalik\SyncTool\Tests\Unit\Database;
 
+use Closure;
 use KonradMichalik\SyncTool\Config\DatabaseConfig;
 use KonradMichalik\SyncTool\Database\Driver\{MysqlDriver, PostgresDriver};
 use KonradMichalik\SyncTool\Database\ServerProbe;
 use KonradMichalik\SyncTool\Enum\DatabaseSystem;
+use KonradMichalik\SyncTool\Exception\InterruptedException;
+use KonradMichalik\SyncTool\Remote\CommandRunner;
 use KonradMichalik\SyncTool\Tests\Fixture\RecordingCommandRunner;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -138,6 +141,26 @@ final class ServerProbeTest extends TestCase
     public function describesMysqlByTheDriversName(): void
     {
         self::assertSame('MySQL 8.0.36', (new ServerProbe())->describe(DatabaseSystem::MySQL, '8.0.36'));
+    }
+
+    /**
+     * The probe swallows every failure because its answer only refines a command.
+     * An interrupt is not a failure to read a version, and swallowing it would let
+     * the run go on into the dump and the import.
+     */
+    #[Test]
+    public function anInterruptIsNotSwallowedAsAFailedProbe(): void
+    {
+        $runner = new class implements CommandRunner {
+            public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
+            {
+                throw new InterruptedException('Interrupted by SIGINT');
+            }
+        };
+
+        $this->expectException(InterruptedException::class);
+
+        (new ServerProbe())->version(new MysqlDriver(), new DatabaseConfig(name: 'app'), '/tmp/.my_x.cnf', $runner);
     }
 
     private function version(string $output): ?string

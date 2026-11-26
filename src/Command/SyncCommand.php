@@ -17,7 +17,7 @@ use Closure;
 use KonradMichalik\SyncTool\{Application, Sync};
 use KonradMichalik\SyncTool\Config\{ConfigLoader, ConfigResolver, ConfigValidator, EnvironmentAssembler, SyncConfig};
 use KonradMichalik\SyncTool\Enum\{LogChannel, OutputMode};
-use KonradMichalik\SyncTool\Exception\{ConfigException, SyncToolException};
+use KonradMichalik\SyncTool\Exception\{ConfigException, InterruptedException, SyncToolException};
 use KonradMichalik\SyncTool\Logging\LogWriter;
 use KonradMichalik\SyncTool\Mode\{SyncModeResolver, SyncPlan, SyncSteps};
 use KonradMichalik\SyncTool\Output\ConsoleReporter;
@@ -25,7 +25,7 @@ use KonradMichalik\SyncTool\Output\Progress\NullSyncProgress;
 use KonradMichalik\SyncTool\Remote\{RunnerFactory, SshAuthResolver};
 use KonradMichalik\SyncTool\Update\UpdateChecker;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Command\{Command, SignalableCommandInterface};
 use Symfony\Component\Console\Exception\MissingInputException;
 use Symfony\Component\Console\Input\{InputArgument, InputInterface, InputOption, StreamableInputInterface};
 use Symfony\Component\Console\Output\OutputInterface;
@@ -37,6 +37,7 @@ use function array_key_exists;
 use function array_key_first;
 use function array_keys;
 use function defined;
+use function function_exists;
 use function is_array;
 use function is_string;
 use function sprintf;
@@ -52,9 +53,10 @@ use function sprintf;
  * @license GPL-3.0-or-later
  */
 #[AsCommand(name: 'sync', description: 'Synchronize a database (and optionally files) between systems.')]
-class SyncCommand extends Command
+class SyncCommand extends Command implements SignalableCommandInterface
 {
     protected readonly EnvironmentAssembler $environments;
+    private bool $interrupted = false;
 
     public function __construct(
         protected readonly ConfigResolver $resolver = new ConfigResolver(),
@@ -68,6 +70,33 @@ class SyncCommand extends Command
     ) {
         $this->environments = $environments ?? new EnvironmentAssembler($resolver);
         parent::__construct();
+    }
+
+    /**
+     * Without pcntl the application has no signal registry, and subscribing to a
+     * signal anyway makes it throw.
+     *
+     * @return list<int>
+     */
+    public function getSubscribedSignals(): array
+    {
+        return function_exists('pcntl_signal') ? [\SIGINT, \SIGTERM] : [];
+    }
+
+    /**
+     * PHP does not unwind on a signal, so the `finally` blocks that remove
+     * credential files and staging data only run when the signal becomes an
+     * exception. A second signal is the user insisting and ends the run at once.
+     */
+    public function handleSignal(int $signal, int|false $previousExitCode = 0): int|false
+    {
+        if ($this->interrupted) {
+            return 128 + $signal;
+        }
+
+        $this->interrupted = true;
+
+        throw new InterruptedException(sprintf('Interrupted by %s', \SIGINT === $signal ? 'SIGINT' : 'SIGTERM'));
     }
 
     protected function configure(): void
