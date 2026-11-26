@@ -72,7 +72,7 @@ final readonly class PostgresDriver implements DatabaseDriver
                 .$this->binaries->dump.' --no-owner --no-privileges --clean --if-exists'
                 .$this->connection($request->db)
                 .$tables,
-            'gzip > '.Shell::quote($request->dumpFilePath.'.gz'),
+            Shell::underPrivateUmask('gzip > '.Shell::quote($request->dumpFilePath.'.gz')),
         );
     }
 

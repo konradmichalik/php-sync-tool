@@ -48,7 +48,7 @@ final class PostgresDriverTest extends TestCase
 
         self::assertSame(
             'sync_status=$( { { PGPASSFILE=/tmp/.pgpass_ab12 pg_dump --no-owner --no-privileges --clean --if-exists'
-            .' -h db -p 5432 -U u -d app; echo $? >&3; } | gzip > /tmp/app.sql.gz; } 3>&1 ) '
+            .' -h db -p 5432 -U u -d app; echo $? >&3; } | (umask 077 && gzip > /tmp/app.sql.gz); } 3>&1 ) '
             .'&& [ "$sync_status" -eq 0 ]',
             $command,
         );

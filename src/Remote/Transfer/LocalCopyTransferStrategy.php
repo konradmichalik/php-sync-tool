@@ -18,6 +18,7 @@ use KonradMichalik\SyncTool\Config\SyncConfig;
 use KonradMichalik\SyncTool\Enum\LogChannel;
 use KonradMichalik\SyncTool\Exception\SyncException;
 use KonradMichalik\SyncTool\Remote\RunnerFactory;
+use KonradMichalik\SyncTool\Security\Shell;
 
 use function escapeshellarg;
 use function sprintf;
@@ -59,11 +60,11 @@ final readonly class LocalCopyTransferStrategy implements TransferStrategy
             throw new SyncException('Synchronizing files between two local paths needs rsync. Install rsync, or drop --with-files/--files-only to sync the database only.');
         }
 
-        $command = sprintf(
+        $command = Shell::underPrivateUmask(sprintf(
             'cp -- %s %s',
             escapeshellarg($payload->originPath),
             escapeshellarg($payload->targetPath),
-        );
+        ));
 
         ($this->log)('  $ '.$command, LogChannel::Command);
 

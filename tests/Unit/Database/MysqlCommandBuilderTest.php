@@ -92,7 +92,7 @@ final class MysqlCommandBuilderTest extends TestCase
         self::assertSame(
             'sync_status=$( { { mysqldump --defaults-extra-file=/tmp/.my_x.cnf --single-transaction --quick --extended-insert '
             .'--no-tablespaces mydb --ignore-table=mydb.cache users orders; echo $? >&3; } '
-            .'| gzip > /tmp/_mydb_2026.sql.gz; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
+            .'| (umask 077 && gzip > /tmp/_mydb_2026.sql.gz); } 3>&1 ) && [ "$sync_status" -eq 0 ]',
             $command,
         );
     }

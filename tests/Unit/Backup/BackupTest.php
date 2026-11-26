@@ -33,7 +33,21 @@ final class BackupTest extends TestCase
         $config = new SyncConfig(origin: new ClientConfig(db: new DatabaseConfig(name: 'project')));
         $name = (new DumpFileNamer())->generate($config, new DateTimeImmutable('2026-06-29 12:37:00'));
 
-        self::assertSame('sync-tool_project_2026-06-29_12-37-00.sql', $name);
+        self::assertMatchesRegularExpression('/^sync-tool_project_2026-06-29_12-37-00_[0-9a-f]{8}\.sql$/', $name);
+    }
+
+    /**
+     * The name used to be predictable down to the second, so another local user
+     * could guess it in a shared dump directory such as /tmp.
+     */
+    #[Test]
+    public function dumpFileNamerAddsARandomSuffix(): void
+    {
+        $config = new SyncConfig(origin: new ClientConfig(db: new DatabaseConfig(name: 'project')));
+        $namer = new DumpFileNamer();
+        $now = new DateTimeImmutable('2026-06-29 12:37:00');
+
+        self::assertNotSame($namer->generate($config, $now), $namer->generate($config, $now));
     }
 
     /**

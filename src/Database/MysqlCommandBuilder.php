@@ -90,7 +90,7 @@ final class MysqlCommandBuilder
             $mysqldumpBin.' '.$credentialsArg.' '
                 .$options.Shell::quote($dbName).' '
                 .$ignoreOptions.$safeTables,
-            $gzipBin.' > '.Shell::quote($dumpFilePath.'.gz'),
+            Shell::underPrivateUmask($gzipBin.' > '.Shell::quote($dumpFilePath.'.gz')),
         );
     }
 

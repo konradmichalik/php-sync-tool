@@ -182,8 +182,12 @@ target:
 
 ## Dump Files and Retention
 
-Generated dumps are named `sync-tool_<database>_<YYYY-MM-DD_HH-MM-SS>.sql.gz`.
-Two things follow from that name:
+Generated dumps are named `sync-tool_<database>_<YYYY-MM-DD_HH-MM-SS>_<random>.sql.gz`
+and are created with mode `600`. A copy moved by rsync keeps the group read and
+write bits (`660`), and nobody else gets access. After a successful import the
+dump is removed from both endpoints, unless that endpoint sets `keep_dumps` or
+the sync runs with `keep_dump`. A failed import leaves it in place. Three things
+follow from the name and the lifetime:
 
 - **`keep_dumps` only ever deletes dumps the tool wrote itself.** Retention globs
   on the `sync-tool_` prefix, so other `.sql` and `.gz` files in `dump_dir` are
@@ -194,8 +198,8 @@ Two things follow from that name:
 - **Retention goes by modification time**, not by the name, so a restored or
   re-transferred dump counts as recent.
 
-The timestamp is precise to the second, so repeated runs within the same minute
-produce distinct files instead of overwriting each other.
+The timestamp and the random part keep repeated runs from overwriting each
+other, and keep the name unguessable in a shared directory.
 
 A log file that `log_file` points at is created with owner-only permissions
 (`0600`), because it records the hosts, users, databases and commands of the run.

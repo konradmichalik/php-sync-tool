@@ -25,6 +25,8 @@ use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, Plans, RecordingCo
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function array_filter;
+use function count;
 use function sprintf;
 
 /**
@@ -177,6 +179,65 @@ final class SyncTest extends TestCase
 
         self::assertFalse($recorder->ran('mysqldump --defaults-extra-file'), 'import mode never dumps origin');
         self::assertTrue($recorder->ran('/backups/manual.sql.gz'), 'imports the provided file');
+    }
+
+    #[Test]
+    public function aSuccessfulSyncRemovesTheDumpFromBothEndpoints(): void
+    {
+        $recorder = $this->runSync($this->localConfig(), Plans::syncLocal());
+
+        self::assertSame(2, $this->countCommands($recorder, "rm -f '/tmp/sync-tool_"), 'one removal per endpoint');
+    }
+
+    #[Test]
+    public function aFailedImportLeavesTheDumpForInspection(): void
+    {
+        $recorder = new RecordingCommandRunner(self::DEFAULT_RESPONSES, throwOn: '| mysql');
+
+        try {
+            $this->syncWith($recorder)->run($this->localConfig(), Plans::syncLocal());
+        } catch (SyncException) {
+        }
+
+        self::assertSame(0, $this->countCommands($recorder, "rm -f '/tmp/sync-tool_"));
+    }
+
+    #[Test]
+    public function keepDumpsRetentionReplacesTheRemovalOnThatEndpoint(): void
+    {
+        $config = $this->localConfig([
+            'origin' => ['path' => '/o', 'dump_dir' => '/var/origin/', 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+            'target' => ['path' => '/t', 'keep_dumps' => 3, 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']],
+        ]);
+
+        $recorder = $this->runSync($config, Plans::syncLocal());
+
+        self::assertSame(1, $this->countCommands($recorder, "rm -f '/var/origin/sync-tool_"), 'the origin dump is removed');
+        self::assertSame(0, $this->countCommands($recorder, "rm -f '/tmp/sync-tool_"), 'the target keeps its dump');
+    }
+
+    #[Test]
+    public function aDumpSharedByBothEndpointsStaysWhenEitherKeepsIt(): void
+    {
+        $config = $this->localConfig(['target' => ['path' => '/t', 'keep_dumps' => 3, 'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p']]]);
+
+        $recorder = $this->runSync($config, Plans::syncLocal());
+
+        self::assertSame(0, $this->countCommands($recorder, "rm -f '/tmp/sync-tool_"), 'both endpoints name the same file');
+    }
+
+    #[Test]
+    public function anImportFileIsNeverRemoved(): void
+    {
+        $config = SyncConfig::fromArray([
+            'import' => '/backups/manual.sql.gz',
+            'origin' => ['path' => '/var/www', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www2', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+
+        $recorder = $this->runSync($config, Plans::importLocal());
+
+        self::assertSame(0, $this->countCommands($recorder, 'rm -f'), 'the file the user supplied stays');
     }
 
     #[Test]
@@ -777,6 +838,11 @@ final class SyncTest extends TestCase
         $recorder = $this->runSync($this->localConfig(), Plans::syncLocal());
 
         self::assertFalse($recorder->ran('CONCAT(MD5('));
+    }
+
+    private function countCommands(RecordingCommandRunner $recorder, string $needle): int
+    {
+        return count(array_filter($recorder->commands, static fn (string $command): bool => str_contains($command, $needle)));
     }
 
     private function indexOfCommand(RecordingCommandRunner $recorder, string $needle): int
