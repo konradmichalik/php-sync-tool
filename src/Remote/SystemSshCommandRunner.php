@@ -29,12 +29,13 @@ final readonly class SystemSshCommandRunner implements CommandRunner
         private ClientConfig $client,
         private JumpHostConfig $jump,
         private HostKeyCheckingMode $hostKeyChecking,
+        private ?string $controlDirectory,
         private JumpHostSshCommand $builder = new JumpHostSshCommand(),
         private LocalCommandRunner $local = new LocalCommandRunner(),
     ) {}
 
     public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {
-        return $this->local->run($this->builder->build($this->client, $this->jump, $command, $this->hostKeyChecking), $allowFail, $onOutput);
+        return $this->local->run($this->builder->build($this->client, $this->jump, $command, $this->hostKeyChecking, $this->controlDirectory), $allowFail, $onOutput);
     }
 }
