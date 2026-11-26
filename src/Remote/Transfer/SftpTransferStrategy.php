@@ -23,11 +23,13 @@ use RecursiveIteratorIterator;
 
 use function basename;
 use function dirname;
+use function explode;
 use function in_array;
 use function is_dir;
 use function mkdir;
 use function rtrim;
 use function sprintf;
+use function str_starts_with;
 use function strlen;
 use function substr;
 
@@ -109,6 +111,11 @@ final readonly class SftpTransferStrategy implements TransferStrategy
         foreach ($entries as $relativePath) {
             if (in_array(basename((string) $relativePath), ['.', '..'], true) || ExcludeMatcher::isPathExcluded($relativePath, $excludePatterns)) {
                 continue;
+            }
+
+            // A hostile server can list `../../x` to make the download write outside the target.
+            if (str_starts_with((string) $relativePath, '/') || in_array('..', explode('/', (string) $relativePath), true)) {
+                throw new SyncException(sprintf('SFTP listing entry outside the target directory: %s', $relativePath));
             }
 
             $remotePath = rtrim($originDir, '/').'/'.$relativePath;
