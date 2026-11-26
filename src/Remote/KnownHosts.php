@@ -15,6 +15,7 @@ namespace KonradMichalik\SyncTool\Remote;
 
 use KonradMichalik\SyncTool\Exception\SyncException;
 
+use function array_push;
 use function count;
 use function dirname;
 use function in_array;
@@ -31,45 +32,32 @@ use function str_starts_with;
  */
 final readonly class KnownHosts
 {
+    /**
+     * The signature algorithms phpseclib offers per key type, in its own order of
+     * preference. An RSA host key is signed with the SHA-2 variants nowadays, so the
+     * plain name is not enough.
+     */
+    private const SIGNATURE_ALGORITHMS = [
+        'ssh-ed25519' => ['ssh-ed25519'],
+        'ecdsa-sha2-nistp256' => ['ecdsa-sha2-nistp256'],
+        'ecdsa-sha2-nistp384' => ['ecdsa-sha2-nistp384'],
+        'ecdsa-sha2-nistp521' => ['ecdsa-sha2-nistp521'],
+        'ssh-rsa' => ['rsa-sha2-256', 'rsa-sha2-512', 'ssh-rsa'],
+        'ssh-dss' => ['ssh-dss'],
+    ];
+
     public function __construct(private string $path = '') {}
 
     public function match(string $host, int $port, string $serverKey): HostKeyStatus
     {
-        $path = $this->resolvePath();
-        if (null === $path || !is_file($path)) {
-            return HostKeyStatus::Unknown;
-        }
-        $lines = file($path, \FILE_IGNORE_NEW_LINES | \FILE_SKIP_EMPTY_LINES);
-        if (false === $lines) {
-            return HostKeyStatus::Unknown;
-        }
-
         [$serverType, $serverBlob] = $this->splitKey($serverKey);
         if (null === $serverBlob) {
             return HostKeyStatus::Unknown;
         }
 
-        $token = $this->token($host, $port);
         $sameTypeSeen = false;
 
-        foreach ($lines as $line) {
-            $line = trim($line);
-            if ('' === $line || str_starts_with($line, '#')) {
-                continue;
-            }
-            $fields = preg_split('/\s+/', $line);
-            if (false === $fields) {
-                continue;
-            }
-            $hostField = $fields[0];
-            $entryType = $fields[1] ?? '';
-            $entryBlob = $fields[2] ?? '';
-            if ('' === $entryBlob || str_starts_with($hostField, '@')) {
-                continue;
-            }
-            if (!$this->hostMatches($hostField, $token)) {
-                continue;
-            }
+        foreach ($this->entriesFor($host, $port) as [$entryType, $entryBlob]) {
             if ($entryBlob === $serverBlob) {
                 return HostKeyStatus::Matched;
             }
@@ -79,6 +67,31 @@ final readonly class KnownHosts
         }
 
         return $sameTypeSeen ? HostKeyStatus::Mismatch : HostKeyStatus::Unknown;
+    }
+
+    /**
+     * The algorithms for the key types stored for the host, in the client's order of
+     * preference; none for a host without an entry.
+     *
+     * @return list<string>
+     */
+    public function hostKeyAlgorithms(string $host, int $port): array
+    {
+        $stored = [];
+
+        foreach ($this->entriesFor($host, $port) as [$type]) {
+            $stored[$this->normalizeType($type)] = true;
+        }
+
+        $algorithms = [];
+
+        foreach (self::SIGNATURE_ALGORITHMS as $type => $names) {
+            if (isset($stored[$type])) {
+                array_push($algorithms, ...$names);
+            }
+        }
+
+        return $algorithms;
     }
 
     public function append(string $host, int $port, string $serverKey): void
@@ -109,6 +122,46 @@ final readonly class KnownHosts
         if ($isNewFile) {
             chmod($path, 0600);
         }
+    }
+
+    /**
+     * @return list<array{0: string, 1: string}> key type and key of every entry for the host
+     */
+    private function entriesFor(string $host, int $port): array
+    {
+        $path = $this->resolvePath();
+        if (null === $path || !is_file($path)) {
+            return [];
+        }
+        $lines = file($path, \FILE_IGNORE_NEW_LINES | \FILE_SKIP_EMPTY_LINES);
+        if (false === $lines) {
+            return [];
+        }
+
+        $token = $this->token($host, $port);
+        $entries = [];
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ('' === $line || str_starts_with($line, '#')) {
+                continue;
+            }
+            $fields = preg_split('/\s+/', $line);
+            if (false === $fields) {
+                continue;
+            }
+            $hostField = $fields[0];
+            $entryType = $fields[1] ?? '';
+            $entryBlob = $fields[2] ?? '';
+            if ('' === $entryBlob || str_starts_with($hostField, '@')) {
+                continue;
+            }
+            if ($this->hostMatches($hostField, $token)) {
+                $entries[] = [$entryType, $entryBlob];
+            }
+        }
+
+        return $entries;
     }
 
     private function resolvePath(): ?string

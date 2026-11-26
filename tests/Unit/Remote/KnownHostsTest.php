@@ -247,6 +247,68 @@ final class KnownHostsTest extends TestCase
         }
     }
 
+    #[Test]
+    public function offersTheKeyTypesStoredForTheHost(): void
+    {
+        $kh = $this->write("example.com ssh-ed25519 AAAAKEY\nexample.com ecdsa-sha2-nistp256 AAAAECDSA\nother.com ssh-rsa AAAAOTHER\n");
+
+        self::assertSame(['ssh-ed25519', 'ecdsa-sha2-nistp256'], $kh->hostKeyAlgorithms('example.com', 22));
+    }
+
+    #[Test]
+    public function anRsaKeyAllowsTheSha2SignaturesToo(): void
+    {
+        $kh = $this->write("example.com ssh-rsa AAAARSA\n");
+
+        self::assertSame(['rsa-sha2-256', 'rsa-sha2-512', 'ssh-rsa'], $kh->hostKeyAlgorithms('example.com', 22));
+    }
+
+    /**
+     * A stale entry of one type ahead of a valid one of another must not decide which
+     * type is negotiated, so the order is the client's own preference.
+     */
+    #[Test]
+    public function offersTheTypesInTheClientsPreferenceNotInFileOrder(): void
+    {
+        $kh = $this->write("example.com ssh-rsa AAAAOLD\nexample.com ssh-ed25519 AAAANEW\n");
+
+        self::assertSame(['ssh-ed25519', 'rsa-sha2-256', 'rsa-sha2-512', 'ssh-rsa'], $kh->hostKeyAlgorithms('example.com', 22));
+    }
+
+    #[Test]
+    public function stillOffersALegacyDsaKeyPhpseclibSupports(): void
+    {
+        self::assertSame(['ssh-dss'], $this->write("example.com ssh-dss AAAADSA\n")->hostKeyAlgorithms('example.com', 22));
+    }
+
+    #[Test]
+    public function offersEachTypeOnceAndReadsHashedAndPortEntries(): void
+    {
+        $salt = 'saltsaltsaltsaltsalt';
+        $hash = base64_encode(hash_hmac('sha1', '[example.com]:2222', $salt, true));
+        $kh = $this->write(
+            "[example.com]:2222 ssh-ed25519 AAAAONE\n"
+            .'|1|'.base64_encode($salt).'|'.$hash." ssh-ed25519 AAAATWO\n",
+        );
+
+        self::assertSame(['ssh-ed25519'], $kh->hostKeyAlgorithms('example.com', 2222));
+    }
+
+    #[Test]
+    public function leavesTheChoiceToTheClientForAnUnknownHost(): void
+    {
+        self::assertSame([], $this->write("other.com ssh-ed25519 AAAAKEY\n")->hostKeyAlgorithms('example.com', 22));
+        self::assertSame([], (new KnownHosts('/no/such/known_hosts'))->hostKeyAlgorithms('example.com', 22));
+    }
+
+    #[Test]
+    public function ignoresKeyTypesTheClientCannotUse(): void
+    {
+        $kh = $this->write("example.com sk-ssh-ed25519@openssh.com AAAASK\n");
+
+        self::assertSame([], $kh->hostKeyAlgorithms('example.com', 22));
+    }
+
     private function write(string $contents): KnownHosts
     {
         file_put_contents($this->file, $contents);
