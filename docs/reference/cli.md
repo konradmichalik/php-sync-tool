@@ -192,6 +192,13 @@ Override individual origin settings from the CLI (no short forms):
 | `--origin-db-password` | Database password |
 | `--origin-db-port` | Database port |
 
+::: warning
+Passwords given on the command line end up in your shell history and in the
+process list. `--origin-password` and the `--*-db-password` options exist only
+for compatibility with db-sync-tool, so prefer the configuration file, an SSH
+key or the agent.
+:::
+
 ## Target Endpoint Overrides
 
 The same set of overrides is available for the target:

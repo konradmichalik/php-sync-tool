@@ -33,11 +33,13 @@ final readonly class LocalCommandRunner implements CommandRunner
     public function __construct(
         // No limit by default: dumps and rsync runs grow with the data.
         private ?int $timeout = null,
+        /** @var array<string, string> */
+        private array $environment = [],
     ) {}
 
     public function run(string $command, bool $allowFail = false, ?Closure $onOutput = null): string
     {
-        $process = Process::fromShellCommandline($command);
+        $process = Process::fromShellCommandline($command, env: $this->environment);
         $process->setTimeout($this->timeout);
 
         try {

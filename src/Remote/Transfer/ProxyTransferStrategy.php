@@ -62,7 +62,6 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         $options = $this->rsync->options($payload->extraRsyncOptions, $payload->excludePatterns, singleFile: $payload->singleFile);
 
         $pull = $this->rsync->build(
-            $this->rsync->passwordEnvironment($config->origin, $config->useSshpass),
             $options,
             $this->rsync->authorization($config->origin, $config->useSshpass, $config->origin->jumpHost, $config->hostKeyChecking),
             $this->rsync->userHost($config->origin),
@@ -72,7 +71,6 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
         );
 
         $push = $this->rsync->build(
-            $this->rsync->passwordEnvironment($config->target, $config->useSshpass),
             $options,
             $this->rsync->authorization($config->target, $config->useSshpass, $config->target->jumpHost, $config->hostKeyChecking),
             '',
@@ -83,9 +81,9 @@ final readonly class ProxyTransferStrategy implements TransferStrategy
 
         try {
             ($this->log)('  $ '.LogSanitizer::sanitize($pull), LogChannel::Command);
-            $local->run($pull);
+            $this->runners->local($this->rsync->passwordEnvironment($config->origin, $config->useSshpass))->run($pull);
             ($this->log)('  $ '.LogSanitizer::sanitize($push), LogChannel::Command);
-            $local->run($push);
+            $this->runners->local($this->rsync->passwordEnvironment($config->target, $config->useSshpass))->run($push);
         } finally {
             $local->run(sprintf('rm -rf %s', escapeshellarg($staging)), true);
         }

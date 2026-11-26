@@ -55,9 +55,12 @@ class RunnerFactory
         return $this->runners[$key] ??= $this->create($client, $useSshAgent, $forcePassword, $hostKeyChecking);
     }
 
-    public function local(): CommandRunner
+    /**
+     * @param array<string, string> $environment for secrets that must stay off the command line
+     */
+    public function local(array $environment = []): CommandRunner
     {
-        return new LocalCommandRunner();
+        return new LocalCommandRunner(environment: $environment);
     }
 
     private function create(ClientConfig $client, bool $useSshAgent, bool $forcePassword, HostKeyCheckingMode $hostKeyChecking): CommandRunner

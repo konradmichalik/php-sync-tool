@@ -33,6 +33,14 @@ final class LocalCommandRunnerTest extends TestCase
     }
 
     #[Test]
+    public function handsTheEnvironmentToTheProcessInsteadOfTheCommandLine(): void
+    {
+        $runner = new LocalCommandRunner(environment: ['SYNC_TOOL_TEST_SECRET' => 'from-env']);
+
+        self::assertSame('from-env', $runner->run('printf %s "$SYNC_TOOL_TEST_SECRET"'));
+    }
+
+    #[Test]
     public function failingCommandThrows(): void
     {
         $this->expectException(SyncException::class);
