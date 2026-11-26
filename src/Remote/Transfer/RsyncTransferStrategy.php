@@ -49,11 +49,10 @@ final readonly class RsyncTransferStrategy implements TransferStrategy
     public function transfer(SyncConfig $config, TransferPayload $payload): void
     {
         $remoteClient = $config->origin->isRemote() ? $config->origin : $config->target;
-        $local = $this->runners->local();
+        $local = $this->runners->local($this->rsync->passwordEnvironment($remoteClient, $config->useSshpass));
         $withPercentage = $this->progress->enabled() && $this->rsyncVersion->supportsProgress2($local);
 
         $command = $this->rsync->build(
-            $this->rsync->passwordEnvironment($remoteClient, $config->useSshpass),
             $this->rsync->options($payload->extraRsyncOptions, $payload->excludePatterns, withProgress: $withPercentage, singleFile: $payload->singleFile),
             $this->rsync->authorization($remoteClient, $config->useSshpass, $remoteClient->jumpHost, $config->hostKeyChecking),
             $this->rsync->userHost($config->origin),

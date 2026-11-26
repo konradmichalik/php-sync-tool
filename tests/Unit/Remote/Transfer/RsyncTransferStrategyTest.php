@@ -47,6 +47,24 @@ final class RsyncTransferStrategyTest extends TestCase
     }
 
     #[Test]
+    public function handsTheSshPasswordToRsyncThroughTheEnvironment(): void
+    {
+        $config = SyncConfig::fromArray([
+            'use_sshpass' => true,
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'password' => 'sup3r-secret', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['path' => '/var/www', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+        $recorder = new RecordingCommandRunner();
+        $factory = new FakeRunnerFactory($recorder);
+
+        (new RsyncTransferStrategy($factory))->transfer($config, new TransferPayload('/tmp/o.gz', '/tmp/t.gz'));
+
+        self::assertTrue($recorder->ran('sshpass -e ssh'), 'rsync still reads the password from the environment');
+        self::assertFalse($recorder->ran('sup3r-secret'), 'the password is not part of the command line');
+        self::assertContains(['SSHPASS' => 'sup3r-secret'], $factory->localEnvironments);
+    }
+
+    #[Test]
     public function appliesExcludePatternsAndExtraOptions(): void
     {
         $config = SyncConfig::fromArray([

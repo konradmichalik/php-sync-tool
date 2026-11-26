@@ -19,6 +19,8 @@ use KonradMichalik\SyncTool\Tests\Fixture\{FakeRunnerFactory, RecordingCommandRu
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
+use function array_slice;
+
 /**
  * ProxyTransferStrategyTest.
  *
@@ -163,6 +165,27 @@ final class ProxyTransferStrategyTest extends TestCase
         self::assertCount(2, $logs, 'logs once per leg (pull, push)');
         self::assertStringContainsString('deploy@o.example.com:/o/dump.gz', $logs[0]);
         self::assertStringContainsString('deploy@t.example.com:/t/dump.gz', $logs[1]);
+    }
+
+    #[Test]
+    public function handsEachLegItsOwnSshPasswordThroughTheEnvironment(): void
+    {
+        $config = SyncConfig::fromArray([
+            'use_sshpass' => true,
+            'origin' => ['host' => 'o.example.com', 'user' => 'deploy', 'password' => 'origin-secret', 'db' => ['name' => 'a', 'user' => 'a', 'password' => 'a']],
+            'target' => ['host' => 't.example.com', 'user' => 'deploy', 'password' => 'target-secret', 'db' => ['name' => 'b', 'user' => 'b', 'password' => 'b']],
+        ]);
+        $recorder = new RecordingCommandRunner();
+        $factory = new FakeRunnerFactory($recorder);
+
+        (new ProxyTransferStrategy($factory))->transfer($config, new TransferPayload('/o/dump.gz', '/t/dump.gz', singleFile: true));
+
+        self::assertFalse($recorder->ran('SSHPASS='), 'no password in any command line');
+        self::assertSame(
+            [['SSHPASS' => 'origin-secret'], ['SSHPASS' => 'target-secret']],
+            array_slice($factory->localEnvironments, -2),
+            'the pull leg gets the origin password, the push leg the target password',
+        );
     }
 
     private static function config(): SyncConfig

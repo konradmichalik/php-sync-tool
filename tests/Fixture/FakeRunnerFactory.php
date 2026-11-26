@@ -25,6 +25,9 @@ use KonradMichalik\SyncTool\Remote\{CommandRunner, RunnerFactory};
  */
 final class FakeRunnerFactory extends RunnerFactory
 {
+    /** @var list<array<string, string>> */
+    public array $localEnvironments = [];
+
     public function __construct(private readonly CommandRunner $runner) {}
 
     public function forClient(ClientConfig $client, bool $useSshAgent = false, bool $forcePassword = false, HostKeyCheckingMode $hostKeyChecking = HostKeyCheckingMode::Strict): CommandRunner
@@ -32,8 +35,10 @@ final class FakeRunnerFactory extends RunnerFactory
         return $this->runner;
     }
 
-    public function local(): CommandRunner
+    public function local(array $environment = []): CommandRunner
     {
+        $this->localEnvironments[] = $environment;
+
         return $this->runner;
     }
 }

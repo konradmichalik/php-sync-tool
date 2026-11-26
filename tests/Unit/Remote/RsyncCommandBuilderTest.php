@@ -122,22 +122,11 @@ final class RsyncCommandBuilderTest extends TestCase
     public function passwordEnvironmentOnlyWithSshpassAndPasswordAndNoKey(): void
     {
         $withPassword = new ClientConfig(host: 'h', user: 'u', password: 'secret');
-        self::assertSame('SSHPASS=secret ', $this->builder->passwordEnvironment($withPassword, true));
-        self::assertSame('', $this->builder->passwordEnvironment($withPassword, false));
+        self::assertSame(['SSHPASS' => 'secret'], $this->builder->passwordEnvironment($withPassword, true));
+        self::assertSame([], $this->builder->passwordEnvironment($withPassword, false));
 
         $withKey = new ClientConfig(host: 'h', user: 'u', password: 'secret', sshKey: '/k');
-        self::assertSame('', $this->builder->passwordEnvironment($withKey, true));
-    }
-
-    #[Test]
-    public function passwordEnvironmentQuotesAPasswordWithShellCharacters(): void
-    {
-        $client = new ClientConfig(host: 'h', user: 'u', password: "p'a\$ss");
-
-        self::assertSame(
-            'SSHPASS=\'p\'"\'"\'a$ss\' ',
-            $this->builder->passwordEnvironment($client, true),
-        );
+        self::assertSame([], $this->builder->passwordEnvironment($withKey, true));
     }
 
     #[Test]
@@ -266,7 +255,6 @@ final class RsyncCommandBuilderTest extends TestCase
     public function buildAssemblesReceiverCommand(): void
     {
         $command = $this->builder->build(
-            '',
             $this->builder->options(null),
             '-e "ssh -p22 -o StrictHostKeyChecking=no"',
             'deploy@server',
@@ -290,7 +278,6 @@ final class RsyncCommandBuilderTest extends TestCase
     public function buildQuotesPathsThatNeedIt(): void
     {
         $command = $this->builder->build(
-            '',
             '-a',
             '-e ssh',
             'deploy@server',

@@ -78,13 +78,18 @@ final class RsyncCommandBuilder
         self::IO_TIMEOUT,
     ];
 
-    public function passwordEnvironment(ClientConfig $client, bool $useSshpass): string
+    /**
+     * Passed as process environment, not as a command prefix, so the password stays out of the process list.
+     *
+     * @return array<string, string>
+     */
+    public function passwordEnvironment(ClientConfig $client, bool $useSshpass): array
     {
         if ($useSshpass && null === $client->sshKey && null !== $client->password && '' !== $client->password) {
-            return 'SSHPASS='.Shell::quote($client->password).' ';
+            return ['SSHPASS' => $client->password];
         }
 
-        return '';
+        return [];
     }
 
     /**
@@ -103,7 +108,7 @@ final class RsyncCommandBuilder
     ): string {
         // A configured key wins over sshpass, which is why passwordEnvironment()
         // returns nothing as soon as one is present.
-        $withPassword = '' !== $this->passwordEnvironment($client, $useSshpass);
+        $withPassword = [] !== $this->passwordEnvironment($client, $useSshpass);
 
         $parts = $withPassword ? ['sshpass', '-e', 'ssh'] : ['ssh'];
 
@@ -167,7 +172,6 @@ final class RsyncCommandBuilder
     }
 
     public function build(
-        string $passwordEnvironment,
         string $options,
         string $authorization,
         string $originUserHost,
@@ -184,8 +188,7 @@ final class RsyncCommandBuilder
         // quoting, so they still appear verbatim. What `rsync` then does with a
         // remote path on the far side is its own business.
         return sprintf(
-            '%srsync %s %s %s %s',
-            $passwordEnvironment,
+            'rsync %s %s %s %s',
             $options,
             $authorization,
             Shell::quote($origin.$originPath),
