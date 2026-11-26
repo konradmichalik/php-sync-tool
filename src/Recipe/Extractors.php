@@ -119,12 +119,12 @@ final class Extractors
     public static function laravelFromEnv(string $content): array
     {
         return [
-            'name' => self::laravelValue($content, 'DB_DATABASE'),
-            'host' => self::laravelValue($content, 'DB_HOST'),
-            'user' => self::laravelValue($content, 'DB_USERNAME'),
-            'password' => self::laravelValue($content, 'DB_PASSWORD'),
-            'port' => self::laravelValue($content, 'DB_PORT'),
-            'db_type' => self::laravelValue($content, 'DB_CONNECTION'),
+            'name' => self::envValue($content, 'DB_DATABASE'),
+            'host' => self::envValue($content, 'DB_HOST'),
+            'user' => self::envValue($content, 'DB_USERNAME'),
+            'password' => self::envValue($content, 'DB_PASSWORD'),
+            'port' => self::envValue($content, 'DB_PORT'),
+            'db_type' => self::envValue($content, 'DB_CONNECTION'),
         ];
     }
 
@@ -198,7 +198,7 @@ final class Extractors
 
     private static function envValue(string $content, string $name): string
     {
-        return self::clean(self::firstMatch('/^'.preg_quote($name, '/').'=(.*)$/m', $content));
+        return self::clean(self::firstMatch('/^[ \t]*(?:export[ \t]+)?'.preg_quote($name, '/').'[ \t]*=(.*)$/m', $content));
     }
 
     private static function phpArrowValue(string $content, string $key): string
@@ -227,28 +227,9 @@ final class Extractors
         ));
     }
 
-    private static function laravelValue(string $content, string $key): string
-    {
-        foreach (preg_split('/\R/', $content) ?: [] as $line) {
-            if (str_contains($line, $key)) {
-                $parts = explode('=', $line, 2);
-
-                return self::clean($parts[1] ?? '');
-            }
-        }
-
-        return '';
-    }
-
     private static function yamlValue(string $content, string $key): string
     {
-        foreach (preg_split('/\R/', $content) ?: [] as $line) {
-            if (str_contains($line, $key)) {
-                return self::clean((string) preg_replace('/.*:\s*/', '', $line));
-            }
-        }
-
-        return '';
+        return self::clean(self::firstMatch('/^[ \t]*["\']?'.preg_quote($key, '/').'["\']?[ \t]*:[ \t]*(.*)$/m', $content));
     }
 
     private static function firstMatch(string $pattern, string $content): string

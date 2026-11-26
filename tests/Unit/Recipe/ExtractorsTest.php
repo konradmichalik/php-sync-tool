@@ -243,6 +243,84 @@ final class ExtractorsTest extends TestCase
         self::assertSame('127.0.0.1', $result['host']);
     }
 
+    /**
+     * The lookup used to take the first line that merely contained the key, so a
+     * longer variable or a commented copy above the real line won.
+     */
+    #[Test]
+    public function laravelFromEnvSkipsPrefixedCommentedAndSuffixedVariables(): void
+    {
+        $content = <<<'ENV'
+            REDIS_DB_HOST=redis.internal
+            # DB_HOST=commented.example.com
+            DB_HOST_READ=replica.internal
+            DB_HOST=db.internal
+            DB_DATABASE=app
+            ENV;
+
+        self::assertSame('db.internal', Extractors::laravelFromEnv($content)['host']);
+    }
+
+    /**
+     * What the anchoring must still accept: dotenv allows an `export` prefix,
+     * indentation and blanks around the equals sign, and all of it worked before.
+     */
+    #[Test]
+    public function laravelFromEnvStillReadsExportedIndentedAndSpacedVariables(): void
+    {
+        $content = "export DB_HOST=db.internal\n  DB_DATABASE=app\nDB_USERNAME = app_user\n";
+
+        $result = Extractors::laravelFromEnv($content);
+
+        self::assertSame('db.internal', $result['host']);
+        self::assertSame('app', $result['name']);
+        self::assertSame('app_user', $result['user']);
+    }
+
+    #[Test]
+    public function symfonyFromParametersStillReadsQuotedKeys(): void
+    {
+        $result = Extractors::symfonyFromParameters("parameters:\n    \"database_host\": db.internal\n    'database_name': app\n");
+
+        self::assertSame('db.internal', $result['host']);
+        self::assertSame('app', $result['name']);
+    }
+
+    #[Test]
+    public function laravelFromEnvReadsAWindowsLineEnding(): void
+    {
+        self::assertSame('db.internal', Extractors::laravelFromEnv("DB_HOST=db.internal\r\nDB_DATABASE=app\r\n")['host']);
+    }
+
+    #[Test]
+    public function symfonyFromParametersSkipsPrefixedAndCommentedKeys(): void
+    {
+        $content = <<<'YAML'
+            parameters:
+                # database_host: old.example.com
+                legacy_database_host: legacy.example.com
+                database_host: db.internal
+                database_name: app
+            YAML;
+
+        self::assertSame('db.internal', Extractors::symfonyFromParameters($content)['host']);
+    }
+
+    #[Test]
+    public function symfonyFromParametersDoesNotTakeTheNextLineForAnEmptyValue(): void
+    {
+        $result = Extractors::symfonyFromParameters("parameters:\n    database_password:\n    database_port: 3306\n");
+
+        self::assertSame('', $result['password']);
+        self::assertSame('3306', $result['port']);
+    }
+
+    #[Test]
+    public function symfonyFromParametersKeepsAColonInsideTheValue(): void
+    {
+        self::assertSame('a:b', Extractors::symfonyFromParameters("parameters:\n    database_password: 'a:b'\n")['password']);
+    }
+
     #[Test]
     public function credentialValidatorAcceptsCompleteCredentials(): void
     {
