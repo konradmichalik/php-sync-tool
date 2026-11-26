@@ -96,6 +96,52 @@ final class JumpHostSshCommandTest extends TestCase
     }
 
     #[Test]
+    public function reusesOneConnectionWhenAControlDirectoryIsGiven(): void
+    {
+        $cmd = (new JumpHostSshCommand())->build(
+            new ClientConfig(host: 'db.internal', user: 'app'),
+            new JumpHostConfig(host: 'bastion.example.com', user: 'jump'),
+            'echo ok',
+            HostKeyCheckingMode::Strict,
+            '/tmp/php-sync-tool-ssh-501',
+        );
+
+        self::assertStringContainsString("-o ControlMaster=auto -o ControlPersist=60 -o ControlPath='/tmp/php-sync-tool-ssh-501/96d70246-%C'", $cmd);
+    }
+
+    /**
+     * `%C` names host, port and user only. A connection opened without the host key
+     * check, or with another key, must not be picked up by a run that asks for more.
+     */
+    #[Test]
+    public function keepsConnectionsApartThatDifferInKeyOrHostKeyMode(): void
+    {
+        $build = static fn (?string $key, HostKeyCheckingMode $mode): string => (new JumpHostSshCommand())->build(
+            new ClientConfig(host: 'db.internal', user: 'app', sshKey: $key),
+            new JumpHostConfig(host: 'bastion.example.com', user: 'jump'),
+            'echo ok',
+            $mode,
+            '/tmp/php-sync-tool-ssh-501',
+        );
+
+        self::assertStringContainsString("ControlPath='/tmp/php-sync-tool-ssh-501/11076d87-%C'", $build('/keys/a', HostKeyCheckingMode::Strict));
+        self::assertStringContainsString("ControlPath='/tmp/php-sync-tool-ssh-501/755f6fbb-%C'", $build(null, HostKeyCheckingMode::Off));
+    }
+
+    #[Test]
+    public function opensAConnectionPerCommandWithoutAControlDirectory(): void
+    {
+        $cmd = (new JumpHostSshCommand())->build(
+            new ClientConfig(host: 'db.internal', user: 'app'),
+            new JumpHostConfig(host: 'bastion.example.com', user: 'jump'),
+            'echo ok',
+            HostKeyCheckingMode::Strict,
+        );
+
+        self::assertStringNotContainsString('Control', $cmd);
+    }
+
+    #[Test]
     public function omitsKeyWhenUnset(): void
     {
         $cmd = (new JumpHostSshCommand())->build(

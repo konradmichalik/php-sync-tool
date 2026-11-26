@@ -69,7 +69,7 @@ class RunnerFactory
             if (null !== $client->jumpHost) {
                 ($this->log)(sprintf('Connecting via SSH to %s@%s (via jump host %s)', $client->user, $client->host, $client->jumpHost->host));
 
-                return new SystemSshCommandRunner($client, $client->jumpHost, $hostKeyChecking);
+                return new SystemSshCommandRunner($client, $client->jumpHost, $hostKeyChecking, SshControlDirectory::ensure());
             }
 
             ($this->log)(sprintf('Connecting via SSH to %s@%s', $client->user, $client->host));

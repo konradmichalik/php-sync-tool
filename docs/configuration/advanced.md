@@ -303,6 +303,11 @@ origin:
     ssh_key: /home/user/.ssh/bastion_key  # optional
 ```
 
+A sync reuses one connection per endpoint (`ControlMaster`, kept for 60 seconds
+after the last command) instead of repeating the handshakes through the bastion.
+If no private socket directory is available, each command opens its own
+connection.
+
 ## Console Commands
 
 Override the paths to required binaries per endpoint. The key is the binary it
