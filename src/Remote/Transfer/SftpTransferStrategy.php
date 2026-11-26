@@ -114,7 +114,7 @@ final readonly class SftpTransferStrategy implements TransferStrategy
             }
 
             // A hostile server can list `../../x` to make the download write outside the target.
-            if (str_starts_with($relativePath, '/') || in_array('..', explode('/', $relativePath), true)) {
+            if (str_starts_with((string) $relativePath, '/') || in_array('..', explode('/', (string) $relativePath), true)) {
                 throw new SyncException(sprintf('SFTP listing entry outside the target directory: %s', $relativePath));
             }
 
