@@ -7,7 +7,7 @@ Guidance for coding agents working in this repository.
 `php-sync-tool` synchronizes databases and files between local and remote systems over SSH, rsync and SFTP. It auto-detects framework credentials (TYPO3, Symfony, Drupal, WordPress, Laravel). It ships as a Composer library with a CLI (`bin/sync-tool`) and as a standalone PHAR.
 
 - Package: `konradmichalik/php-sync-tool`, license GPL-3.0-or-later
-- PHP `~8.2 || ~8.3 || ~8.4 || ~8.5`, `symfony/console`, `symfony/process` and `symfony/yaml` (`^6.4 || ^7.0 || ^8.0`), `phpseclib/phpseclib`, `opis/json-schema`
+- PHP `~8.2 || ~8.3 || ~8.4 || ~8.5 || ~8.6`, `symfony/console`, `symfony/process` and `symfony/yaml` (`^6.4 || ^7.0 || ^8.0`), `phpseclib/phpseclib`, `opis/json-schema`
 
 ## Structure
 
@@ -54,7 +54,7 @@ composer test:scenarios     # docker:up plus test:integration
 composer docker:down
 ```
 
-CI (`.github/workflows/tests.yml`, token permission `contents: read`) runs `composer audit` and `composer test` (unit tests without coverage) on PHP 8.2 to 8.5 against Symfony 6.x and 7.x, a `scenarios` job that starts the Docker stack and runs `composer test:integration -- --fail-on-skipped` on PHP 8.4, and a separate coverage job on PHP 8.4 with Xdebug that uploads `clover.xml`. Lint and static analysis run through the shared reusable workflow `cgl.yml` on PHP 8.4. `docs.yml` deploys the VitePress site to GitHub Pages.
+CI (`.github/workflows/tests.yml`, token permission `contents: read`) runs `composer audit` and `composer test` (unit tests without coverage) on PHP 8.2 to 8.6 against Symfony 6.x and 7.x, plus 8.x on PHP 8.5 and 8.6, a `scenarios` job that starts the Docker stack and runs `composer test:integration -- --fail-on-skipped` on PHP 8.4, and a separate coverage job on PHP 8.4 with Xdebug that uploads `clover.xml`. Lint and static analysis run through the shared reusable workflow `cgl.yml` on PHP 8.4. `docs.yml` deploys the VitePress site to GitHub Pages.
 
 ## Code style and static analysis
 
