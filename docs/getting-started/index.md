@@ -27,7 +27,7 @@ of sync modes for different use cases.
 
 ## Requirements
 
-- PHP **8.2** or higher (`~8.2 || ~8.3 || ~8.4 || ~8.5`)
+- PHP **8.2** or higher (`~8.2 || ~8.3 || ~8.4 || ~8.5 || ~8.6`)
 - `mysql` / `mysqldump` (or `psql` / `pg_dump` for PostgreSQL) and `gzip` / `gunzip`
   on the executing host(s)
 - `rsync` for the default transfer method (SFTP is used automatically as a fallback)

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e235e56cabd1f6ae7d2d8c514f3e7781",
+    "content-hash": "66380614937a1a672edd2176ee83d936",
     "packages": [
         {
             "name": "konradmichalik/php-progress",
@@ -6331,7 +6331,7 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": "~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0",
+        "php": "~8.2.0 || ~8.3.0 || ~8.4.0 || ~8.5.0 || ~8.6.0",
         "ext-json": "*"
     },
     "platform-dev": {},
