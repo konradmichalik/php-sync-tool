@@ -233,6 +233,7 @@ final class WitherCompletenessTest extends TestCase
             anonymize: [
                 new AnonymizationRule('fe_users', 'email', AnonymizationStrategy::Email),
             ],
+            anonymizeSalt: 'pepper',
         );
     }
 

@@ -20,6 +20,7 @@ use KonradMichalik\SyncTool\Security\{Shell, SqlLiteral, TableName};
 use KonradMichalik\SyncTool\Util\Pure;
 
 use function array_map;
+use function bin2hex;
 use function count;
 use function implode;
 use function sprintf;
@@ -158,7 +159,7 @@ final readonly class PostgresDriver implements DatabaseDriver
         return sprintf('TRUNCATE TABLE %s RESTART IDENTITY CASCADE;', $this->validatedList($tables));
     }
 
-    public function anonymizeStatements(array $rules): array
+    public function anonymizeStatements(array $rules, string $salt = ''): array
     {
         $statements = [];
 
@@ -169,8 +170,8 @@ final readonly class PostgresDriver implements DatabaseDriver
             $statements[] = sprintf('UPDATE %s SET %s = %s;', $table, $column, match ($rule->strategy) {
                 AnonymizationStrategy::Nullify => 'NULL',
                 AnonymizationStrategy::StaticValue => SqlLiteral::quote((string) $rule->value),
-                AnonymizationStrategy::Hash => sprintf('md5(%s)', $column),
-                AnonymizationStrategy::Email => sprintf('md5(%s) || %s', $column, SqlLiteral::quote(AnonymizationStrategy::MASKED_MAIL_DOMAIN)),
+                AnonymizationStrategy::Hash => $this->md5($column, $salt),
+                AnonymizationStrategy::Email => sprintf('%s || %s', $this->md5($column, $salt), SqlLiteral::quote(AnonymizationStrategy::MASKED_MAIL_DOMAIN)),
                 AnonymizationStrategy::FakeName => $this->fakeNameExpression($column),
                 AnonymizationStrategy::FakePhone => $this->fakePhoneExpression($column),
             });
@@ -199,6 +200,15 @@ final readonly class PostgresDriver implements DatabaseDriver
         }
 
         return $unsupported;
+    }
+
+    private function md5(string $column, string $salt): string
+    {
+        if ('' === $salt) {
+            return sprintf('md5(%s)', $column);
+        }
+
+        return sprintf("md5(convert_from(decode(%s, 'hex'), 'UTF8') || %s)", SqlLiteral::quote(bin2hex($salt)), $column);
     }
 
     /**

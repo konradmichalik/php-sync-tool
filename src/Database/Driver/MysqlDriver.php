@@ -21,6 +21,7 @@ use KonradMichalik\SyncTool\Util\Pure;
 
 use function array_map;
 use function array_slice;
+use function bin2hex;
 use function count;
 use function implode;
 use function sprintf;
@@ -130,7 +131,7 @@ final readonly class MysqlDriver implements DatabaseDriver
         return $this->tables->foreignKeyDisabledBatch(array_map($this->tables->truncateStatement(...), $tables));
     }
 
-    public function anonymizeStatements(array $rules): array
+    public function anonymizeStatements(array $rules, string $salt = ''): array
     {
         $statements = [];
 
@@ -141,8 +142,8 @@ final readonly class MysqlDriver implements DatabaseDriver
             $statements[] = sprintf('UPDATE %s SET %s = %s;', $table, $column, match ($rule->strategy) {
                 AnonymizationStrategy::Nullify => 'NULL',
                 AnonymizationStrategy::StaticValue => SqlLiteral::quote((string) $rule->value),
-                AnonymizationStrategy::Hash => sprintf('MD5(%s)', $column),
-                AnonymizationStrategy::Email => sprintf('CONCAT(MD5(%s), %s)', $column, SqlLiteral::quote(AnonymizationStrategy::MASKED_MAIL_DOMAIN)),
+                AnonymizationStrategy::Hash => $this->md5($column, $salt),
+                AnonymizationStrategy::Email => sprintf('CONCAT(%s, %s)', $this->md5($column, $salt), SqlLiteral::quote(AnonymizationStrategy::MASKED_MAIL_DOMAIN)),
                 AnonymizationStrategy::FakeName => $this->fakeNameExpression($column),
                 AnonymizationStrategy::FakePhone => $this->fakePhoneExpression($column),
             });
@@ -154,6 +155,19 @@ final readonly class MysqlDriver implements DatabaseDriver
     public function unsupportedFeatures(SyncConfig $config, DatabaseConfig $db): array
     {
         return [];
+    }
+
+    /**
+     * The salt travels as hex: no quote, backslash or sql_mode can change it, and
+     * `LogSanitizer` masks it with one fixed pattern.
+     */
+    private function md5(string $column, string $salt): string
+    {
+        if ('' === $salt) {
+            return sprintf('MD5(%s)', $column);
+        }
+
+        return sprintf('MD5(CONCAT(CONVERT(UNHEX(%s) USING utf8mb4), %s))', SqlLiteral::quote(bin2hex($salt)), $column);
     }
 
     /**

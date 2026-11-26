@@ -49,6 +49,7 @@ final readonly class ClientConfig
         public bool $protect = false,
         public string $link = '',
         public array $anonymize = [],
+        public string $anonymizeSalt = '',
     ) {}
 
     /**
@@ -81,6 +82,7 @@ final readonly class ClientConfig
             protect: ConfigAccessor::getBool($data, 'protect', false),
             link: ConfigAccessor::getString($data, 'link', ''),
             anonymize: AnonymizationRule::fromConfig(self::subArray($data, 'anonymize')),
+            anonymizeSalt: ConfigAccessor::getString($data, 'anonymize_salt', ''),
         );
     }
 

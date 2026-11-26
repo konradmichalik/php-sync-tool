@@ -772,6 +772,24 @@ final class SyncTest extends TestCase
     }
 
     #[Test]
+    public function theSaltReachesTheMaskingStatementButNotTheLog(): void
+    {
+        $config = $this->localConfig([
+            'target' => [
+                'path' => '/t',
+                'db' => ['name' => 'app', 'user' => 'u', 'password' => 'p'],
+                'anonymize' => ['fe_users' => ['email' => 'email']],
+                'anonymize_salt' => "it's-a\\secret",
+            ],
+        ]);
+
+        $recorder = $this->runSync($config, Plans::syncLocal());
+
+        self::assertTrue($recorder->ran('697427732d615c736563726574'), 'the rows are hashed with the salt, sent as hex');
+        self::assertSame([], array_filter($this->logs, static fn (string $line): bool => str_contains($line, 'secret') || str_contains($line, '697427732d615c')), 'neither the salt nor its hex reaches the log');
+    }
+
+    #[Test]
     public function runsNoMaskingWithoutRules(): void
     {
         $recorder = $this->runSync($this->localConfig(), Plans::syncLocal());
