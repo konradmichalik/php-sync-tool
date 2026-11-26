@@ -90,6 +90,10 @@ final readonly class Sync
 
                 if (!$config->keepDump && !$plan->isDump()) {
                     $this->importDump($config, $plan, $dumpName);
+
+                    if (!$plan->isImport()) {
+                        $this->removeDumps($config, $dumpName);
+                    }
                 }
             }
 
@@ -297,6 +301,35 @@ final readonly class Sync
             $this->pruneDumps($client, $runner);
         } finally {
             $this->cleanupCredentials($client, $runner, $credentialsPath);
+        }
+    }
+
+    /**
+     * The dump is a transient file once it has been imported. An endpoint with
+     * `keep_dumps` keeps it, and retention decides how long. Two endpoints on the
+     * same host and directory share one file, so one of them keeping it keeps it.
+     */
+    private function removeDumps(SyncConfig $config, string $dumpName): void
+    {
+        $location = fn (ClientConfig $client): string => $client->host.':'.$this->dumpDir($client).$dumpName.'.gz';
+        $retained = [];
+
+        foreach ([$config->origin, $config->target] as $client) {
+            if (null !== $client->keepDumps) {
+                $retained[$location($client)] = true;
+            }
+        }
+
+        foreach ([$config->origin, $config->target] as $client) {
+            if (isset($retained[$location($client)])) {
+                continue;
+            }
+
+            $path = $this->dumpDir($client).$dumpName.'.gz';
+            $runner = $this->runners->forClient($client, $config->sshAgent, $config->forcePassword, $config->hostKeyChecking);
+
+            ($this->log)('Removing dump '.$path);
+            $runner->run('rm -f '.escapeshellarg($path), true);
         }
     }
 

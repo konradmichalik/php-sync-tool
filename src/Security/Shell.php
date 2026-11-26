@@ -49,6 +49,16 @@ final class Shell
     }
 
     /**
+     * Runs a command that creates a file under `umask 077`, so the file is never
+     * readable by other users, not even briefly. A subshell keeps the umask out of
+     * the rest of the command line and still gives a pipeline stage one unit.
+     */
+    public static function underPrivateUmask(string $command): string
+    {
+        return sprintf('(umask 077 && %s)', $command);
+    }
+
+    /**
      * A pipeline that fails when *either* stage fails.
      *
      * A plain `mysqldump … | gzip > dump.gz` reports the exit status of `gzip`,

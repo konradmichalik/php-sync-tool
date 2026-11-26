@@ -218,7 +218,7 @@ bin/sync-tool -f config.yaml --backup-before-import
 ```
 
 The file lands in the target's `dump_dir` as
-`sync-tool_backup_<database>_<timestamp>.sql.gz` and holds the whole database,
+`sync-tool_backup_<database>_<timestamp>_<random>.sql.gz` and holds the whole database,
 even when the sync itself is a partial one. It is written before `clear_database`,
 before `truncate_table` and before the import.
 

@@ -38,7 +38,7 @@ final class LocalCopyTransferStrategyTest extends TestCase
             new TransferPayload('/srv/a/dump.sql.gz', '/srv/b/dump.sql.gz', singleFile: true),
         );
 
-        self::assertTrue($recorder->ran("cp -- '/srv/a/dump.sql.gz' '/srv/b/dump.sql.gz'"));
+        self::assertTrue($recorder->ran("(umask 077 && cp -- '/srv/a/dump.sql.gz' '/srv/b/dump.sql.gz')"), 'the copy is readable by its owner only');
     }
 
     /**

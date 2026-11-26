@@ -16,6 +16,9 @@ namespace KonradMichalik\SyncTool\Backup;
 use DateTimeImmutable;
 use KonradMichalik\SyncTool\Config\SyncConfig;
 
+use function bin2hex;
+use function random_bytes;
+
 /**
  * DumpFileNamer.
  *
@@ -41,7 +44,7 @@ final class DumpFileNamer
             return $config->dumpName.'.sql';
         }
 
-        return self::PREFIX.$config->origin->db->name.'_'.self::stamp($now).'.sql';
+        return self::PREFIX.$config->origin->db->name.'_'.self::stamp($now).'_'.self::randomSuffix().'.sql';
     }
 
     /**
@@ -50,7 +53,15 @@ final class DumpFileNamer
      */
     public function generateBackup(SyncConfig $config, ?DateTimeImmutable $now = null): string
     {
-        return self::PREFIX.'backup_'.$config->target->db->name.'_'.self::stamp($now).'.sql';
+        return self::PREFIX.'backup_'.$config->target->db->name.'_'.self::stamp($now).'_'.self::randomSuffix().'.sql';
+    }
+
+    /**
+     * Keeps the name unguessable in a shared directory such as the default /tmp/.
+     */
+    private static function randomSuffix(): string
+    {
+        return bin2hex(random_bytes(4));
     }
 
     private static function stamp(?DateTimeImmutable $now): string

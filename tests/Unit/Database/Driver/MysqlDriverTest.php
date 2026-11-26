@@ -52,7 +52,7 @@ final class MysqlDriverTest extends TestCase
 
         self::assertSame(
             'sync_status=$( { { mysqldump --defaults-extra-file=/tmp/.my_ab12.cnf --single-transaction --quick '
-            .'--extended-insert --no-tablespaces app ; echo $? >&3; } | gzip > /tmp/app.sql.gz; } 3>&1 ) '
+            .'--extended-insert --no-tablespaces app ; echo $? >&3; } | (umask 077 && gzip > /tmp/app.sql.gz); } 3>&1 ) '
             .'&& [ "$sync_status" -eq 0 ]',
             $command,
         );
@@ -86,7 +86,7 @@ final class MysqlDriverTest extends TestCase
         self::assertSame(
             'sync_status=$( { { mysqldump --defaults-extra-file=/tmp/.my_ab12.cnf --single-transaction --quick '
             ."--extended-insert --no-tablespaces --where='id > 1' --skip-lock-tables app  users; echo $? >&3; } "
-            .'| gzip > /tmp/app.sql.gz; } 3>&1 ) && [ "$sync_status" -eq 0 ]',
+            .'| (umask 077 && gzip > /tmp/app.sql.gz); } 3>&1 ) && [ "$sync_status" -eq 0 ]',
             $command,
         );
     }
