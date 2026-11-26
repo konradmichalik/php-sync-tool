@@ -54,7 +54,7 @@ composer test:scenarios     # docker:up plus test:integration
 composer docker:down
 ```
 
-CI (`.github/workflows/tests.yml`) runs `composer test` (unit tests without coverage) on PHP 8.2 to 8.5 against Symfony 6.x and 7.x, and a separate coverage job on PHP 8.4 with Xdebug that uploads `clover.xml`. Lint and static analysis run through the shared reusable workflow `cgl.yml` on PHP 8.4. `docs.yml` deploys the VitePress site to GitHub Pages.
+CI (`.github/workflows/tests.yml`, token permission `contents: read`) runs `composer audit` and `composer test` (unit tests without coverage) on PHP 8.2 to 8.5 against Symfony 6.x and 7.x, a `scenarios` job that starts the Docker stack and runs `composer test:integration -- --fail-on-skipped` on PHP 8.4, and a separate coverage job on PHP 8.4 with Xdebug that uploads `clover.xml`. Lint and static analysis run through the shared reusable workflow `cgl.yml` on PHP 8.4. `docs.yml` deploys the VitePress site to GitHub Pages.
 
 ## Code style and static analysis
 

@@ -7,6 +7,9 @@ on:
     branches:
       - '**'
 
+permissions:
+  contents: read
+
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -45,8 +48,36 @@ jobs:
       - name: Install Composer dependencies
         run: composer update --no-interaction --no-progress --with=symfony/console:${{ matrix.symfony_constraint }}
 
+      - name: Audit dependencies
+        run: composer audit
+
       - name: Run unit tests
         run: composer test
+
+  scenarios:
+    runs-on: ubuntu-latest
+    name: Integration scenarios
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer update --no-interaction --no-progress
+
+      - name: Start Docker stack
+        run: composer docker:up
+
+      # Without --fail-on-skipped a stack that never came up would skip every scenario and pass.
+      - name: Run integration scenarios
+        run: composer test:integration -- --fail-on-skipped
 
   coverage:
     runs-on: ubuntu-latest
